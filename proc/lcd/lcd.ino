@@ -3,6 +3,11 @@
  * @author Tobias Weber
  * @date jan-2022
  * @license see 'LICENSE' file
+ *
+ * References:
+ *   - https://www.arduino.cc/documents/datasheets/LCDscreen.PDF
+ *   - https://www.arduino.cc/documents/datasheets/TEMP-TMP35_36_37.pdf
+ *   - S. Fitzgerald and M. Shiloh, "Arduino Projects Book" (2013).
  */
 
 #include "lcd.c"
