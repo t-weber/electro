@@ -10,9 +10,29 @@
  *   - S. Fitzgerald and M. Shiloh, "Arduino Projects Book" (2013).
  */
 
+#define USE_I2C
+
 #include "lcd.c"
 #include "string.c"
 
+#ifdef USE_I2C
+	#include <Wire.h>
+
+	static void wire_begin_transmission(uint8_t addr)
+	{
+		Wire.beginTransmission(addr);
+	}
+
+	static void wire_end_transmission(uint8_t addr)
+	{
+		Wire.endTransmission(addr);
+	}
+
+	static void wire_write(uint8_t data)
+	{
+		Wire.write(data);
+	}
+#endif
 
 /* lc display */
 static LCDInfo lcd;
@@ -25,6 +45,16 @@ void setup()
 
 	/* set up lcd */
 	lcd.delay = &delay;
+#ifdef USE_I2C
+	lcd.pin_mode = 0;
+	lcd.i2c_addr = 0x27;
+	lcd.i2c_begin = &wire_begin_transmission;
+	lcd.i2c_end = &wire_end_transmission;
+	lcd.i2c_write = &wire_write;
+
+	Wire.begin();
+#else
+	lcd.pin_mode = 1;
 	lcd.set_pin = &digitalWrite;
 	lcd.pin_set = HIGH;
 	lcd.pin_unset = LOW;
@@ -42,6 +72,7 @@ void setup()
 	pinMode(lcd.pin_d5, OUTPUT);
 	pinMode(lcd.pin_d6, OUTPUT);
 	pinMode(lcd.pin_d7, OUTPUT);
+#endif
 
 	/*
 	 * initialise lcd

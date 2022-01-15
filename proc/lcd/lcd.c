@@ -11,9 +11,9 @@
 
 
 /**
- * send 4 bits to the display
+ * send 4 bits to the display via direct pin connections
  */
-void lcd_send_nibble(const LCDInfo* lcd, bool rs, uint8_t data)
+void lcd_send_nibble_pins(const LCDInfo* lcd, bool rs, uint8_t data)
 {
 	lcd->set_pin(lcd->pin_en, lcd->pin_unset);
 	lcd->set_pin(lcd->pin_rs, rs ? lcd->pin_set : lcd->pin_unset);
@@ -24,6 +24,43 @@ void lcd_send_nibble(const LCDInfo* lcd, bool rs, uint8_t data)
 	lcd->set_pin(lcd->pin_en, lcd->pin_set);
 	lcd->delay(1);
 	lcd->set_pin(lcd->pin_en, lcd->pin_unset);
+}
+
+
+/**
+ * send 4 bits to the display via the i2c bus
+ */
+void lcd_send_nibble_i2c(const LCDInfo* lcd, bool rs, uint8_t data)
+{
+	uint8_t pin_en = 0b0100;
+	uint8_t pin_rs = 0b0001;
+	uint8_t pin_led = 0b1000;
+
+	data <<= 4;
+	if(rs)
+		data |= pin_rs;
+	data |= pin_led;
+
+	lcd->i2c_begin(lcd->i2c_addr);
+	lcd->i2c_write(data | pin_en);
+	lcd->i2c_end(lcd->i2c_addr);
+
+	lcd->delay(1);
+	lcd->i2c_begin(lcd->i2c_addr);
+	lcd->i2c_write(data);
+	lcd->i2c_end(lcd->i2c_addr);
+}
+
+
+/**
+ * send 4 bits to the display
+ */
+void lcd_send_nibble(const LCDInfo* lcd, bool rs, uint8_t data)
+{
+	if(lcd->pin_mode)
+		lcd_send_nibble_pins(lcd, rs, data);
+	else
+		lcd_send_nibble_i2c(lcd, rs, data);
 }
 
 

@@ -15,6 +15,12 @@
 
 typedef struct _LCDInfo
 {
+	/* use direct pins or i2c bus */
+	bool pin_mode;
+
+	/*------------------------------------------------------------*/
+	/* pin mode */
+	/*------------------------------------------------------------*/
 	/* enable and register select pins */
 	int pin_en;
 	int pin_rs;
@@ -25,15 +31,26 @@ typedef struct _LCDInfo
 	int pin_d6;
 	int pin_d7;
 
-	/* (microcontroller's) delay function */
-	void (*delay)(uint32_t millisecs);
-
-	/* (microcontroller's) outout function */
-	void (*set_pin)(uint8_t pin, uint8_t state);
-
 	/* constants for set or unset pins */
 	int pin_set;
 	int pin_unset;
+
+	/* (microcontroller's) outout function */
+	void (*set_pin)(uint8_t pin, uint8_t state);
+	/*------------------------------------------------------------*/
+
+	/*------------------------------------------------------------*/
+	/* i2c mode */
+	/*------------------------------------------------------------*/
+	uint8_t i2c_addr;
+
+	void (*i2c_write)(uint8_t data);
+	void (*i2c_begin)(uint8_t addr);
+	void (*i2c_end)(uint8_t addr);
+	/*------------------------------------------------------------*/
+
+	/* (microcontroller's) delay function */
+	void (*delay)(uint32_t millisecs);
 } LCDInfo;
 
 
@@ -41,6 +58,8 @@ typedef struct _LCDInfo
  * send 4 bits to the display
  */
 extern void lcd_send_nibble(const LCDInfo* lcd, bool rs, uint8_t data);
+extern void lcd_send_nibble_pins(const LCDInfo* lcd, bool rs, uint8_t data);
+extern void lcd_send_nibble_i2c(const LCDInfo* lcd, bool rs, uint8_t data);
 
 
 /**
