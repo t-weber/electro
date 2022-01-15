@@ -35,7 +35,7 @@ typedef struct _LCDInfo
 	int pin_set;
 	int pin_unset;
 
-	/* (microcontroller's) outout function */
+	/* (microcontroller's) output function */
 	void (*set_pin)(uint8_t pin, uint8_t state);
 	/*------------------------------------------------------------*/
 
