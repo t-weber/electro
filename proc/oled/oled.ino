@@ -10,6 +10,7 @@
  */
 
 #include "oled.c"
+#include "drawing.c"
 
 
 /*---------------------------------------------------------------------------*/
@@ -34,8 +35,17 @@ static void wire_write(uint8_t data)
 /*---------------------------------------------------------------------------*/
 
 
+/*---------------------------------------------------------------------------*/
 /* oled display */
+/*---------------------------------------------------------------------------*/
 static OLEDInfo oled;
+
+
+static void draw_func(void* oled, t_int x, t_int y)
+{
+  oled_pixel((OLEDInfo*)oled, x, y, 1);
+}
+/*---------------------------------------------------------------------------*/
 
 
 void setup()
@@ -51,6 +61,11 @@ void setup()
 
 	Wire.begin();
 	oled_init(&oled);
+
+	oled_pixel(&oled, 50, 40, 1);
+	draw_line(10, 10, 100, 20, draw_func, &oled);
+	draw_circle(50, 40, 15, draw_func, &oled);
+	oled_update(&oled);
 }
 
 

@@ -13,8 +13,9 @@
 #include <stdbool.h>
 
 
-typedef uint32_t  t_size;
-typedef char      t_char;
+typedef uint32_t t_size;
+typedef int32_t  t_int;
+typedef char     t_char;
 
 
 #endif
