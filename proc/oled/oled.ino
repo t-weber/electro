@@ -43,7 +43,7 @@ static OLEDInfo oled;
 
 static void draw_func(void* oled, t_int x, t_int y)
 {
-  oled_pixel((OLEDInfo*)oled, x, y, 1);
+	oled_pixel((OLEDInfo*)oled, x, y, 1);
 }
 /*---------------------------------------------------------------------------*/
 
