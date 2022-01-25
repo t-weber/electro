@@ -40,8 +40,7 @@ static void wire_write(uint8_t data)
 /*---------------------------------------------------------------------------*/
 static OLEDInfo oled;
 
-
-static void draw_func(void* oled, t_int x, t_int y)
+static void oled_draw_func(void* oled, t_int x, t_int y)
 {
 	oled_pixel((OLEDInfo*)oled, x, y, 1);
 }
@@ -60,15 +59,24 @@ void setup()
 	oled.i2c_write = &wire_write;
 
 	Wire.begin();
+	Wire.setClock(400000ul);
 	oled_init(&oled);
 
-	oled_pixel(&oled, 50, 40, 1);
-	draw_line(10, 10, 100, 20, draw_func, &oled);
-	draw_circle(50, 40, 15, draw_func, &oled);
-	oled_update(&oled);
+	//oled_scroll_setup_h(&oled, 0, 0, 7, 0);
+	//oled_scroll(&oled, 1);
 }
 
 
 void loop()
 {
+	static int x = 50;
+	oled_clear(&oled, 0);
+	oled_pixel(&oled, x, 40, 1);
+	draw_line(10, 10, 100, 20, &oled_draw_func, &oled);
+	draw_circle(x, 40, 15, &oled_draw_func, &oled);
+	oled_update(&oled);
+
+	++x;
+	x %= oled.width;
+	delay(40);
 }

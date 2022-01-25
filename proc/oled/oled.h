@@ -86,6 +86,32 @@ extern void oled_contrast(const OLEDInfo* oled, uint8_t contrast);
 
 
 /**
+ * set the clock
+ */
+extern void oled_clock(const OLEDInfo* oled,
+  uint8_t divider, uint8_t freq,
+  uint8_t pixel_unset_time, uint8_t pixel_set_time);
+
+
+/**
+ * set voltage levels
+ */
+extern void oled_voltage(const OLEDInfo* oled, uint8_t unselect_level);
+
+
+/**
+ * pin settings
+ */
+extern void oled_pins(const OLEDInfo* oled, bool alternate,  bool remap);
+
+
+/**
+ * multiplexer settings
+ */
+extern void oled_mux(const OLEDInfo* oled, uint8_t num);
+
+
+/**
  * set the address mode
  * mode 0: page-by-page, 1: column-by-column, 2: no page increment
  */
@@ -109,6 +135,33 @@ extern void oled_offset(const OLEDInfo* oled, uint8_t h_offs, uint8_t v_offs);
  */
 extern void oled_address(const OLEDInfo* oled,
 	uint8_t col_start, uint8_t col_end, uint8_t page_start, uint8_t page_end);
+
+
+/**
+ * settings for horizontal scrolling
+ */
+extern void oled_scroll_setup_h(const OLEDInfo* oled, bool left,
+	uint8_t page_start, uint8_t page_end, uint8_t speed);
+
+
+/**
+ * settings for horizontal/vertical scrolling
+ */
+extern void oled_scroll_setup_hv(const OLEDInfo* oled, bool left,
+	uint8_t page_start, uint8_t page_end, uint8_t speed, uint8_t v_offs);
+
+
+/**
+ * scroll area
+ */
+extern void oled_scroll_setup_area(const OLEDInfo* oled,
+	uint8_t row_start, uint8_t num_rows);
+
+
+/**
+ * enable/disable scrolling
+ */
+extern void oled_scroll(const OLEDInfo* oled, bool enable);
 
 
 /**

@@ -82,7 +82,7 @@ void draw_line(
 	}
 
 
-	// general case: sloped line with y range larger than x range
+	/* general case: sloped line with y range larger than x range */
 	else
 	{
 		const t_int mult = 2;

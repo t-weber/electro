@@ -76,6 +76,9 @@ void oled_init(OLEDInfo* oled)
 	oled->delay(20);
 	oled_onoff(oled, 0, 0, 1);
 
+	oled_clock(oled, 0, 15, 2, 2);
+	oled_mux(oled, oled->height-1);
+
 	oled_address_mode(oled, 0);
 	oled_direction(oled, 1, 0);
 	oled_offset(oled, 0, 0);
@@ -181,6 +184,57 @@ void oled_contrast(const OLEDInfo* oled, uint8_t contrast)
 
 
 /**
+ * set the clock (divider is assumed +1)
+ */
+void oled_clock(const OLEDInfo* oled,
+	uint8_t divider, uint8_t freq,
+	uint8_t pixel_unset_time, uint8_t pixel_set_time)
+{
+	uint8_t data = (freq & 0x0f) << 4;;
+	data |= divider & 0x0f;
+	oled_send_2bytes(oled, 1, 0xd5, data);
+
+	data = (pixel_set_time & 0x0f) << 4;;
+	data |= pixel_unset_time & 0x0f;
+	oled_send_2bytes(oled, 1, 0xd9, data);
+}
+
+
+/**
+ * set voltage levels
+ */
+void oled_voltage(const OLEDInfo* oled, uint8_t unselect_level)
+{
+	oled_send_2bytes(oled, 1, 0xdb, (unselect_level & 0b0111) << 4);
+}
+
+
+/**
+ * pin settings
+ */
+void oled_pins(const OLEDInfo* oled, bool alternate,  bool remap)
+{
+	uint8_t data = 0;
+
+	if(alternate)
+		data |= 1 << 4;
+	if(remap)
+		data |= 1 << 5;
+
+	oled_send_2bytes(oled, 1, 0xdb, data);
+}
+
+
+/**
+ * multiplexer settings
+ */
+void oled_mux(const OLEDInfo* oled, uint8_t num)
+{
+	oled_send_2bytes(oled, 1, 0xa8, num);
+}
+
+
+/**
  * set the column and page addresses
  */
 void oled_address(const OLEDInfo* oled,
@@ -201,6 +255,77 @@ void oled_address(const OLEDInfo* oled,
 
 		oled_send_byte(oled, 1, 0b10110000 | page_start);
 	}
+}
+
+
+/**
+ * settings for horizontal scrolling
+ */
+void oled_scroll_setup_h(const OLEDInfo* oled, bool left,
+	uint8_t page_start, uint8_t page_end, uint8_t speed)
+{
+	uint8_t cmd = 0b00100110;
+	if(left)
+		cmd |= 1;
+
+	uint8_t data[] =
+	{
+		cmd, 0x00,
+		page_start,
+		speed,
+		page_end,
+		0x00, 0xff
+	};
+
+	oled_send_nbytes(oled, 1, data, sizeof(data));
+}
+
+
+/**
+ * settings for horizontal/vertical scrolling
+ */
+void oled_scroll_setup_hv(const OLEDInfo* oled, bool left,
+	uint8_t page_start, uint8_t page_end, uint8_t speed, uint8_t v_offs)
+{
+	uint8_t cmd = 0b00101000;
+	if(left)
+		cmd |= 0b10;
+	else
+		cmd |= 0b01;
+
+	uint8_t data[] =
+	{
+		cmd, 0x00,
+		page_start,
+		speed,
+		page_end,
+		v_offs
+	};
+
+	oled_send_nbytes(oled, 1, data, sizeof(data));
+}
+
+
+/**
+ * scroll area
+ */
+void oled_scroll_setup_area(const OLEDInfo* oled,
+	uint8_t row_start, uint8_t num_rows)
+{
+	uint8_t data[] = { 0xa3, row_start, num_rows };
+	oled_send_nbytes(oled, 1, data, sizeof(data));
+}
+
+
+/**
+ * enable/disable scrolling
+ */
+void oled_scroll(const OLEDInfo* oled, bool enable)
+{
+	if(enable)
+		oled_send_byte(oled, 1, 0x2f);
+	else
+		oled_send_byte(oled, 1, 0x2e);
 }
 
 
