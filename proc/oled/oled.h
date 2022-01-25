@@ -89,8 +89,8 @@ extern void oled_contrast(const OLEDInfo* oled, uint8_t contrast);
  * set the clock
  */
 extern void oled_clock(const OLEDInfo* oled,
-  uint8_t divider, uint8_t freq,
-  uint8_t pixel_unset_time, uint8_t pixel_set_time);
+	uint8_t divider, uint8_t freq,
+	uint8_t pixel_unset_time, uint8_t pixel_set_time);
 
 
 /**
