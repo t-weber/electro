@@ -78,7 +78,7 @@ void submat(const t_real* M, t_int N, t_real* M_new, t_int iremove, t_int jremov
  */
 t_real determinant(const t_real* M, t_int N)
 {
-	// special cases
+	/* special cases */
 	if(N == 0)
 		return 0;
 	else if(N == 1)
@@ -87,7 +87,7 @@ t_real determinant(const t_real* M, t_int N)
 		return M[0*N+0]*M[1*N+1] - M[0*N+1]*M[1*N+0];
 
 
-	// get row with maximum number of zeros
+	/* get row with maximum number of zeros */
 	t_int row = 0;
 	t_int maxNumZeros = 0;
 	for(t_int curRow=0; curRow<N; ++curRow)
@@ -107,7 +107,7 @@ t_real determinant(const t_real* M, t_int N)
 	}
 
 
-	// recursively expand determiant along a row
+	/* recursively expand determiant along a row */
 	t_real fullDet = 0.;
 
 	t_real *sub = (t_real*)calloc((N-1)*(N-1), sizeof(t_real));
@@ -135,7 +135,7 @@ t_int inverse(const t_real* M, t_real* I, t_int N)
 {
 	t_real fullDet = determinant(M, N);
 
-	// fail if determinant is zero
+	/* fail if determinant is zero */
 	if(equals(fullDet, 0., g_eps))
 		return 0;
 
@@ -244,16 +244,16 @@ t_int pow_mat(const t_real* M, t_real* P, t_int N, t_int POW)
 	t_int POW_pos = POW<0 ? -POW : POW;
 	t_int status = 1;
 
-	// temporary matrices
+	/* temporary matrices */
 	t_real *Mtmp = (t_real*)calloc(N*N, sizeof(t_real));
 	t_real *Mtmp2 = (t_real*)calloc(N*N, sizeof(t_real));
 
-	// Mtmp = M
+	/* Mtmp = M */
 	for(t_int i=0; i<N; ++i)
 		for(t_int j=0; j<N; ++j)
 			Mtmp[i*N + j] = M[i*N + j];
 
-	// matrix power
+	/* matrix power */
 	for(t_int i=0; i<POW_pos-1; ++i)
 	{
 		mult_mat(Mtmp, M, Mtmp2, N, N, N);
@@ -264,11 +264,11 @@ t_int pow_mat(const t_real* M, t_real* P, t_int N, t_int POW)
 				Mtmp[i*N + j] = Mtmp2[i*N + j];
 	}
 
-	// invert
+	/* invert */
 	if(POW < 0)
 		status = inverse(Mtmp, Mtmp2, N);
 
-	// P = Mtmp2
+	/* P = Mtmp2 */
 	for(t_int i=0; i<N; ++i)
 		for(t_int j=0; j<N; ++j)
 			P[i*N + j] = Mtmp2[i*N + j];
