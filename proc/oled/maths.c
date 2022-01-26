@@ -258,7 +258,7 @@ t_int pow_mat(const t_real* M, t_real* P, t_int N, t_int POW)
 	{
 		mult_mat(Mtmp, M, Mtmp2, N, N, N);
 
-		// Mtmp = Mtmp2
+		/* Mtmp = Mtmp2 */
 		for(t_int i=0; i<N; ++i)
 			for(t_int j=0; j<N; ++j)
 				Mtmp[i*N + j] = Mtmp2[i*N + j];
