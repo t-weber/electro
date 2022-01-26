@@ -72,8 +72,8 @@ void setup()
 	Wire.setClock(400000ul);
 	oled_init(&oled);
 
-	//oled_scroll_setup_h(&oled, 0, 0, 7, 0);
-	//oled_scroll(&oled, 1);
+	/*oled_scroll_setup_h(&oled, 0, 0, 7, 0);
+	oled_scroll(&oled, 1);*/
 
 	/* set up matrices */
 	t_real ratio = ((t_real)oled.height) / ((t_real)oled.width);
@@ -86,7 +86,7 @@ void loop()
 {
 	oled_clear(&oled, 0);
 
-  /*static int x = 50;
+	/*static int x = 50;
 	oled_pixel(&oled, x, 40, 1);
 	draw_line(10, 10, 100, 20, &oled_draw_func, &oled);
 	draw_circle(x, 40, 15, &oled_draw_func, &oled);
