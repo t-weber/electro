@@ -22,7 +22,7 @@ void oled_send_byte(const OLEDInfo* oled, bool is_command, uint8_t data)
 		oled->i2c_write(0x80);
 	else
 		oled->i2c_write(0xc0);
-    
+
 	oled->i2c_write(data);
 	oled->i2c_end(oled->i2c_addr);
 }
@@ -150,7 +150,7 @@ void oled_address_mode(OLEDInfo* oled, uint8_t mode)
  * set the output direction
  */
 void oled_direction(const OLEDInfo* oled,
-  bool h_inverted, bool v_inverted)
+	bool h_inverted, bool v_inverted)
 {
 	if(h_inverted)
 		oled_send_byte(oled, 1, 0xa1);
@@ -212,7 +212,7 @@ void oled_voltage(const OLEDInfo* oled, uint8_t unselect_level)
 /**
  * pin settings
  */
-void oled_pins(const OLEDInfo* oled, bool alternate,  bool remap)
+void oled_pins(const OLEDInfo* oled, bool alternate, bool remap)
 {
 	uint8_t data = 0;
 
@@ -344,6 +344,9 @@ void oled_clear(const OLEDInfo* oled, uint8_t clear_val)
  */
 void oled_pixel(const OLEDInfo* oled, uint16_t x, uint16_t y, bool set)
 {
+	x %= oled->width;
+	y %= oled->height;
+
 	uint8_t h_offs = (uint8_t)x;
 	uint8_t v_offs = (uint8_t)(y / oled->pixels_per_page);
 	uint8_t v_bit = (uint8_t)(y % oled->pixels_per_page);

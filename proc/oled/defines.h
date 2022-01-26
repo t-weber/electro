@@ -16,6 +16,7 @@
 typedef uint32_t t_size;
 typedef int32_t  t_int;
 typedef char     t_char;
+typedef float    t_real;
 
 
 #endif

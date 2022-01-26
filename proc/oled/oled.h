@@ -102,7 +102,7 @@ extern void oled_voltage(const OLEDInfo* oled, uint8_t unselect_level);
 /**
  * pin settings
  */
-extern void oled_pins(const OLEDInfo* oled, bool alternate,  bool remap);
+extern void oled_pins(const OLEDInfo* oled, bool alternate, bool remap);
 
 
 /**
