@@ -7,6 +7,7 @@
  * References:
  *   - https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf
  *   - https://www.instructables.com/Getting-Started-With-OLED-Displays/
+ *   - https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
  */
 
 #include "oled.c"
@@ -52,13 +53,39 @@ static void oled_draw_func(void* oled, t_int x, t_int y)
 /*---------------------------------------------------------------------------*/
 /* transformation matrices */
 /*---------------------------------------------------------------------------*/
-t_real mat_viewport[4*4];
-t_real mat_perspective[4*4];
+static t_real mat_viewport_perspective[4*4];
+static volatile t_real angle_inc = 0.05;
+/*---------------------------------------------------------------------------*/
+
+
+/*---------------------------------------------------------------------------*/
+/* button */
+/*---------------------------------------------------------------------------*/
+#define BUTTON_PIN 2
+
+static void button_isr()
+{
+	// filter spurious interrupts, e.g. due to button bounce
+	static unsigned long last_run_time = 0;
+	unsigned long run_time = millis();
+
+	if(run_time - last_run_time > 100)
+	{
+		angle_inc *= -1.;
+	}
+
+	last_run_time = run_time;
+}
 /*---------------------------------------------------------------------------*/
 
 
 void setup()
 {
+	/* set up button */
+	pinMode(BUTTON_PIN, INPUT);
+	int button_interrupt = digitalPinToInterrupt(BUTTON_PIN);
+	attachInterrupt(button_interrupt, button_isr, FALLING);
+
 	/* set up oled */
 	oled.delay = &delay;
 	oled.width = 128;
@@ -68,6 +95,7 @@ void setup()
 	oled.i2c_end = &wire_end_transmission;
 	oled.i2c_write = &wire_write;
 
+	/* set up oled i2c bus */
 	Wire.begin();
 	Wire.setClock(400000ul);
 	oled_init(&oled);
@@ -76,9 +104,13 @@ void setup()
 	oled_scroll(&oled, 1);*/
 
 	/* set up matrices */
+	t_real mat_viewport[4*4];
+	t_real mat_perspective[4*4];
+
 	t_real ratio = ((t_real)oled.height) / ((t_real)oled.width);
 	viewport(mat_viewport, oled.width, oled.height, 0., 1.);
 	perspective(mat_perspective, 0.01, 100., 0.5*M_PI, ratio, 0, 0, 0);
+	mult_mat(mat_viewport, mat_perspective, mat_viewport_perspective, 4, 4, 4);
 }
 
 
@@ -95,7 +127,7 @@ void loop()
 	++x;
 	x %= oled.width;*/
 
-	static float angle = 0.;
+	static t_real angle = 0.;
 	t_real cube_trafo[4*4];
 
 	t_real mat_rotation[4*4];
@@ -104,14 +136,13 @@ void loop()
 	t_real mat_translation[4*4];
 	translation(mat_translation, 0., 0., 1.25);
 
-	t_real mat_tmp[4*4], mat_tmp2[4*4];
+	t_real mat_tmp[4*4];
 	mult_mat(mat_translation, mat_rotation, mat_tmp, 4, 4, 4);
-	mult_mat(mat_perspective, mat_tmp, mat_tmp2, 4, 4, 4);
-	mult_mat(mat_viewport, mat_tmp2, cube_trafo, 4, 4, 4);
+	mult_mat(mat_viewport_perspective, mat_tmp, cube_trafo, 4, 4, 4);
 
 	draw_cube(0.5, cube_trafo, &oled_draw_func, &oled);
 	oled_update(&oled);
 
-	angle += 0.05;
+	angle += angle_inc;
 	delay(40);
 }
