@@ -10,10 +10,10 @@
  *   - https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
  */
 
-#include "oled.c"
-#include "drawing.c"
-#include "drawing3d.c"
-#include "maths.c"
+#include "../lib/oled.c"
+#include "../lib/drawing.c"
+#include "../lib/drawing3d.c"
+#include "../lib/maths.c"
 
 
 /*---------------------------------------------------------------------------*/

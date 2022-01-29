@@ -12,8 +12,8 @@
 
 #define USE_I2C
 
-#include "lcd.c"
-#include "string.c"
+#include "../lib/lcd.c"
+#include "../lib/string.c"
 
 #ifdef USE_I2C
 	#include <Wire.h>
