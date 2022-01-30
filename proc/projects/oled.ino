@@ -10,10 +10,11 @@
  *   - https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
  */
 
-#include "../lib/oled.c"
-#include "../lib/drawing.c"
-#include "../lib/drawing3d.c"
-#include "../lib/maths.c"
+#include "lib/oled.c"
+#include "lib/drawing.c"
+#include "lib/drawing3d.c"
+#include "lib/maths.c"
+#include "lib/string.c"
 
 
 /*---------------------------------------------------------------------------*/
@@ -65,7 +66,7 @@ static volatile t_real angle_inc = 0.05;
 
 static void button_isr()
 {
-	// filter spurious interrupts, e.g. due to button bounce
+	/* filter spurious interrupts, e.g. due to button bounce */
 	static unsigned long last_run_time = 0;
 	unsigned long run_time = millis();
 
@@ -141,8 +142,17 @@ void loop()
 	mult_mat(mat_viewport_perspective, mat_tmp, cube_trafo, 4, 4, 4);
 
 	draw_cube(0.5, cube_trafo, &oled_draw_func, &oled);
+
+#ifdef _HAS_FONT_
+	oled_set_cursor(&oled, 0, 0);
+	char angle_str[16];
+	real_to_str(angle / M_PI * 180., 10., angle_str, 0);
+	/*strncat_char(angle_str, '°', sizeof(angle_str));*/
+	oled_puts(&oled, angle_str);
+#endif
+
 	oled_update(&oled);
 
 	angle += angle_inc;
-	delay(40);
+	delay(50);
 }

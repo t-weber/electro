@@ -8,8 +8,16 @@
  * @see https://www.instructables.com/Getting-Started-With-OLED-Displays/
  */
 
-#include "oled.h"
 #include <stdlib.h>
+
+#include "oled.h"
+
+#if __has_include("characters.c")
+	#include "characters.c"
+	#define _HAS_FONT_
+#else
+	#pragma message("Please create the font character map using tools/create_font.cpp!")
+#endif
 
 
 /**
@@ -73,6 +81,8 @@ void oled_init(OLEDInfo* oled)
 	oled->pages = oled->height / oled->pixels_per_page;
 	oled->framebuffer = (uint8_t*)malloc(oled->width * oled->pages);
 
+	oled_set_cursor(oled, 0, 0);
+
 	oled->delay(20);
 	oled_onoff(oled, 0, 0, 1);
 
@@ -88,6 +98,7 @@ void oled_init(OLEDInfo* oled)
 
 	oled_contrast(oled, 0xff);
 	oled_onoff(oled, 1, 0, 1);
+	//oled->delay(20);
 }
 
 
@@ -344,8 +355,10 @@ void oled_clear(const OLEDInfo* oled, uint8_t clear_val)
  */
 void oled_pixel(const OLEDInfo* oled, uint16_t x, uint16_t y, bool set)
 {
-	x %= oled->width;
-	y %= oled->height;
+	if(x >= oled->width || y >= oled->height)
+		return;
+	//x %= oled->width;
+	//y %= oled->height;
 
 	uint8_t h_offs = (uint8_t)x;
 	uint8_t v_offs = (uint8_t)(y / oled->pixels_per_page);
@@ -357,9 +370,9 @@ void oled_pixel(const OLEDInfo* oled, uint16_t x, uint16_t y, bool set)
 
 	uint8_t val = oled->framebuffer[lin_offs];
 	if(set)
-		val |= 1 << (/*8-*/v_bit);
+		val |= 1 << v_bit;
 	else
-		val &= ~(1 << (/*8-*/v_bit));
+		val &= ~(1 << v_bit);
 	oled->framebuffer[lin_offs] = val;
 }
 
@@ -373,4 +386,68 @@ void oled_update(const OLEDInfo* oled)
 
 	for(uint16_t i=0; i<oled->width*oled->pages; ++i)
 		oled_send_byte(oled, 0, oled->framebuffer[i]);
+}
+
+
+/**
+ * write a char to the display
+ */
+void oled_putch(OLEDInfo* oled, t_char ch)
+{
+#ifdef _HAS_FONT_
+	// draw character
+	const uint16_t ch_idx = (uint16_t)ch - g_characters_first;
+
+	for(uint16_t y=0; y<g_characters_height; ++y)
+	{
+		uint8_t thebyte = pgm_read_byte(g_characters[ch_idx] + y);
+
+		for(uint16_t x=0; x<g_characters_width; ++x)
+		{
+			bool thebit = ((thebyte & (1 << (7-x))) != 0);
+			if(thebit)
+				oled_pixel(oled, oled->cur_x+x, oled->cur_y+y, thebit);
+		}
+	}
+
+	// advance cursor position
+	oled->cur_x += g_characters_width;
+
+	// new line?
+	if(oled->cur_x >= oled->width)
+	{
+		oled->cur_x = 0;
+		oled->cur_y += g_characters_height;
+	}
+
+	// wrap back to first line?
+	if(oled->cur_y >= oled->height)
+	{
+		oled->cur_y = 0;
+	}
+#endif
+}
+
+
+/**
+ * write a string to the display
+ */
+void oled_puts(OLEDInfo* oled, const t_char* str)
+{
+	const t_char* iter = str;
+	while(*iter)
+	{
+		oled_putch(oled, *iter);
+		++iter;
+	}
+}
+
+
+/**
+ * set the cursor position
+ */
+void oled_set_cursor(OLEDInfo* oled, uint16_t x, uint16_t y)
+{
+	oled->cur_x = x;
+	oled->cur_y = y;
 }

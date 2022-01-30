@@ -25,6 +25,9 @@ typedef struct _OLEDInfo
 	uint8_t mode;
 	uint8_t* framebuffer;
 
+	uint16_t cur_x;
+	uint16_t cur_y;
+
 	/*------------------------------------------------------------*/
 	/* i2c mode */
 	/*------------------------------------------------------------*/
@@ -180,6 +183,24 @@ extern void oled_pixel(const OLEDInfo* oled, uint16_t x, uint16_t y, bool set);
  * draw the framebuffer
  */
 extern void oled_update(const OLEDInfo* oled);
+
+
+/**
+ * write a char to the display
+ */
+extern void oled_putch(OLEDInfo* oled, t_char ch);
+
+
+/**
+ * write a string to the display
+ */
+extern void oled_puts(OLEDInfo* oled, const t_char* str);
+
+
+/**
+ * set the cursor position
+ */
+extern void oled_set_cursor(OLEDInfo* oled, uint16_t x, uint16_t y);
 
 
 #endif

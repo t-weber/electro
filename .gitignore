@@ -34,3 +34,7 @@
 *.dSYM/
 *.idb
 *.pdb
+
+# Temporary files
+*.c_
+proc/lib/characters.c
