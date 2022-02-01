@@ -44,8 +44,8 @@ enum Token
 };
 
 
-static t_value plus_term(struct ParserContext* ctx);
-static t_value plus_term_rest(struct ParserContext* ctx, t_value arg);
+static t_value add_term(struct ParserContext* ctx);
+static t_value add_term_rest(struct ParserContext* ctx, t_value arg);
 static t_value mul_term(struct ParserContext* ctx);
 static t_value mul_term_rest(struct ParserContext* ctx, t_value arg);
 static t_value pow_term(struct ParserContext* ctx);
@@ -66,7 +66,7 @@ static t_value factor(struct ParserContext* ctx);
 /* symbol table */
 /* ---------------------------------------------------------------------------- */
 
-struct Symbol* create_symbol(const char* name, t_value value)
+static struct Symbol* create_symbol(const char* name, t_value value)
 {
 	struct Symbol *sym = (struct Symbol*)malloc(sizeof(struct Symbol));
 	if(sym)
@@ -80,7 +80,7 @@ struct Symbol* create_symbol(const char* name, t_value value)
 }
 
 
-struct Symbol* find_symbol(struct ParserContext* ctx, const char* name)
+static struct Symbol* find_symbol(struct ParserContext* ctx, const char* name)
 {
 	struct Symbol* sym = &ctx->symboltable;
 
@@ -96,7 +96,7 @@ struct Symbol* find_symbol(struct ParserContext* ctx, const char* name)
 }
 
 
-struct Symbol* assign_or_insert_symbol(struct ParserContext* ctx, const char* name, t_value value)
+static struct Symbol* assign_or_insert_symbol(struct ParserContext* ctx, const char* name, t_value value)
 {
 	struct Symbol* sym = find_symbol(ctx, name);
 
@@ -422,13 +422,13 @@ static int match(struct ParserContext* ctx, int expected)
  * +,- terms
  * (lowest precedence, 1)
  */
-static t_value plus_term(struct ParserContext* ctx)
+static t_value add_term(struct ParserContext* ctx)
 {
-	/* plus_term -> mul_term plus_term_rest */
+	/* add_term -> mul_term add_term_rest */
 	if(ctx->lookahead == '(' || ctx->lookahead == TOK_VALUE || ctx->lookahead == TOK_IDENT)
 	{
 		t_value term_val = mul_term(ctx);
-		t_value expr_rest_val = plus_term_rest(ctx, term_val);
+		t_value expr_rest_val = add_term_rest(ctx, term_val);
 
 		return expr_rest_val;
 	}
@@ -436,7 +436,7 @@ static t_value plus_term(struct ParserContext* ctx)
 	{
 		next_lookahead(ctx);
 		t_value term_val = mul_term(ctx);
-		t_value expr_rest_val = plus_term_rest(ctx, term_val);
+		t_value expr_rest_val = add_term_rest(ctx, term_val);
 
 		return expr_rest_val;
 	}
@@ -444,7 +444,7 @@ static t_value plus_term(struct ParserContext* ctx)
 	{
 		next_lookahead(ctx);
 		t_value term_val = -mul_term(ctx);
-		t_value expr_rest_val = plus_term_rest(ctx, term_val);
+		t_value expr_rest_val = add_term_rest(ctx, term_val);
 
 		return expr_rest_val;
 	}
@@ -457,28 +457,28 @@ static t_value plus_term(struct ParserContext* ctx)
 }
 
 
-static t_value plus_term_rest(struct ParserContext* ctx, t_value arg)
+static t_value add_term_rest(struct ParserContext* ctx, t_value arg)
 {
-	/* plus_term_rest -> '+' mul_term plus_term_rest */
+	/* add_term_rest -> '+' mul_term add_term_rest */
 	if(ctx->lookahead == '+')
 	{
 		next_lookahead(ctx);
 		t_value term_val = arg + mul_term(ctx);
-		t_value expr_rest_val = plus_term_rest(ctx, term_val);
+		t_value expr_rest_val = add_term_rest(ctx, term_val);
 
 		return expr_rest_val;
 	}
 
-	/* plus_term_rest -> '-' mul_term plus_term_rest */
+	/* add_term_rest -> '-' mul_term add_term_rest */
 	else if(ctx->lookahead == '-')
 	{
 		next_lookahead(ctx);
 		t_value term_val = arg - mul_term(ctx);
-		t_value expr_rest_val = plus_term_rest(ctx, term_val);
+		t_value expr_rest_val = add_term_rest(ctx, term_val);
 
 		return expr_rest_val;
 	}
-	/* plus_term_rest -> epsilon */
+	/* add_term_rest -> epsilon */
 	else if(ctx->lookahead == ')' || ctx->lookahead == TOK_END || ctx->lookahead == ',')
 	{
 		return arg;
@@ -609,11 +609,11 @@ static t_value pow_term_rest(struct ParserContext* ctx, t_value arg)
  */
 static t_value factor(struct ParserContext* ctx)
 {
-	/* factor -> '(' plus_term ')' */
+	/* factor -> '(' add_term ')' */
 	if(ctx->lookahead == '(')
 	{
 		next_lookahead(ctx);
-		t_value expr_val = plus_term(ctx);
+		t_value expr_val = add_term(ctx);
 		match(ctx, ')');
 		next_lookahead(ctx);
 
@@ -637,6 +637,7 @@ static t_value factor(struct ParserContext* ctx)
 
 		next_lookahead(ctx);
 
+#ifndef EXPR_PARSER_NO_FUNCTIONS
 		/* function call */
 		/* using next ctx->lookahead, grammar still ll(1)? */
 		if(ctx->lookahead == '(')
@@ -663,10 +664,10 @@ static t_value factor(struct ParserContext* ctx)
 			else
 			{
 				/* first argument */
-				t_value expr_val1 = plus_term(ctx);
+				t_value expr_val1 = add_term(ctx);
 
 				/* one-argument-function */
-				/* factor -> TOK_IDENT '(' plus_term ')' */
+				/* factor -> TOK_IDENT '(' add_term ')' */
 				if(ctx->lookahead == ')')
 				{
 					next_lookahead(ctx);
@@ -721,11 +722,11 @@ static t_value factor(struct ParserContext* ctx)
 				}
 
 				/* two-argument-function */
-				/* factor -> TOK_IDENT '(' plus_term ',' plus_term ')' */
+				/* factor -> TOK_IDENT '(' add_term ',' add_term ')' */
 				else if(ctx->lookahead == ',')
 				{
 					next_lookahead(ctx);
-					t_value expr_val2 = plus_term(ctx);
+					t_value expr_val2 = add_term(ctx);
 					match(ctx, ')');
 					next_lookahead(ctx);
 
@@ -753,10 +754,12 @@ static t_value factor(struct ParserContext* ctx)
 		}
 
 		/* assignment */
-		else if(ctx->lookahead == '=')
+		else
+#endif
+		if(ctx->lookahead == '=')
 		{
 			next_lookahead(ctx);
-			t_value assign_val = plus_term(ctx);
+			t_value assign_val = add_term(ctx);
 			assign_or_insert_symbol(ctx, ident, assign_val);
 			return assign_val;
 		}
@@ -827,13 +830,15 @@ t_value parse(struct ParserContext* ctx, const char* str)
 {
 	set_input(ctx, str);
 	next_lookahead(ctx);
-	return plus_term(ctx);
+	return add_term(ctx);
 }
 /* ---------------------------------------------------------------------------- */
 
 
+
+#ifdef EXPR_RUN_TEST
 /* test: gcc -Wall -Wextra -o 0 expr_parser.c string.c -lm */
-/*int main()
+int main()
 {
 	struct ParserContext ctx;
 	init_parser(&ctx);
@@ -841,9 +846,10 @@ t_value parse(struct ParserContext* ctx, const char* str)
 #ifdef EXPR_PARSER_USE_INTEGER
 	my_printf("%d\n", parse(&ctx, "123 + 500*2"));
 #else
-	my_printf("%g\n", parse(&ctx, "123 + 500*2"));
+	my_printf("%g\n", parse(&ctx, "123 + 500*2 + cos(0)"));
 #endif
 
 	deinit_parser(&ctx);
 	return 0;
-}*/
+}
+#endif
