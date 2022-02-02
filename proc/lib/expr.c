@@ -531,12 +531,16 @@ static t_value mul_term_rest(struct ParserContext* ctx, t_value arg)
 		return term_rest_val;
 	}
 
-#ifndef EXPR_PARSER_NO_MATHLIB
+#if !defined(EXPR_PARSER_NO_MATHLIB) || defined(EXPR_PARSER_USE_INTEGER)
 	/* mul_term_rest -> '%' pow_term mul_term_rest */
 	else if(ctx->lookahead == '%')
 	{
 		next_lookahead(ctx);
+#ifdef EXPR_PARSER_USE_INTEGER
+		t_value factor_val = arg % pow_term(ctx);
+#else
 		t_value factor_val = fmod(arg, pow_term(ctx));
+#endif
 		t_value term_rest_val = mul_term_rest(ctx, factor_val);
 
 		return term_rest_val;
