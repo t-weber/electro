@@ -85,7 +85,7 @@ void setup()
 	/* set up button */
 	pinMode(BUTTON_PIN, INPUT);
 	int button_interrupt = digitalPinToInterrupt(BUTTON_PIN);
-	attachInterrupt(button_interrupt, button_isr, FALLING);
+	attachInterrupt(button_interrupt, &button_isr, FALLING);
 
 	/* set up oled */
 	oled.delay = &delay;
