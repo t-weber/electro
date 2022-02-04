@@ -103,7 +103,7 @@ void oled_init(OLEDInfo* oled)
 
 
 /**
- * initialise the display
+ * deinitialise the display
  */
 void oled_deinit(OLEDInfo* oled)
 {

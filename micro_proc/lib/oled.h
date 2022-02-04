@@ -70,7 +70,7 @@ extern void oled_init(OLEDInfo* oled);
 
 
 /**
- * initialise the display
+ * deinitialise the display
  */
 extern void oled_deinit(OLEDInfo* oled);
 
