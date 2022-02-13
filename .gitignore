@@ -1,40 +1,43 @@
-# Object files
+# object files
 *.o
 *.ko
 *.obj
 *.elf
 
-# Linker output
+# linker output
 *.ilk
 *.map
 *.exp
 
-# Precompiled headers
+# precompiled headers
 *.gch
 *.pch
 
-# Static libraries
+# static libraries
 *.lib
 *.a
 *.la
 *.lo
 
-# Shared libraries
+# shared libraries
 *.so
 *.so.*
 *.dylib
 *.dll
 
-# Executables
+# executables
 *.exe
 *.out
 *.app
 
-# Debug files
+# debug files
 *.dSYM/
 *.idb
 *.pdb
 
-# Temporary files
+# hdl files
+*.cf
+
+# temporary files
 *.c_
 micro_proc/lib/characters.c
