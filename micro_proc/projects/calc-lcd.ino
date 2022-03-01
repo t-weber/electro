@@ -1,5 +1,5 @@
 /**
- * calculator using a keypad and an lcd display
+ * calculator using a keypad and an lc display
  * @author Tobias Weber
  * @date mar-2022
  * @license see 'LICENSE' file
