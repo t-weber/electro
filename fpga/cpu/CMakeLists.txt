@@ -7,7 +7,7 @@
 
 cmake_minimum_required(VERSION 3.12)
 
-project(lalr1)
+project(cpu)
 enable_language(CXX)
 
 list(APPEND CMAKE_MODULE_PATH
@@ -21,9 +21,6 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 add_compile_options(-Wall -Wextra -Weffc++)
 #add_compile_options(-fPIC)
-
-
-option(BUILD_EXAMPLES "build example compilers" TRUE)
 
 
 find_package(Boost REQUIRED COMPONENTS program_options)
