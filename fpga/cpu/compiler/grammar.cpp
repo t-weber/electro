@@ -26,6 +26,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	expr = std::make_shared<NonTerminal>(EXPR, "expr");
 	bool_expr = std::make_shared<NonTerminal>(BOOL_EXPR, "bool_expr");
 	idents = std::make_shared<NonTerminal>(IDENTS, "idents");
+	typed_ident = std::make_shared<NonTerminal>(TYPED_IDENT, "typed_ident");
 
 	// terminals
 	op_assign = std::make_shared<Terminal>('=', "=");
@@ -59,6 +60,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	block_end = std::make_shared<Terminal>('}', "}");
 
 	comma = std::make_shared<Terminal>(',', ",");
+	colon = std::make_shared<Terminal>(':', ":");
 	stmt_end = std::make_shared<Terminal>(';', ";");
 
 	sym_real = std::make_shared<Terminal>(static_cast<std::size_t>(Token::REAL), "real");
@@ -73,6 +75,8 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	keyword_return = std::make_shared<Terminal>(static_cast<std::size_t>(Token::RETURN), "return");
 	keyword_continue = std::make_shared<Terminal>(static_cast<std::size_t>(Token::CONTINUE), "continue");
 	keyword_break = std::make_shared<Terminal>(static_cast<std::size_t>(Token::BREAK), "break");
+	keyword_int = std::make_shared<Terminal>(static_cast<std::size_t>(Token::INT_DECL), "int");
+	keyword_real = std::make_shared<Terminal>(static_cast<std::size_t>(Token::REAL_DECL), "real");
 
 
 	// operator precedences and associativities
@@ -111,10 +115,10 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	op_pow->SetPrecedence(110, 'r');
 
 
-	// rule number
+	// rule id number
 	t_semantic_id semanticindex = 0;
 
-	// rule 0: start -> stmts
+	// rule: start -> stmts
 	if(add_rules)
 	{
 		start->AddRule({ stmts }, semanticindex);
@@ -131,7 +135,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 1: expr -> expr + expr
+	// rule: expr -> expr + expr
 	if(add_rules)
 	{
 		expr->AddRule({ expr, op_plus, expr }, semanticindex);
@@ -152,7 +156,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 2: expr -> expr - expr
+	// rule: expr -> expr - expr
 	if(add_rules)
 	{
 		expr->AddRule({ expr, op_minus, expr }, semanticindex);
@@ -173,7 +177,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 3: expr -> expr * expr
+	// rule: expr -> expr * expr
 	if(add_rules)
 	{
 		expr->AddRule({ expr, op_mult, expr }, semanticindex);
@@ -194,7 +198,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 4: expr -> expr / expr
+	// rule: expr -> expr / expr
 	if(add_rules)
 	{
 		expr->AddRule({ expr, op_div, expr }, semanticindex);
@@ -215,7 +219,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 5: expr -> expr % expr
+	// rule: expr -> expr % expr
 	if(add_rules)
 	{
 		expr->AddRule({ expr, op_mod, expr }, semanticindex);
@@ -236,7 +240,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 6: expr -> expr ^ expr
+	// rule: expr -> expr ^ expr
 	if(add_rules)
 	{
 		expr->AddRule({ expr, op_pow, expr }, semanticindex);
@@ -257,7 +261,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 7: expr -> ( expr )
+	// rule: expr -> ( expr )
 	if(add_rules)
 	{
 		expr->AddRule({ bracket_open, expr, bracket_close }, semanticindex);
@@ -274,7 +278,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 8: function call, expr -> ident( exprs )
+	// rule: function call, expr -> ident( exprs )
 	if(add_rules)
 	{
 		expr->AddRule({ ident, bracket_open, exprs, bracket_close }, semanticindex);
@@ -304,7 +308,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 9: expr -> real symbol
+	// rule: expr -> real symbol
 	if(add_rules)
 	{
 		expr->AddRule({ sym_real }, semanticindex);
@@ -326,7 +330,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 10: expr -> int symbol
+	// rule: expr -> int symbol
 	if(add_rules)
 	{
 		expr->AddRule({ sym_int }, semanticindex);
@@ -348,7 +352,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 11: expr -> string symbol
+	// rule: expr -> string symbol
 	/*if(add_rules)
 	{
 		expr->AddRule({ sym_str }, semanticindex);
@@ -370,7 +374,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;*/
 
 
-	// rule 12: expr -> ident
+	// rule: expr -> ident
 	if(add_rules)
 	{
 		expr->AddRule({ ident }, semanticindex);
@@ -392,7 +396,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 13, unary-: expr -> -expr
+	// rule: unary-: expr -> -expr
 	if(add_rules)
 	{
 		expr->AddRule({ op_minus, expr }, semanticindex);
@@ -411,7 +415,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 14, unary+: expr -> +expr
+	// rule: unary+: expr -> +expr
 	if(add_rules)
 	{
 		expr->AddRule({ op_plus, expr }, semanticindex);
@@ -430,10 +434,10 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 15, assignment: expr -> ident = expr
+	// rule: assignment: expr -> typed_ident = expr
 	if(add_rules)
 	{
-		expr->AddRule({ ident, op_assign, expr }, semanticindex);
+		expr->AddRule({ typed_ident, op_assign, expr }, semanticindex);
 	}
 	if(add_semantics)
 	{
@@ -442,8 +446,20 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 		{
 			if(!full_match) return nullptr;
 
-			t_astbaseptr rhsident = std::dynamic_pointer_cast<ASTBase>(args[0]);
+			auto _rhsident = std::dynamic_pointer_cast<ASTTypedIdent>(args[0]);
+			VMType datatype = _rhsident->GetDataType();
+			t_astbaseptr rhsident = std::dynamic_pointer_cast<ASTBase>(_rhsident->GetIdent());
 			t_astbaseptr rhsexpr = std::dynamic_pointer_cast<ASTBase>(args[2]);
+
+			if(datatype != rhsexpr->GetDataType() && rhsexpr->GetDataType() != VMType::UNKNOWN)
+			{
+				// TODO: convert type
+
+				std::ostringstream ostrerr;
+				ostrerr << "Mismatching type, expected " << get_vm_type_name(datatype)
+					<< ", got " << get_vm_type_name(rhsexpr->GetDataType()) << ".";
+				throw std::runtime_error(ostrerr.str());
+			}
 
 			if(rhsident->GetType() != ASTType::TOKEN)
 			{
@@ -454,7 +470,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 			auto symname = std::dynamic_pointer_cast<ASTToken<std::string>>(rhsident);
 			symname->SetIdent(true);
 			symname->SetLValue(true);
-			symname->SetDataType(rhsexpr->GetDataType());
+			symname->SetDataType(/*rhsexpr->GetDataType()*/ datatype);
 
 			return std::make_shared<ASTBinary>(
 				expr->GetId(), 0, rhsexpr, symname, op_assign->GetId());
@@ -463,7 +479,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 16: stmts -> stmt stmts
+	// rule: stmts -> stmt stmts
 	if(add_rules)
 	{
 		stmts->AddRule({ stmt, stmts }, semanticindex);
@@ -484,7 +500,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 17: stmts -> eps
+	// rule: stmts -> eps
 	if(add_rules)
 	{
 		stmts->AddRule({ g_eps }, semanticindex);
@@ -502,7 +518,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 18: stmt -> expr ;
+	// rule: stmt -> expr ;
 	if(add_rules)
 	{
 		stmt->AddRule({ expr, stmt_end }, semanticindex);
@@ -521,7 +537,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 19: stmt -> if(bool_expr) { stmts }
+	// rule: stmt -> if(bool_expr) { stmts }
 	if(add_rules)
 	{
 		stmt->AddRule({ keyword_if, bracket_open, bool_expr, bracket_close,
@@ -542,7 +558,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 20: stmt -> if(bool_expr) { stmts } else { stmts }
+	// rule: stmt -> if(bool_expr) { stmts } else { stmts }
 	if(add_rules)
 	{
 		stmt->AddRule({ keyword_if, bracket_open, bool_expr, bracket_close,
@@ -565,7 +581,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 21: stmt -> loop(bool_expr) { stmts }
+	// rule: stmt -> loop(bool_expr) { stmts }
 	if(add_rules)
 	{
 		stmt->AddRule({ keyword_loop, bracket_open, bool_expr, bracket_close,
@@ -586,10 +602,10 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 22: stmt -> func name ( idents ) { stmts }
+	// rule: function definition: stmt -> func name ( idents ) { stmts }
 	if(add_rules)
 	{
-		stmt->AddRule({ keyword_func, ident, bracket_open, idents, bracket_close,
+		stmt->AddRule({ keyword_func, typed_ident, bracket_open, idents, bracket_close,
 			block_begin, stmts, block_end }, semanticindex);
 	}
 	if(add_semantics)
@@ -599,16 +615,17 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 		{
 			if(!full_match) return nullptr;
 
-			auto funcname = std::dynamic_pointer_cast<ASTToken<std::string>>(args[1]);
+			auto funcident = std::dynamic_pointer_cast<ASTTypedIdent>(args[1]);
+			auto funcname = std::dynamic_pointer_cast<ASTToken<std::string>>(funcident->GetIdent());
+			VMType rettype = funcident->GetDataType();
 			if(funcname->GetType() != ASTType::TOKEN)
 				throw std::runtime_error("Expected a function name.");
-
-			funcname->SetIdent(true);
 			const std::string& ident = funcname->GetLexerValue();
 
 			t_astbaseptr rhsidents = std::dynamic_pointer_cast<ASTBase>(args[3]);
 			t_astbaseptr rhsstmts = std::dynamic_pointer_cast<ASTBase>(args[6]);
 			t_astbaseptr func = std::make_shared<ASTFunc>(stmt->GetId(), 0, ident, rhsidents, rhsstmts);
+			func->SetDataType(rettype);
 			func->SetLineRange(funcname->GetLineRange());
 			return func;
 		}));
@@ -616,7 +633,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 23: stmt -> break ;
+	// rule: stmt -> break ;
 	if(add_rules)
 	{
 		stmt->AddRule({ keyword_break, stmt_end }, semanticindex);
@@ -636,7 +653,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 24: stmt -> break symbol ;
+	// rule: stmt -> break symbol ;
 	if(add_rules)
 	{
 		stmt->AddRule({ keyword_break, sym_int, stmt_end }, semanticindex);
@@ -655,7 +672,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 25: stmt -> continue ;
+	// rule: stmt -> continue ;
 	if(add_rules)
 	{
 		stmt->AddRule({ keyword_continue, stmt_end }, semanticindex);
@@ -675,7 +692,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 26: stmt -> continue symbol ;
+	// rule: stmt -> continue symbol ;
 	if(add_rules)
 	{
 		stmt->AddRule({ keyword_continue, sym_int, stmt_end }, semanticindex);
@@ -695,7 +712,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 27: stmt -> return ;
+	// rule: stmt -> return ;
 	if(add_rules)
 	{
 		stmt->AddRule({ keyword_return, stmt_end }, semanticindex);
@@ -715,7 +732,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 28: stmt -> return expr ;
+	// rule: stmt -> return expr ;
 	if(add_rules)
 	{
 		stmt->AddRule({ keyword_return, expr, stmt_end }, semanticindex);
@@ -734,7 +751,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 29: bool_expr -> bool_expr and bool_expr
+	// rule: bool_expr -> bool_expr and bool_expr
 	if(add_rules)
 	{
 		bool_expr->AddRule({ bool_expr, op_and, bool_expr }, semanticindex);
@@ -755,7 +772,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 30: bool_expr -> bool_expr or bool_expr
+	// rule: bool_expr -> bool_expr or bool_expr
 	if(add_rules)
 	{
 		bool_expr->AddRule({ bool_expr, op_or, bool_expr }, semanticindex);
@@ -776,7 +793,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 31: bool_expr -> !bool_expr
+	// rule: bool_expr -> !bool_expr
 	if(add_rules)
 	{
 		bool_expr->AddRule({ op_not, bool_expr, }, semanticindex);
@@ -795,7 +812,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 32: bool_expr -> ( bool_expr )
+	// rule: bool_expr -> ( bool_expr )
 	if(add_rules)
 	{
 		bool_expr->AddRule({ bracket_open, bool_expr, bracket_close }, semanticindex);
@@ -812,7 +829,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 33: bool_expr -> expr > expr
+	// rule: bool_expr -> expr > expr
 	if(add_rules)
 	{
 		bool_expr->AddRule({ expr, op_gt, expr }, semanticindex);
@@ -833,7 +850,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 34: bool_expr -> expr < expr
+	// rule: bool_expr -> expr < expr
 	if(add_rules)
 	{
 		bool_expr->AddRule({ expr, op_lt, expr }, semanticindex);
@@ -854,7 +871,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 35: bool_expr -> expr >= expr
+	// rule: bool_expr -> expr >= expr
 	if(add_rules)
 	{
 		bool_expr->AddRule({ expr, op_gequ, expr }, semanticindex);
@@ -875,7 +892,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 36: bool_expr -> expr <= expr
+	// rule: bool_expr -> expr <= expr
 	if(add_rules)
 	{
 		bool_expr->AddRule({ expr, op_lequ, expr }, semanticindex);
@@ -896,7 +913,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 37: bool_expr -> expr == expr
+	// rule: bool_expr -> expr == expr
 	if(add_rules)
 	{
 		bool_expr->AddRule({ expr, op_equ, expr }, semanticindex);
@@ -917,7 +934,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 38: bool_expr -> expr != expr
+	// rule: bool_expr -> expr != expr
 	if(add_rules)
 	{
 		bool_expr->AddRule({ expr, op_nequ, expr }, semanticindex);
@@ -938,10 +955,10 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 39: idents -> ident, idents
+	// rule: idents -> typed_ident, idents
 	if(add_rules)
 	{
-		idents->AddRule({ ident, comma, idents }, semanticindex);
+		idents->AddRule({ typed_ident, comma, idents }, semanticindex);
 	}
 	if(add_semantics)
 	{
@@ -950,8 +967,8 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 		{
 			if(!full_match) return nullptr;
 
-			auto rhsident = std::dynamic_pointer_cast<ASTToken<std::string>>(args[0]);
-			rhsident->SetIdent(true);
+			auto _rhsident = std::dynamic_pointer_cast<ASTTypedIdent>(args[0]);
+			auto rhsident = std::dynamic_pointer_cast<ASTToken<std::string>>(_rhsident->GetIdent());
 
 			auto idents_lst = std::dynamic_pointer_cast<ASTList>(args[2]);
 			idents_lst->AddChild(rhsident, true);
@@ -961,10 +978,10 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 40: idents -> ident
+	// rule: idents -> typed_ident
 	if(add_rules)
 	{
-		idents->AddRule({ ident }, semanticindex);
+		idents->AddRule({ typed_ident }, semanticindex);
 	}
 	if(add_semantics)
 	{
@@ -973,8 +990,8 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 		{
 			if(!full_match) return nullptr;
 
-			auto rhsident = std::dynamic_pointer_cast<ASTToken<std::string>>(args[0]);
-			rhsident->SetIdent(true);
+			auto _rhsident = std::dynamic_pointer_cast<ASTTypedIdent>(args[0]);
+			auto rhsident = std::dynamic_pointer_cast<ASTToken<std::string>>(_rhsident->GetIdent());
 
 			auto idents_lst = std::make_shared<ASTList>(idents->GetId(), 0);
 			idents_lst->AddChild(rhsident, true);
@@ -984,7 +1001,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 41: idents -> eps
+	// rule: idents -> eps
 	if(add_rules)
 	{
 		idents->AddRule({ g_eps }, semanticindex);
@@ -1002,7 +1019,76 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 42: exprs -> expr, exprs
+	// rule: typed_ident -> ident
+	if(add_rules)
+	{
+		typed_ident->AddRule({ ident }, semanticindex);
+	}
+	if(add_semantics)
+	{
+		rules.emplace(std::make_pair(semanticindex,
+		[this](bool full_match, const t_semanticargs& args, [[maybe_unused]] t_lalrastbaseptr retval) -> t_lalrastbaseptr
+		{
+			if(!full_match) return nullptr;
+
+			auto rhsident = std::dynamic_pointer_cast<ASTToken<std::string>>(args[0]);
+			rhsident->SetIdent(true);
+
+			return std::make_shared<ASTTypedIdent>(typed_ident->GetId(), 0, rhsident);
+		}));
+	}
+	++semanticindex;
+
+
+	// rule: typed_ident -> ident : int
+	if(add_rules)
+	{
+		typed_ident->AddRule({ ident, colon, keyword_int }, semanticindex);
+	}
+	if(add_semantics)
+	{
+		rules.emplace(std::make_pair(semanticindex,
+		[this](bool full_match, const t_semanticargs& args, [[maybe_unused]] t_lalrastbaseptr retval) -> t_lalrastbaseptr
+		{
+			if(!full_match) return nullptr;
+
+			auto rhsident = std::dynamic_pointer_cast<ASTToken<std::string>>(args[0]);
+			rhsident->SetIdent(true);
+			rhsident->SetDataType(VMType::INT);
+
+			auto ident_ty = std::make_shared<ASTTypedIdent>(typed_ident->GetId(), 0, rhsident);
+			ident_ty->SetDataType(VMType::INT);
+			return ident_ty;
+		}));
+	}
+	++semanticindex;
+
+
+	// rule: typed_ident -> ident : real
+	if(add_rules)
+	{
+		typed_ident->AddRule({ ident, colon, keyword_real }, semanticindex);
+	}
+	if(add_semantics)
+	{
+		rules.emplace(std::make_pair(semanticindex,
+		[this](bool full_match, const t_semanticargs& args, [[maybe_unused]] t_lalrastbaseptr retval) -> t_lalrastbaseptr
+		{
+			if(!full_match) return nullptr;
+
+			auto rhsident = std::dynamic_pointer_cast<ASTToken<std::string>>(args[0]);
+			rhsident->SetIdent(true);
+			rhsident->SetDataType(VMType::REAL);
+
+			auto ident_ty = std::make_shared<ASTTypedIdent>(typed_ident->GetId(), 0, rhsident);
+			ident_ty->SetDataType(VMType::REAL);
+			return ident_ty;
+		}));
+	}
+	++semanticindex;
+
+
+	// rule: exprs -> expr, exprs
 	if(add_rules)
 	{
 		exprs->AddRule({ expr, comma, exprs }, semanticindex);
@@ -1023,7 +1109,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 43: exprs -> expr
+	// rule: exprs -> expr
 	if(add_rules)
 	{
 		exprs->AddRule({ expr }, semanticindex);
@@ -1044,7 +1130,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 44: exprs -> eps
+	// rule: exprs -> eps
 	if(add_rules)
 	{
 		exprs->AddRule({ g_eps }, semanticindex);
@@ -1062,7 +1148,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 45, binary not: expr -> ~expr
+	// rule: binary not: expr -> ~expr
 	if(add_rules)
 	{
 		expr->AddRule({ op_binnot, expr }, semanticindex);
@@ -1081,7 +1167,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 46: expr -> expr bin_and expr
+	// rule: expr -> expr bin_and expr
 	if(add_rules)
 	{
 		expr->AddRule({ expr, op_binand, expr }, semanticindex);
@@ -1102,7 +1188,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 47: expr -> expr bin_or expr
+	// rule: expr -> expr bin_or expr
 	if(add_rules)
 	{
 		expr->AddRule({ expr, op_binor, expr }, semanticindex);
@@ -1123,7 +1209,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 48: expr -> expr bin_xor expr
+	// rule: expr -> expr bin_xor expr
 	if(add_rules)
 	{
 		expr->AddRule({ expr, op_binxor, expr }, semanticindex);
@@ -1144,7 +1230,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 49: expr -> expr << expr
+	// rule: expr -> expr << expr
 	if(add_rules)
 	{
 		expr->AddRule({ expr, op_shift_left, expr }, semanticindex);
@@ -1165,7 +1251,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// rule 50: expr -> expr >> expr
+	// rule: expr -> expr >> expr
 	if(add_rules)
 	{
 		expr->AddRule({ expr, op_shift_right, expr }, semanticindex);

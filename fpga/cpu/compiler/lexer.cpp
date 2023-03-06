@@ -114,11 +114,6 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 			matches.emplace_back(std::make_tuple(
 				static_cast<t_symbol_id>(Token::FUNC), str, line));
 		}
-		else if(str == "extern")
-		{
-			matches.emplace_back(std::make_tuple(
-				static_cast<t_symbol_id>(Token::EXTERN), str, line));
-		}
 		else if(str == "return")
 		{
 			matches.emplace_back(std::make_tuple(
@@ -133,6 +128,16 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 		{
 			matches.emplace_back(std::make_tuple(
 				static_cast<t_symbol_id>(Token::CONTINUE), str, line));
+		}
+		else if(str == "int")
+		{
+			matches.emplace_back(std::make_tuple(
+				static_cast<t_symbol_id>(Token::INT_DECL), str, line));
+		}
+		else if(str == "real")
+		{
+			matches.emplace_back(std::make_tuple(
+				static_cast<t_symbol_id>(Token::REAL_DECL), str, line));
 		}
 		else
 		{
@@ -197,7 +202,7 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 		else if(str == "+" || str == "-" || str == "*" || str == "/" ||
 			str == "%" || str == "^" || str == "(" || str == ")" ||
 			str == "{" || str == "}" || str == "[" || str == "]" ||
-			str == "," || str == ";" || str == "=" ||
+			str == "," || str == ":" || str == ";" || str == "=" ||
 			str == ">" || str == "<" ||
 			str == "!" || str == "|" || str == "&")
 			matches.emplace_back(std::make_tuple(

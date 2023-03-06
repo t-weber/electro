@@ -21,13 +21,17 @@ using lalr1::t_semanticrules;
  */
 enum : std::size_t
 {
-	START,      // start
-	STMTS,      // list of statements
-	STMT,       // statement
-	EXPR,       // expression
-	EXPRS,      // list of expressions
-	BOOL_EXPR,  // boolean expression
-	IDENTS,     // list of identifiers
+	START,       // start
+
+	STMTS,       // list of statements
+	STMT,        // statement
+
+	EXPR,        // expression
+	EXPRS,       // list of expressions
+	BOOL_EXPR,   // boolean expression
+
+	IDENTS,      // list of identifiers
+	TYPED_IDENT, // identifier with a type declaration
 };
 
 
@@ -40,7 +44,10 @@ public:
 	t_cont<NonTerminalPtr> GetAllNonTerminals() const
 	{
 		return t_cont<NonTerminalPtr>{{
-			start, stmts, stmt, exprs, expr, bool_expr, idents }};
+			start,
+			stmts, stmt,
+			exprs, expr, bool_expr,
+			idents, typed_ident }};
 	}
 
 	const NonTerminalPtr& GetStartNonTerminal() const { return start; }
@@ -51,8 +58,8 @@ private:
 	// non-terminals
 	NonTerminalPtr start{},
 		stmts{}, stmt{},
-		exprs{}, expr{},
-		bool_expr{}, idents{};
+		exprs{}, expr{}, bool_expr{},
+		idents{}, typed_ident{};
 
 	// terminals
 	TerminalPtr op_assign{}, op_plus{}, op_minus{},
@@ -67,7 +74,8 @@ private:
 	TerminalPtr keyword_if{}, keyword_else{}, keyword_loop{},
 		keyword_break{}, keyword_continue{};
 	TerminalPtr keyword_func{}, keyword_extern{}, keyword_return{};
-	TerminalPtr comma{}, stmt_end{};
+	TerminalPtr keyword_int{}, keyword_real{};
+	TerminalPtr comma{}, colon{}, stmt_end{};
 	TerminalPtr sym_real{}, sym_int{}, sym_str{}, ident{};
 
 	// semantic rules

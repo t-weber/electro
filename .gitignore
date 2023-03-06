@@ -41,3 +41,5 @@
 # temporary files
 *.c_
 micro_proc/lib/characters.c
+
+fpga/cpu/build/**

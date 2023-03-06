@@ -1,0 +1,47 @@
+#
+# factorials
+#
+func fac : int (arg1 : int)
+{
+	if(arg1 <= 1)
+	{
+		return 1;
+	}
+	else
+	{
+		a : int = arg1;
+		b : int = fac(arg1-1);
+		return a * b;
+	}
+}
+
+
+#
+# fibonacci numbers
+#
+func fibo : int (arg1 : int)
+{
+	if(arg1 <= 1)
+	{
+		return 1;
+	}
+	else
+	{
+		a : int = fibo(arg1-1);
+		b : int = fibo(arg1-2);
+		return a + b;
+	}
+}
+
+
+loop(1 == 1)
+{
+	n : int = 5;
+	if(n < 0)
+	{
+		break;
+	}
+
+	fac(n);
+	fibo(n);
+}

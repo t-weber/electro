@@ -31,6 +31,7 @@ std::string ASTPrinter::get_ast_typename(const ::ASTBase* ast)
 			std::string subty = get_jump_typename(jump);
 			return ty + "/" + subty;
 		}
+		case ASTType::TYPED_IDENT: return "typed_ident";
 	}
 
 	return "<unknown>";
@@ -59,6 +60,9 @@ ASTPrinter::ASTPrinter(std::ostream& ostr) : m_ostr{ostr}
 }
 
 
+/**
+ * prints base and child nodes
+ */
 void ASTPrinter::print_base(
 	const ::ASTBase* ast, std::size_t level, const char* extrainfo)
 {
@@ -191,6 +195,12 @@ void ASTPrinter::visit(const ASTFuncCall* ast, std::size_t level)
 
 
 void ASTPrinter::visit(const ASTJump* ast, std::size_t level)
+{
+	print_base(ast, level);
+}
+
+
+void ASTPrinter::visit(const ASTTypedIdent* ast, std::size_t level)
 {
 	print_base(ast, level);
 }

@@ -35,6 +35,7 @@ class ASTLoop;
 class ASTFunc;
 class ASTFuncCall;
 class ASTJump;
+class ASTTypedIdent;
 
 
 enum class ASTType
@@ -52,6 +53,8 @@ enum class ASTType
 
 	FUNC,
 	FUNCCALL,
+
+	TYPED_IDENT,
 };
 
 
@@ -76,6 +79,7 @@ public:
 	virtual void visit(const ASTFunc* ast, std::size_t level) = 0;
 	virtual void visit(const ASTFuncCall* ast, std::size_t level) = 0;
 	virtual void visit(const ASTJump* ast, std::size_t level) = 0;
+	virtual void visit(const ASTTypedIdent* ast, std::size_t level) = 0;
 };
 
 
@@ -264,8 +268,8 @@ public:
 
 private:
 	std::optional<t_lval> m_lexval{};  // lexer value
-	bool m_islval{false};    // names an l-value variable (on lhs of assignment)
-	bool m_isident{false};   // is this token a variable identifier (or a literal)?
+	bool m_islval{false};  // names an l-value variable (on lhs of assignment)
+	bool m_isident{false}; // is this token a variable identifier (or a literal)?
 };
 
 
@@ -707,7 +711,6 @@ public:
 	}
 
 	t_astbaseptr GetExpr() const { return m_expr; }
-
 	void SetExpr(const t_astbaseptr& ast) { m_expr = ast; }
 
 
@@ -716,6 +719,51 @@ private:
 	t_astbaseptr m_expr{};
 };
 
+
+
+/**
+ * identifier with a type declaration
+ */
+class ASTTypedIdent : public ASTBaseAcceptor<ASTTypedIdent>
+{
+public:
+	ASTTypedIdent(std::size_t id, std::size_t tableidx,
+		const t_astbaseptr& ident = nullptr)
+		: ASTBaseAcceptor<ASTTypedIdent>{id, tableidx},
+			m_ident{ident}
+	{}
+
+	virtual ~ASTTypedIdent() = default;
+
+	virtual ASTType GetType() const override { return ASTType::TYPED_IDENT; }
+
+	virtual std::size_t NumChildren() const override { return 1; }
+
+	virtual t_astbaseptr GetChild(std::size_t i) const override
+	{
+		switch(i)
+		{
+			case 0: return m_ident;
+		}
+
+		return nullptr;
+	}
+
+	virtual void SetChild(std::size_t i, const t_astbaseptr& ast) override
+	{
+		switch(i)
+		{
+			case 0: m_ident = ast; break;
+		}
+	}
+
+	t_astbaseptr GetIdent() const { return m_ident; }
+	void SetIdent(const t_astbaseptr& ast) { m_ident = ast; }
+
+
+private:
+	t_astbaseptr m_ident{};
+};
 
 
 #endif

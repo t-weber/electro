@@ -46,6 +46,8 @@ enum class Token : t_symbol_id
 
 	// binary operators
 	BIN_XOR     = 3100,
+	SHIFT_LEFT  = 3101,
+	SHIFT_RIGHT = 3102,
 
 	IF          = 4000,
 	ELSE        = 4001,
@@ -56,10 +58,9 @@ enum class Token : t_symbol_id
 
 	FUNC        = 6000,
 	RETURN      = 6001,
-	EXTERN      = 6002,
 
-	SHIFT_LEFT  = 7000,
-	SHIFT_RIGHT = 7001,
+	INT_DECL    = 7000,
+	REAL_DECL   = 7001,
 
 	END         = END_IDENT,
 };

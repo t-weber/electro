@@ -571,6 +571,15 @@ void ASTAsm::visit(const ASTJump* ast, [[maybe_unused]] std::size_t level)
 }
 
 
+void ASTAsm::visit(
+	[[maybe_unused]] const ASTTypedIdent* ast,
+	[[maybe_unused]] std::size_t level)
+{
+	// should not be present in final ast
+	std::cerr << "Error: " << __func__ << " not implemented." << std::endl;
+}
+
+
 /**
  * fill in function addresses for calls
  */
