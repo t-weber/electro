@@ -92,6 +92,7 @@ void ASTAsm::visit(const ASTToken<t_str>* ast,
 	if(ast->IsIdent())
 	{
 		t_str varname;
+
 		if(m_cur_func != "")
 			varname = m_cur_func + "/" + val;
 		else
@@ -393,6 +394,11 @@ void ASTAsm::visit(const ASTFunc* ast, [[maybe_unused]] std::size_t level)
 	// function name
 	const std::string& func_name = ast->GetName();
 	m_cur_func = func_name;
+	m_cur_rettype = ast->GetDataType();
+
+	//std::cout << "entered function " << m_cur_func
+	//	<< " having return type " << get_vm_type_name(m_cur_rettype)
+	//	<< std::endl;
 
 	// number of function arguments
 	t_int num_args = static_cast<t_int>(ast->NumArgs());
@@ -417,7 +423,7 @@ void ASTAsm::visit(const ASTFunc* ast, [[maybe_unused]] std::size_t level)
 			const t_str& argname = ident->GetLexerValue();
 			t_str varname = m_cur_func + "/" + argname;
 
-			constexpr VMType argty = VMType::UNKNOWN;
+			constexpr VMType argty = VMType::INT;  // TODO
 			m_symtab.AddSymbol(varname, (i+2)*sizeof(t_int), // TODO: get arg sizes
 				ADDR_FLAG_BP, argty);
 		}
@@ -461,6 +467,7 @@ void ASTAsm::visit(const ASTFunc* ast, [[maybe_unused]] std::size_t level)
 	m_ostr->seekp(end_func_streampos);
 
 	m_cur_func = "";
+	m_cur_rettype = VMType::UNKNOWN;
 	m_cur_loop.clear();
 }
 
@@ -518,11 +525,29 @@ void ASTAsm::visit(const ASTJump* ast, [[maybe_unused]] std::size_t level)
 {
 	if(ast->GetJumpType() == ASTJump::JumpType::RETURN)
 	{
+		VMType expr_type{VMType::UNKNOWN};
+
 		if(ast->GetExpr())
+		{
 			ast->GetExpr()->accept(this, level+1);
+			expr_type = ast->GetExpr()->GetDataType();
+		}
 
 		if(m_cur_func == "")
 			throw_err(ast, "Tried to return outside any function.");
+
+		//std::cout << "expected return data type: " << get_vm_type_name(m_cur_rettype)
+		//	<< ", actual data type: " << get_vm_type_name(expr_type)
+		//	<< std::endl;
+
+		if(ast->GetExpr())
+		{
+			// cast if data types are different
+			if(m_cur_rettype == VMType::INT && expr_type == VMType::REAL)
+				m_ostr->put(static_cast<t_byte>(OpCode::FTOI));
+			else if(m_cur_rettype == VMType::REAL && expr_type == VMType::INT)
+				m_ostr->put(static_cast<t_byte>(OpCode::ITOF));
+		}
 
 		// jump to the end of the function
 		m_ostr->put(static_cast<t_byte>(OpCode::PUSH)); // push jump address

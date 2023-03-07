@@ -15,6 +15,7 @@ using lalr1::t_semanticargs;
 using lalr1::t_semantic_id;
 using lalr1::g_eps;
 
+// TODO: determine and assign symbol data types
 
 void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 {
@@ -149,8 +150,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 
 			t_astbaseptr arg1 = std::dynamic_pointer_cast<ASTBase>(args[0]);
 			t_astbaseptr arg2 = std::dynamic_pointer_cast<ASTBase>(args[2]);
-			return std::make_shared<ASTBinary>(
-				expr->GetId(), 0, arg1, arg2, op_plus->GetId());
+			return std::make_shared<ASTBinary>(expr->GetId(), 0, arg1, arg2, op_plus->GetId());
 		}));
 	}
 	++semanticindex;
@@ -170,8 +170,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 
 			t_astbaseptr arg1 = std::dynamic_pointer_cast<ASTBase>(args[0]);
 			t_astbaseptr arg2 = std::dynamic_pointer_cast<ASTBase>(args[2]);
-			return std::make_shared<ASTBinary>(
-				expr->GetId(), 0, arg1, arg2, op_minus->GetId());
+			return std::make_shared<ASTBinary>(expr->GetId(), 0, arg1, arg2, op_minus->GetId());
 		}));
 	}
 	++semanticindex;
@@ -191,8 +190,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 
 			t_astbaseptr arg1 = std::dynamic_pointer_cast<ASTBase>(args[0]);
 			t_astbaseptr arg2 = std::dynamic_pointer_cast<ASTBase>(args[2]);
-			return std::make_shared<ASTBinary>(
-				expr->GetId(), 0, arg1, arg2, op_mult->GetId());
+			return std::make_shared<ASTBinary>(expr->GetId(), 0, arg1, arg2, op_mult->GetId());
 		}));
 	}
 	++semanticindex;
@@ -212,8 +210,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 
 			t_astbaseptr arg1 = std::dynamic_pointer_cast<ASTBase>(args[0]);
 			t_astbaseptr arg2 = std::dynamic_pointer_cast<ASTBase>(args[2]);
-			return std::make_shared<ASTBinary>(
-				expr->GetId(), 0, arg1, arg2, op_div->GetId());
+			return std::make_shared<ASTBinary>(expr->GetId(), 0, arg1, arg2, op_div->GetId());
 		}));
 	}
 	++semanticindex;
@@ -233,8 +230,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 
 			t_astbaseptr arg1 = std::dynamic_pointer_cast<ASTBase>(args[0]);
 			t_astbaseptr arg2 = std::dynamic_pointer_cast<ASTBase>(args[2]);
-			return std::make_shared<ASTBinary>(
-				expr->GetId(), 0, arg1, arg2, op_mod->GetId());
+			return std::make_shared<ASTBinary>(expr->GetId(), 0, arg1, arg2, op_mod->GetId());
 		}));
 	}
 	++semanticindex;
@@ -254,8 +250,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 
 			t_astbaseptr arg1 = std::dynamic_pointer_cast<ASTBase>(args[0]);
 			t_astbaseptr arg2 = std::dynamic_pointer_cast<ASTBase>(args[2]);
-			return std::make_shared<ASTBinary>(
-				expr->GetId(), 0, arg1, arg2, op_pow->GetId());
+			return std::make_shared<ASTBinary>(expr->GetId(), 0, arg1, arg2, op_pow->GetId());
 		}));
 	}
 	++semanticindex;
@@ -617,7 +612,6 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 
 			auto funcident = std::dynamic_pointer_cast<ASTTypedIdent>(args[1]);
 			auto funcname = std::dynamic_pointer_cast<ASTToken<std::string>>(funcident->GetIdent());
-			VMType rettype = funcident->GetDataType();
 			if(funcname->GetType() != ASTType::TOKEN)
 				throw std::runtime_error("Expected a function name.");
 			const std::string& ident = funcname->GetLexerValue();
@@ -625,8 +619,10 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 			t_astbaseptr rhsidents = std::dynamic_pointer_cast<ASTBase>(args[3]);
 			t_astbaseptr rhsstmts = std::dynamic_pointer_cast<ASTBase>(args[6]);
 			t_astbaseptr func = std::make_shared<ASTFunc>(stmt->GetId(), 0, ident, rhsidents, rhsstmts);
-			func->SetDataType(rettype);
+			func->SetDataType(funcident->GetDataType());  // return data type
 			func->SetLineRange(funcname->GetLineRange());
+
+			//std::cout << ident << ": " << get_vm_type_name(func->GetDataType()) << std::endl;
 			return func;
 		}));
 	}

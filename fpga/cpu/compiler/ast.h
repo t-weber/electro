@@ -169,22 +169,27 @@ public:
 			child->DeriveDataType();
 		}
 
-		if(children == 1)
+		// set data type if it's not yet known
+		if(GetDataType() == VMType::UNKNOWN)
 		{
-			const t_astbaseptr child = GetChild(0);
-			if(child)
-				SetDataType(child->GetDataType());
-		}
-		else if(children == 2)
-		{
-			const t_astbaseptr child1 = GetChild(0);
-			const t_astbaseptr child2 = GetChild(1);
-
-			if(child1 && child2)
+			if(children == 1)
 			{
-				VMType ty1 = child1->GetDataType();
-				VMType ty2 = child2->GetDataType();
-				SetDataType(derive_data_type(ty1, ty2));
+				const t_astbaseptr child = GetChild(0);
+				if(child)
+					SetDataType(child->GetDataType());
+			}
+			else if(children == 2)
+			{
+				const t_astbaseptr child1 = GetChild(0);
+				const t_astbaseptr child2 = GetChild(1);
+
+				if(child1 && child2)
+				{
+					VMType ty1 = child1->GetDataType();
+					VMType ty2 = child2->GetDataType();
+
+					SetDataType(derive_data_type(ty1, ty2));
+				}
 			}
 		}
 	}

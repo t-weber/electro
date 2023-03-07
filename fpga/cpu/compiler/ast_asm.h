@@ -63,6 +63,7 @@ private:
 	std::unordered_map<std::string, t_int> m_local_stack{};
 
 	std::string m_cur_func{};              // currently active function
+	VMType m_cur_rettype{VMType::UNKNOWN}; // return type of currently active function
 	std::vector<std::string> m_cur_loop{}; // currently active loops in function
 
 	// stream positions where addresses need to be patched in
