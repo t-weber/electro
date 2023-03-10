@@ -616,8 +616,8 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 				throw std::runtime_error("Expected a function name.");
 			const std::string& ident = funcname->GetLexerValue();
 
-			t_astbaseptr rhsidents = std::dynamic_pointer_cast<ASTBase>(args[3]);
-			t_astbaseptr rhsstmts = std::dynamic_pointer_cast<ASTBase>(args[6]);
+			t_astbaseptr rhsidents = std::dynamic_pointer_cast<ASTBase>(args[3]);  // arguments
+			t_astbaseptr rhsstmts = std::dynamic_pointer_cast<ASTBase>(args[6]);   // block
 			t_astbaseptr func = std::make_shared<ASTFunc>(stmt->GetId(), 0, ident, rhsidents, rhsstmts);
 			func->SetDataType(funcident->GetDataType());  // return data type
 			func->SetLineRange(funcname->GetLineRange());

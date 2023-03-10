@@ -184,7 +184,9 @@ void ASTPrinter::visit(const ASTLoop* ast, std::size_t level)
 
 void ASTPrinter::visit(const ASTFunc* ast, std::size_t level)
 {
-	print_base(ast, level);
+	std::ostringstream _ostr;
+	_ostr << ", name = \"" << ast->GetName() << "\"";
+	print_base(ast, level, _ostr.str().c_str());
 }
 
 

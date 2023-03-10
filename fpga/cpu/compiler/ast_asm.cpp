@@ -49,15 +49,14 @@ ASTAsm::ASTAsm(std::ostream& ostr,
 
 
 void ASTAsm::visit(
-	[[maybe_unused]] const ASTToken<t_lval>* ast,
+	[[maybe_unused]] ASTToken<t_lval>* ast,
 	[[maybe_unused]] std::size_t level)
 {
 	std::cerr << "Error: " << __func__ << " not implemented." << std::endl;
 }
 
 
-void ASTAsm::visit(const ASTToken<t_real>* ast,
-	[[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTToken<t_real>* ast, [[maybe_unused]] std::size_t level)
 {
 	if(!ast->HasLexerValue())
 		return;
@@ -68,8 +67,7 @@ void ASTAsm::visit(const ASTToken<t_real>* ast,
 }
 
 
-void ASTAsm::visit(const ASTToken<t_int>* ast,
-	[[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTToken<t_int>* ast, [[maybe_unused]] std::size_t level)
 {
 	if(!ast->HasLexerValue())
 		return;
@@ -80,8 +78,7 @@ void ASTAsm::visit(const ASTToken<t_int>* ast,
 }
 
 
-void ASTAsm::visit(const ASTToken<t_str>* ast,
-	[[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTToken<t_str>* ast, [[maybe_unused]] std::size_t level)
 {
 	if(!ast->HasLexerValue())
 		return;
@@ -123,6 +120,11 @@ void ASTAsm::visit(const ASTToken<t_str>* ast,
 					ADDR_FLAG_BP, symty);
 			}
 		}
+		else
+		{
+			if(ast->GetDataType() == VMType::UNKNOWN)
+				ast->SetDataType(sym->ty);
+		}
 
 		m_ostr->put(static_cast<t_byte>(OpCode::PUSH));
 		// relative address
@@ -158,21 +160,25 @@ void ASTAsm::visit(const ASTToken<t_str>* ast,
 
 
 void ASTAsm::visit(
-	[[maybe_unused]] const ASTToken<void*>* ast,
+	[[maybe_unused]] ASTToken<void*>* ast,
 	[[maybe_unused]] std::size_t level)
 {
 	std::cerr << "Error: " << __func__ << " not implemented." << std::endl;
 }
 
 
-void ASTAsm::visit(const ASTUnary* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTUnary* ast, [[maybe_unused]] std::size_t level)
 {
-	VMType ty = ast->GetDataType();
+	// run the operand
 	ast->GetChild(0)->accept(this, level+1);
 
-	std::size_t opid = ast->GetOpId();
+	if(ast->GetDataType() == VMType::UNKNOWN)
+		ast->DeriveDataType();
+	VMType ty = ast->GetDataType();
 
+	std::size_t opid = ast->GetOpId();
 	OpCode op = std::get<OpCode>(m_ops->at(opid));
+
 	if(op == OpCode::ADD)
 		op = OpCode::NOP;
 	else if(op == OpCode::SUB)
@@ -193,8 +199,18 @@ void ASTAsm::visit(const ASTUnary* ast, [[maybe_unused]] std::size_t level)
 }
 
 
-void ASTAsm::visit(const ASTBinary* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTBinary* ast, [[maybe_unused]] std::size_t level)
 {
+	// run the operands
+	for(std::size_t childidx=0; childidx<2; ++childidx)
+	{
+		auto child = ast->GetChild(childidx);
+		child->accept(this, level+1);
+	}
+
+	if(ast->GetDataType() == VMType::UNKNOWN)
+		ast->DeriveDataType();
+
 	std::size_t opid = ast->GetOpId();
 	VMType ty = ast->GetDataType();
 
@@ -202,8 +218,6 @@ void ASTAsm::visit(const ASTBinary* ast, [[maybe_unused]] std::size_t level)
 	for(std::size_t childidx=0; childidx<2; ++childidx)
 	{
 		auto child = ast->GetChild(childidx);
-		child->accept(this, level+1);
-
 		VMType subty = child->GetDataType();
 		if(subty != ty && opid != '=' /* no cast on assignments */)
 		{
@@ -235,14 +249,14 @@ void ASTAsm::visit(const ASTBinary* ast, [[maybe_unused]] std::size_t level)
 }
 
 
-void ASTAsm::visit(const ASTList* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTList* ast, [[maybe_unused]] std::size_t level)
 {
 	for(std::size_t i=0; i<ast->NumChildren(); ++i)
 		ast->GetChild(i)->accept(this, level+1);
 }
 
 
-void ASTAsm::visit(const ASTCondition* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTCondition* ast, [[maybe_unused]] std::size_t level)
 {
 	// condition
 	ast->GetCondition()->accept(this, level+1);
@@ -300,7 +314,7 @@ void ASTAsm::visit(const ASTCondition* ast, [[maybe_unused]] std::size_t level)
 }
 
 
-void ASTAsm::visit(const ASTLoop* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTLoop* ast, [[maybe_unused]] std::size_t level)
 {
 	std::size_t labelLoop = m_glob_label++;
 
@@ -386,7 +400,7 @@ void ASTAsm::visit(const ASTLoop* ast, [[maybe_unused]] std::size_t level)
 }
 
 
-void ASTAsm::visit(const ASTFunc* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTFunc* ast, [[maybe_unused]] std::size_t level)
 {
 	if(m_cur_func != "")
 		throw_err(ast, "Nested functions are not allowed.");
@@ -423,9 +437,8 @@ void ASTAsm::visit(const ASTFunc* ast, [[maybe_unused]] std::size_t level)
 			const t_str& argname = ident->GetLexerValue();
 			t_str varname = m_cur_func + "/" + argname;
 
-			constexpr VMType argty = VMType::INT;  // TODO
-			m_symtab.AddSymbol(varname, (i+2)*sizeof(t_int), // TODO: get arg sizes
-				ADDR_FLAG_BP, argty);
+			VMType argty = ident->GetDataType();
+			m_symtab.AddSymbol(varname, (i+2)*get_vm_type_size(argty), ADDR_FLAG_BP, argty);
 		}
 	}
 
@@ -472,7 +485,7 @@ void ASTAsm::visit(const ASTFunc* ast, [[maybe_unused]] std::size_t level)
 }
 
 
-void ASTAsm::visit(const ASTFuncCall* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTFuncCall* ast, [[maybe_unused]] std::size_t level)
 {
 	const std::string& func_name = ast->GetName();
 	t_int num_args = static_cast<t_int>(ast->NumArgs());
@@ -521,7 +534,7 @@ void ASTAsm::visit(const ASTFuncCall* ast, [[maybe_unused]] std::size_t level)
 }
 
 
-void ASTAsm::visit(const ASTJump* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTJump* ast, [[maybe_unused]] std::size_t level)
 {
 	if(ast->GetJumpType() == ASTJump::JumpType::RETURN)
 	{
@@ -597,7 +610,7 @@ void ASTAsm::visit(const ASTJump* ast, [[maybe_unused]] std::size_t level)
 
 
 void ASTAsm::visit(
-	[[maybe_unused]] const ASTTypedIdent* ast,
+	[[maybe_unused]] ASTTypedIdent* ast,
 	[[maybe_unused]] std::size_t level)
 {
 	// should not be present in final ast

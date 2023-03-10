@@ -165,13 +165,6 @@ lalr1_run_parser(const std::string& script_file,
 			ast->AssignLineNumbers();
 			ast->DeriveDataType();
 
-			if(debug_codegen)
-			{
-				std::cout << "\nAST:\n";
-				ASTPrinter printer{std::cout};
-				ast->accept(&printer);
-			}
-
 			std::unordered_map<std::size_t, std::tuple<std::string, OpCode>> ops
 			{{
 				std::make_pair('+', std::make_tuple("add", OpCode::ADD)),
@@ -219,6 +212,10 @@ lalr1_run_parser(const std::string& script_file,
 
 			if(debug_codegen)
 			{
+				std::cout << "\nAST:\n";
+				ASTPrinter printer{std::cout};
+				ast->accept(&printer);
+
 				std::cout << "\nSymbol table:\n";
 				std::cout << astasmbin.GetSymbolTable();
 			}

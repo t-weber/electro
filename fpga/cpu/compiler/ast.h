@@ -84,6 +84,31 @@ public:
 
 
 /**
+ * mutable visitor
+ */
+class ASTMutableVisitor
+{
+public:
+	virtual ~ASTMutableVisitor() = default;
+
+	virtual void visit(ASTToken<t_lval>* ast, std::size_t level) = 0;
+	virtual void visit(ASTToken<std::string>* ast, std::size_t level) = 0;
+	virtual void visit(ASTToken<t_real>* ast, std::size_t level) = 0;
+	virtual void visit(ASTToken<t_int>* ast, std::size_t level) = 0;
+	virtual void visit(ASTToken<void*>* ast, std::size_t level) = 0;
+	virtual void visit(ASTUnary* ast, std::size_t level) = 0;
+	virtual void visit(ASTBinary* ast, std::size_t level) = 0;
+	virtual void visit(ASTList* ast, std::size_t level) = 0;
+	virtual void visit(ASTCondition* ast, std::size_t level) = 0;
+	virtual void visit(ASTLoop* ast, std::size_t level) = 0;
+	virtual void visit(ASTFunc* ast, std::size_t level) = 0;
+	virtual void visit(ASTFuncCall* ast, std::size_t level) = 0;
+	virtual void visit(ASTJump* ast, std::size_t level) = 0;
+	virtual void visit(ASTTypedIdent* ast, std::size_t level) = 0;
+};
+
+
+/**
  * get the source line number range of child node lines
  */
 template<class t_line_range, class t_opt_range = std::optional<t_line_range>>
@@ -167,6 +192,10 @@ public:
 				continue;
 
 			child->DeriveDataType();
+
+			//std::cout << "child " << childidx << ": "
+			//	<< get_vm_type_name(child->GetDataType())
+			//	<< std::endl;
 		}
 
 		// set data type if it's not yet known
@@ -199,6 +228,7 @@ public:
 	virtual void SetChild(std::size_t, const t_astbaseptr&) { }
 
 	virtual void accept(ASTVisitor* visitor, std::size_t level = 0) const = 0;
+	virtual void accept(ASTMutableVisitor* visitor, std::size_t level = 0) = 0;
 
 
 private:
@@ -221,6 +251,12 @@ public:
 	virtual void accept(ASTVisitor* visitor, std::size_t level = 0) const override
 	{
 		const t_ast_sub *sub = static_cast<const t_ast_sub*>(this);
+		visitor->visit(sub, level);
+	}
+
+	virtual void accept(ASTMutableVisitor* visitor, std::size_t level = 0) override
+	{
+		t_ast_sub *sub = static_cast<t_ast_sub*>(this);
 		visitor->visit(sub, level);
 	}
 };

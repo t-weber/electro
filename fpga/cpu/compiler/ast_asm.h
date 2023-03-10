@@ -20,7 +20,7 @@
 #include "vm/opcodes.h"
 
 
-class ASTAsm : public ASTVisitor
+class ASTAsm : public ASTMutableVisitor
 {
 public:
 	ASTAsm(std::ostream& ostr = std::cout,
@@ -29,20 +29,20 @@ public:
 	ASTAsm(const ASTAsm&) = delete;
 	const ASTAsm& operator=(const ASTAsm&) = delete;
 
-	virtual void visit(const ASTToken<t_lval>* ast, std::size_t level) override;
-	virtual void visit(const ASTToken<t_real>* ast, std::size_t level) override;
-	virtual void visit(const ASTToken<t_int>* ast, std::size_t level) override;
-	virtual void visit(const ASTToken<t_str>* ast, std::size_t level) override;
-	virtual void visit(const ASTToken<void*>* ast, std::size_t level) override;
-	virtual void visit(const ASTUnary* ast, std::size_t level) override;
-	virtual void visit(const ASTBinary* ast, std::size_t level) override;
-	virtual void visit(const ASTList* ast, std::size_t level) override;
-	virtual void visit(const ASTCondition* ast, std::size_t level) override;
-	virtual void visit(const ASTLoop* ast, std::size_t level) override;
-	virtual void visit(const ASTFunc* ast, std::size_t level) override;
-	virtual void visit(const ASTFuncCall* ast, std::size_t level) override;
-	virtual void visit(const ASTJump* ast, std::size_t level) override;
-	virtual void visit(const ASTTypedIdent* ast, std::size_t level) override;
+	virtual void visit(ASTToken<t_lval>* ast, std::size_t level) override;
+	virtual void visit(ASTToken<t_real>* ast, std::size_t level) override;
+	virtual void visit(ASTToken<t_int>* ast, std::size_t level) override;
+	virtual void visit(ASTToken<t_str>* ast, std::size_t level) override;
+	virtual void visit(ASTToken<void*>* ast, std::size_t level) override;
+	virtual void visit(ASTUnary* ast, std::size_t level) override;
+	virtual void visit(ASTBinary* ast, std::size_t level) override;
+	virtual void visit(ASTList* ast, std::size_t level) override;
+	virtual void visit(ASTCondition* ast, std::size_t level) override;
+	virtual void visit(ASTLoop* ast, std::size_t level) override;
+	virtual void visit(ASTFunc* ast, std::size_t level) override;
+	virtual void visit(ASTFuncCall* ast, std::size_t level) override;
+	virtual void visit(ASTJump* ast, std::size_t level) override;
+	virtual void visit(ASTTypedIdent* ast, std::size_t level) override;
 
 	void SetStream(std::ostream* ostr) { m_ostr = ostr; }
 
