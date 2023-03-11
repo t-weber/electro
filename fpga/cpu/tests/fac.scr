@@ -34,14 +34,14 @@ func fibo : int (arg1 : int)
 }
 
 
-loop(1 == 1)
+n : int = 1;
+a : int = 0;
+b : int = 0;
+loop(n < 6)
 {
-	n : int = 5;
-	if(n < 0)
-	{
-		break;
-	}
+	a = fac(n);
+	b = fibo(n);
 
-	fac(n);
-	fibo(n);
+	n; a; b;
+	n = n + 1;
 }

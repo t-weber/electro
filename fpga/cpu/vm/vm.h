@@ -201,14 +201,63 @@ protected:
 	/**
 	 * arithmetic operation
 	 */
-	template<char op>
+	template<class t_val, char op>
 	void OpArithmetic()
 	{
-		t_int val2 = PopRaw<t_int>();
-		t_int val1 = PopRaw<t_int>();
+		t_val val2 = PopRaw<t_val>();
+		t_val val1 = PopRaw<t_val>();
 
-		t_int result = OpArithmetic<t_int, op>(val1, val2);
-		PushRaw<t_int>(result);
+		t_val result = OpArithmetic<t_val, op>(val1, val2);
+		PushRaw<t_val>(result);
+	}
+
+
+	/**
+	 * comparison operation
+	 */
+	template<class t_val, OpCode op>
+	t_bool OpComparison(const t_val& val1, const t_val& val2)
+	{
+		t_bool result = 0;
+
+		if constexpr(op == OpCode::GT)
+			result = (val1 > val2);
+		else if constexpr(op == OpCode::LT)
+			result = (val1 < val2);
+		else if constexpr(op == OpCode::GEQU)
+			result = (val1 >= val2);
+		else if constexpr(op == OpCode::LEQU)
+			result = (val1 <= val2);
+		else if constexpr(op == OpCode::EQU)
+		{
+			if constexpr(std::is_same_v<std::decay_t<t_val>, t_real>)
+				result = (std::abs(val1 - val2) <= m_eps);
+			else
+				result = (val1 == val2);
+		}
+		else if constexpr(op == OpCode::NEQU)
+		{
+			if constexpr(std::is_same_v<std::decay_t<t_val>, t_real>)
+				result = (std::abs(val1 - val2) > m_eps);
+			else
+				result = (val1 != val2);
+		}
+
+		return result;
+	}
+
+
+	/**
+	 * comparison operation
+	 */
+	template<class t_val, OpCode op>
+	void OpComparison()
+	{
+		t_val val2 = PopRaw<t_val>();
+		t_val val1 = PopRaw<t_val>();
+
+		t_bool result = OpComparison<t_val, op>(val1, val2);
+		PushRaw<t_bool>(result);
 	}
 
 
@@ -276,54 +325,6 @@ protected:
 
 		t_int result = OpBinary<t_int, op>(val1, val2);
 		PushRaw<t_int>(result);
-	}
-
-
-	/**
-	 * comparison operation
-	 */
-	template<class t_val, OpCode op>
-	t_bool OpComparison(const t_val& val1, const t_val& val2)
-	{
-		t_bool result = 0;
-
-		if constexpr(op == OpCode::GT)
-			result = (val1 > val2);
-		else if constexpr(op == OpCode::LT)
-			result = (val1 < val2);
-		else if constexpr(op == OpCode::GEQU)
-			result = (val1 >= val2);
-		else if constexpr(op == OpCode::LEQU)
-			result = (val1 <= val2);
-		else if constexpr(op == OpCode::EQU)
-		{
-			if constexpr(std::is_same_v<std::decay_t<t_val>, t_real>)
-				result = (std::abs(val1 - val2) <= m_eps);
-			else
-				result = (val1 == val2);
-		}
-		else if constexpr(op == OpCode::NEQU)
-		{
-			if constexpr(std::is_same_v<std::decay_t<t_val>, t_real>)
-				result = (std::abs(val1 - val2) > m_eps);
-			else
-				result = (val1 != val2);
-		}
-
-		return result;
-	}
-
-
-	/**
-	 * comparison operation
-	 */
-	template<OpCode op>
-	void OpComparison()
-	{
-		t_int val2 = PopRaw<t_int>();
-		t_int val1 = PopRaw<t_int>();
-		t_bool result = OpComparison<t_int, op>(val1, val2);
-		PushRaw<t_bool>(result);
 	}
 
 

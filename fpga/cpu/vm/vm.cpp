@@ -145,12 +145,35 @@ bool VM::Run()
 				break;
 			}
 
-			// push direct data onto stack
+			case OpCode::FTOI: // converts t_real value to t_int
+			{
+				t_real data = PopRaw<t_real>();
+				PushRaw<t_int>(t_int(data));
+				break;
+			}
+
+			case OpCode::ITOF: // converts t_int value to t_real
+			{
+				t_int data = PopRaw<t_int>();
+				PushRaw<t_real>(t_real(data));
+				break;
+			}
+
+			// push direct integer data onto stack
 			case OpCode::PUSH:
 			{
 				t_int val = ReadMemRaw<t_int>(m_ip);
 				m_ip += sizeof(t_int);
 				PushRaw<t_int>(val);
+				break;
+			}
+
+			// push direct real data onto stack
+			case OpCode::PUSH_R:
+			{
+				t_real val = ReadMemRaw<t_real>(m_ip);
+				m_ip += sizeof(t_real);
+				PushRaw<t_real>(val);
 				break;
 			}
 
@@ -176,6 +199,9 @@ bool VM::Run()
 				break;
 			}
 
+			// ----------------------------------------------------
+			// integer operations
+			// ----------------------------------------------------
 			case OpCode::USUB:
 			{
 				t_int val = PopRaw<t_int>();
@@ -185,39 +211,159 @@ bool VM::Run()
 
 			case OpCode::ADD:
 			{
-				OpArithmetic<'+'>();
+				OpArithmetic<t_int, '+'>();
 				break;
 			}
 
 			case OpCode::SUB:
 			{
-				OpArithmetic<'-'>();
+				OpArithmetic<t_int, '-'>();
 				break;
 			}
 
 			case OpCode::MUL:
 			{
-				OpArithmetic<'*'>();
+				OpArithmetic<t_int, '*'>();
 				break;
 			}
 
 			case OpCode::DIV:
 			{
-				OpArithmetic<'/'>();
+				OpArithmetic<t_int, '/'>();
 				break;
 			}
 
 			case OpCode::MOD:
 			{
-				OpArithmetic<'%'>();
+				OpArithmetic<t_int, '%'>();
 				break;
 			}
 
 			case OpCode::POW:
 			{
-				OpArithmetic<'^'>();
+				OpArithmetic<t_int, '^'>();
 				break;
 			}
+
+			case OpCode::GT:
+			{
+				OpComparison<t_int, OpCode::GT>();
+				break;
+			}
+
+			case OpCode::LT:
+			{
+				OpComparison<t_int, OpCode::LT>();
+				break;
+			}
+
+			case OpCode::GEQU:
+			{
+				OpComparison<t_int, OpCode::GEQU>();
+				break;
+			}
+
+			case OpCode::LEQU:
+			{
+				OpComparison<t_int, OpCode::LEQU>();
+				break;
+			}
+
+			case OpCode::EQU:
+			{
+				OpComparison<t_int, OpCode::EQU>();
+				break;
+			}
+
+			case OpCode::NEQU:
+			{
+				OpComparison<t_int, OpCode::NEQU>();
+				break;
+			}
+			// ----------------------------------------------------
+
+			// ----------------------------------------------------
+			// real operations
+			// ----------------------------------------------------
+			case OpCode::USUB_R:
+			{
+				t_real val = PopRaw<t_real>();
+				PushRaw<t_real>(-val);
+				break;
+			}
+
+			case OpCode::ADD_R:
+			{
+				OpArithmetic<t_real, '+'>();
+				break;
+			}
+
+			case OpCode::SUB_R:
+			{
+				OpArithmetic<t_real, '-'>();
+				break;
+			}
+
+			case OpCode::MUL_R:
+			{
+				OpArithmetic<t_real, '*'>();
+				break;
+			}
+
+			case OpCode::DIV_R:
+			{
+				OpArithmetic<t_real, '/'>();
+				break;
+			}
+
+			case OpCode::MOD_R:
+			{
+				OpArithmetic<t_real, '%'>();
+				break;
+			}
+
+			case OpCode::POW_R:
+			{
+				OpArithmetic<t_real, '^'>();
+				break;
+			}
+
+			case OpCode::GT_R:
+			{
+				OpComparison<t_real, OpCode::GT>();
+				break;
+			}
+
+			case OpCode::LT_R:
+			{
+				OpComparison<t_real, OpCode::LT>();
+				break;
+			}
+
+			case OpCode::GEQU_R:
+			{
+				OpComparison<t_real, OpCode::GEQU>();
+				break;
+			}
+
+			case OpCode::LEQU_R:
+			{
+				OpComparison<t_real, OpCode::LEQU>();
+				break;
+			}
+
+			case OpCode::EQU_R:
+			{
+				OpComparison<t_real, OpCode::EQU>();
+				break;
+			}
+
+			case OpCode::NEQU_R:
+			{
+				OpComparison<t_real, OpCode::NEQU>();
+				break;
+			}
+			// ----------------------------------------------------
 
 			case OpCode::AND:
 			{
@@ -291,56 +437,6 @@ bool VM::Run()
 			case OpCode::ROTR:
 			{
 				OpBinary<'r'>();
-				break;
-			}
-
-			case OpCode::GT:
-			{
-				OpComparison<OpCode::GT>();
-				break;
-			}
-
-			case OpCode::LT:
-			{
-				OpComparison<OpCode::LT>();
-				break;
-			}
-
-			case OpCode::GEQU:
-			{
-				OpComparison<OpCode::GEQU>();
-				break;
-			}
-
-			case OpCode::LEQU:
-			{
-				OpComparison<OpCode::LEQU>();
-				break;
-			}
-
-			case OpCode::EQU:
-			{
-				OpComparison<OpCode::EQU>();
-				break;
-			}
-
-			case OpCode::NEQU:
-			{
-				OpComparison<OpCode::NEQU>();
-				break;
-			}
-
-			case OpCode::FTOI: // converts t_real value to t_int
-			{
-				t_real data = PopRaw<t_real>();
-				PushRaw<t_int>(t_int(data));
-				break;
-			}
-
-			case OpCode::ITOF: // converts t_int value to t_real
-			{
-				t_int data = PopRaw<t_int>();
-				PushRaw<t_real>(t_real(data));
 				break;
 			}
 
