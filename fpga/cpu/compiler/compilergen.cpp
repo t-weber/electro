@@ -12,18 +12,9 @@
 #include "lalr1/options.h"
 
 #include "grammar.h"
-#include "lexer.h"
-#include "ast.h"
-#include "ast_printer.h"
-#include "ast_asm.h"
-#include "vm/vm.h"
+#include "lval.h"
 
-#include <unordered_map>
 #include <iostream>
-#include <sstream>
-#include <fstream>
-#include <iomanip>
-#include <cstdint>
 
 #include <boost/program_options.hpp>
 namespace args = boost::program_options;
@@ -165,7 +156,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	bool name_states = false;
 	bool show_help = false;
 
-	args::options_description arg_descr("Script parser generator arguments");
+	args::options_description arg_descr("Script compiler generator arguments");
 	arg_descr.add_options()
 		("asc,a", args::bool_switch(&create_asc), "create a recursive ascent parser [default]")
 		("table,t", args::bool_switch(&create_tables), "create LALR(1) tables")
@@ -189,8 +180,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
 	if(show_help)
 	{
-		std::cout << "Script parser generator"
-			<< " by Tobias Weber <tobias.weber@tum.de>, 2022."
+		std::cout << "Script compiler generator"
+			<< " by Tobias Weber <tobias.weber@tum.de>, 2022-2023."
 			<< std::endl;
 		std::cout << "Internal data type lengths:"
 			<< " real: " << sizeof(t_real)*8 << " bits,"

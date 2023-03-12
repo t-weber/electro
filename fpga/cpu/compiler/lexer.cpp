@@ -398,8 +398,7 @@ std::vector<t_toknode> Lexer::GetAllTokens()
 			auto seq = std::make_index_sequence<
 				std::variant_size_v<typename t_lval::value_type>>();
 
-			constexpr_loop<_Lval_LoopFunc>(
-				seq, std::make_tuple(&vec, id, tableidx, lval, line));
+			constexpr_loop<_Lval_LoopFunc>(seq, std::make_tuple(&vec, id, tableidx, lval, line));
 		}
 		else
 		{

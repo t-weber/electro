@@ -9,7 +9,7 @@
 #define __LALR1_SCRIPT_GRAMMAR_H__
 
 #include "lalr1/symbol.h"
-#include "ast.h"
+#include "lalr1/ast.h"
 
 using lalr1::NonTerminalPtr;
 using lalr1::TerminalPtr;

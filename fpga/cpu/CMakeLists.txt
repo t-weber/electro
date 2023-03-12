@@ -44,10 +44,10 @@ add_library(script STATIC
 	compiler/lexer.cpp compiler/lexer.h
 	compiler/ast_printer.cpp compiler/ast_printer.h
 	compiler/ast_asm.cpp compiler/ast_asm.h
-	vm/opcodes.h
-	vm/types.h
+	vm/opcodes.h vm/types.h
 	compiler/symbol.cpp compiler/symbol.h
-	compiler/ast.h
+	compiler/ast.cpp compiler/ast.h
+	compiler/ast_optimise.cpp compiler/ast_optimise.h
 )
 
 target_link_libraries(script ${Boost_LIBRARIES}
@@ -78,6 +78,7 @@ target_link_libraries(vm script-vm)
 add_executable(compilergen
 	compiler/compilergen.cpp
 	compiler/grammar.cpp compiler/grammar.h
+	compiler/ast.cpp compiler/ast.h
 )
 
 target_include_directories(compilergen
@@ -101,7 +102,7 @@ if(EXISTS "${CMAKE_BINARY_DIR}/script_parser.cpp" OR EXISTS "${CMAKE_BINARY_DIR}
 endif()
 
 if(EXISTS "${CMAKE_BINARY_DIR}/script_parser.cpp")
-		target_link_libraries(compiler script script-vm
+		target_link_libraries(compiler script
 	)
 elseif(EXISTS "${CMAKE_BINARY_DIR}/script.tab")
 	target_link_libraries(compiler script script-vm

@@ -154,74 +154,13 @@ public:
 	virtual VMType GetDataType() const { return m_datatype; }
 	virtual void SetDataType(VMType ty) { m_datatype = ty; }
 
-	/**
-	 * assigns the source line numbers from the token lines
-	 */
-	virtual void AssignLineNumbers()
-	{
-		std::vector<std::optional<t_line_range>> lines;
+	// derive the associated data type (for casting)
+	virtual void DeriveDataType();
 
-		std::size_t children = NumChildren();
-		for(std::size_t childidx=0; childidx<children; ++childidx)
-		{
-			const t_astbaseptr child = GetChild(childidx);
-			if(!child)
-				continue;
+	// assigns the source line numbers from the token lines
+	virtual void AssignLineNumbers();
 
-			child->AssignLineNumbers();
-			lines.push_back(child->GetLineRange());
-		}
-
-		if(lines.size())
-		{
-			lines.push_back(GetLineRange());
-			SetLineRange(get_minmax_lines<t_line_range>(lines));
-		}
-	}
-
-	/**
-	 * derive the associated data type (for casting)
-	 */
-	virtual void DeriveDataType()
-	{
-		std::size_t children = NumChildren();
-		for(std::size_t childidx=0; childidx<children; ++childidx)
-		{
-			const t_astbaseptr child = GetChild(childidx);
-			if(!child)
-				continue;
-
-			child->DeriveDataType();
-
-			//std::cout << "child " << childidx << ": "
-			//	<< get_vm_type_name(child->GetDataType())
-			//	<< std::endl;
-		}
-
-		// set data type if it's not yet known
-		if(GetDataType() == VMType::UNKNOWN)
-		{
-			if(children == 1)
-			{
-				const t_astbaseptr child = GetChild(0);
-				if(child)
-					SetDataType(child->GetDataType());
-			}
-			else if(children == 2)
-			{
-				const t_astbaseptr child1 = GetChild(0);
-				const t_astbaseptr child2 = GetChild(1);
-
-				if(child1 && child2)
-				{
-					VMType ty1 = child1->GetDataType();
-					VMType ty2 = child2->GetDataType();
-
-					SetDataType(derive_data_type(ty1, ty2));
-				}
-			}
-		}
-	}
+	virtual void Optimise() {}
 
 	virtual std::size_t NumChildren() const { return 0; }
 	virtual t_astbaseptr GetChild(std::size_t) const { return nullptr; }
@@ -294,10 +233,9 @@ public:
 
 	virtual ASTType GetType() const override { return ASTType::TOKEN; }
 
-	/**
-	 * get the lexical value of the token's attribute
-	 */
+	// get the lexical value of the token's attribute
 	const t_lval& GetLexerValue() const { return *m_lexval; }
+	void SetLexerValue(const t_lval& lval) { m_lexval = lval; }
 	constexpr bool HasLexerValue() const { return m_lexval.operator bool(); }
 
 	bool IsLValue() const { return m_islval; }

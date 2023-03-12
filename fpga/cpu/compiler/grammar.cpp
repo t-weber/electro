@@ -7,6 +7,7 @@
 
 #include "grammar.h"
 #include "lexer.h"
+#include "ast.h"
 
 using t_lalrastbaseptr = lalr1::t_astbaseptr;
 using lalr1::Terminal;
