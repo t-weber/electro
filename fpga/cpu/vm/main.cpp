@@ -68,7 +68,20 @@ static bool run_vm(const fs::path& prog, const VMOptions& opts)
 	vm.SetDrawMemImages(opts.enable_memimages);
 	vm.SetMem(opts.load_addr, bytes.data(), filesize, true);
 	vm.SetIP(opts.entry_point);
-	vm.Run();
+	if(!vm.Run())
+		std::cerr << "VM reports failure." << std::endl;
+
+	if(opts.enable_debug)
+	{
+		std::cout << vm.GetNumOpsRun() << " instructions executed:" << std::endl;
+		std::cout << std::setw(20) << "Opcode" << std::setw(20) << "Times" << std::endl;
+
+		for(const auto& [ op, op_cnt ] : vm.GetOpsRun())
+		{
+			std::cout << std::setw(20) << get_vm_opcode_name(op)
+				<< std::setw(20) << op_cnt << std::endl;
+		}
+	}
 
 	// print remaining stack
 	std::size_t stack_idx = 0;

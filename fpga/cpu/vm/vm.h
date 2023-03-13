@@ -12,6 +12,7 @@
 #include <type_traits>
 #include <memory>
 #include <array>
+#include <unordered_map>
 #include <optional>
 #include <iostream>
 #include <sstream>
@@ -46,6 +47,10 @@ public:
 
 	void Reset();
 	bool Run();
+
+	std::size_t GetNumOpsRun() const { return m_num_ops_run; }
+	std::unordered_map<OpCode, std::size_t> GetOpsRun() const { return m_ops_run; }
+
 
 	void SetMem(t_int addr, t_byte data);
 	void SetMem(t_int addr, const t_byte* data, std::size_t size, bool is_code = false);
@@ -189,9 +194,7 @@ protected:
 			result = val1 % val2;
 		else if constexpr(op == '%' && std::is_floating_point_v<t_val>)
 			result = std::fmod(val1, val2);
-		else if constexpr(op == '^' && std::is_integral_v<t_val>)
-			result = pow<t_val>(val1, val2);
-		else if constexpr(op == '^' && std::is_floating_point_v<t_val>)
+		else if constexpr(op == '^' && (std::is_integral_v<t_val> || std::is_floating_point_v<t_val>))
 			result = pow<t_val>(val1, val2);
 
 		return result;
@@ -375,6 +378,10 @@ private:
 	std::thread m_timer_thread{};
 	bool m_timer_running{false};
 	std::chrono::milliseconds m_timer_ticks{250};
+
+	// runtime statistics
+	std::size_t m_num_ops_run{};
+	std::unordered_map<OpCode, std::size_t> m_ops_run{};
 };
 
 

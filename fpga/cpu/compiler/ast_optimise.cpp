@@ -57,7 +57,7 @@ t_astbaseptr ast_optimise_bin(std::shared_ptr<ASTBinary>& astbin, t_astbaseptr& 
 		}
 		case '^':
 		{
-			child1->SetLexerValue(::pow<t_int>(child1->GetLexerValue(), child2->GetLexerValue()));
+			child1->SetLexerValue(::pow<t_val>(child1->GetLexerValue(), child2->GetLexerValue()));
 			return child1;
 		}
 		default:

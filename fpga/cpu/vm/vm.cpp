@@ -7,10 +7,6 @@
 
 #include "vm.h"
 
-#include <iostream>
-#include <sstream>
-#include <cstring>
-
 
 VM::VM(t_int memsize, std::optional<t_int> framesize, std::optional<t_int> heapsize)
 	: m_memsize{memsize},
@@ -83,6 +79,7 @@ void VM::SetISR(t_int num, t_int addr)
 bool VM::Run()
 {
 	bool running = true;
+
 	while(running)
 	{
 		CheckPointerBounds();
@@ -129,6 +126,17 @@ bool VM::Run()
 				<< static_cast<std::size_t>(op)
 				<< " (" << get_vm_opcode_name(op) << ")"
 				<< std::dec << ". ***" << std::endl;
+		}
+
+		// runtime statistics
+		++m_num_ops_run;
+
+		if(m_debug)
+		{
+			if(auto iter = m_ops_run.find(op); iter != m_ops_run.end())
+				++iter->second;
+			else
+				m_ops_run.emplace(std::make_pair(op, 1));
 		}
 
 		// run instruction
@@ -636,6 +644,9 @@ void VM::Reset()
 
 	std::memset(m_mem.get(), static_cast<t_byte>(OpCode::HALT), m_memsize*sizeof(t_byte));
 	m_code_range[0] = m_code_range[1] = -1;
+
+	m_num_ops_run = 0;
+	m_ops_run.clear();
 }
 
 
