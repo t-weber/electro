@@ -23,9 +23,11 @@ enum class OpCode : t_byte
 
 	// memory operations
 	PUSH     = 0x10,  // push direct integer data
-	PUSH_R   = 0x11,  // push direct real data
-	WRMEM    = 0x1a,  // write memory
-	RDMEM    = 0x1b,  // read memory
+	WRMEM    = 0x11,  // write integer dato to memory
+	RDMEM    = 0x12,  // read integer data from memory
+	PUSH_R   = 0x1a,  // push direct real data
+	WRMEM_R  = 0x1b,  // write real data to memory
+	RDMEM_R  = 0x1c,  // read read data from memory
 
 	// arithmetic integer operations
 	USUB     = 0x20,  // unary -
@@ -119,9 +121,11 @@ constexpr t_str get_vm_opcode_name(OpCode op)
 		case OpCode::ITOF:      return "itof";
 
 		case OpCode::PUSH:      return "push";
-		case OpCode::PUSH_R:    return "push_r";
 		case OpCode::WRMEM:     return "wrmem";
 		case OpCode::RDMEM:     return "rdmem";
+		case OpCode::PUSH_R:    return "push_r";
+		case OpCode::WRMEM_R:   return "wrmem_r";
+		case OpCode::RDMEM_R:   return "rdmem_r";
 
 		case OpCode::USUB:      return "usub";
 		case OpCode::ADD:       return "add";

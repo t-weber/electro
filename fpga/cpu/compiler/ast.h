@@ -91,20 +91,20 @@ class ASTMutableVisitor
 public:
 	virtual ~ASTMutableVisitor() = default;
 
-	virtual void visit(ASTToken<t_lval>* ast, std::size_t level) = 0;
-	virtual void visit(ASTToken<std::string>* ast, std::size_t level) = 0;
-	virtual void visit(ASTToken<t_real>* ast, std::size_t level) = 0;
-	virtual void visit(ASTToken<t_int>* ast, std::size_t level) = 0;
-	virtual void visit(ASTToken<void*>* ast, std::size_t level) = 0;
-	virtual void visit(ASTUnary* ast, std::size_t level) = 0;
-	virtual void visit(ASTBinary* ast, std::size_t level) = 0;
-	virtual void visit(ASTList* ast, std::size_t level) = 0;
-	virtual void visit(ASTCondition* ast, std::size_t level) = 0;
-	virtual void visit(ASTLoop* ast, std::size_t level) = 0;
-	virtual void visit(ASTFunc* ast, std::size_t level) = 0;
-	virtual void visit(ASTFuncCall* ast, std::size_t level) = 0;
-	virtual void visit(ASTJump* ast, std::size_t level) = 0;
-	virtual void visit(ASTTypedIdent* ast, std::size_t level) = 0;
+	virtual void visit(ASTToken<t_lval>* ast, std::size_t level, bool gen_code) = 0;
+	virtual void visit(ASTToken<std::string>* ast, std::size_t level, bool gen_code) = 0;
+	virtual void visit(ASTToken<t_real>* ast, std::size_t level, bool gen_code) = 0;
+	virtual void visit(ASTToken<t_int>* ast, std::size_t level, bool gen_code) = 0;
+	virtual void visit(ASTToken<void*>* ast, std::size_t level, bool gen_code) = 0;
+	virtual void visit(ASTUnary* ast, std::size_t level, bool gen_code) = 0;
+	virtual void visit(ASTBinary* ast, std::size_t level, bool gen_code) = 0;
+	virtual void visit(ASTList* ast, std::size_t level, bool gen_code) = 0;
+	virtual void visit(ASTCondition* ast, std::size_t level, bool gen_code) = 0;
+	virtual void visit(ASTLoop* ast, std::size_t level, bool gen_code) = 0;
+	virtual void visit(ASTFunc* ast, std::size_t level, bool gen_code) = 0;
+	virtual void visit(ASTFuncCall* ast, std::size_t level, bool gen_code) = 0;
+	virtual void visit(ASTJump* ast, std::size_t level, bool gen_code) = 0;
+	virtual void visit(ASTTypedIdent* ast, std::size_t level, bool gen_code) = 0;
 };
 
 
@@ -167,7 +167,7 @@ public:
 	virtual void SetChild(std::size_t, const t_astbaseptr&) { }
 
 	virtual void accept(ASTVisitor* visitor, std::size_t level = 0) const = 0;
-	virtual void accept(ASTMutableVisitor* visitor, std::size_t level = 0) = 0;
+	virtual void accept(ASTMutableVisitor* visitor, std::size_t level = 0, bool gen_code = true) = 0;
 
 
 private:
@@ -193,10 +193,10 @@ public:
 		visitor->visit(sub, level);
 	}
 
-	virtual void accept(ASTMutableVisitor* visitor, std::size_t level = 0) override
+	virtual void accept(ASTMutableVisitor* visitor, std::size_t level = 0, bool gen_code = true) override
 	{
 		t_ast_sub *sub = static_cast<t_ast_sub*>(this);
-		visitor->visit(sub, level);
+		visitor->visit(sub, level, gen_code);
 	}
 };
 

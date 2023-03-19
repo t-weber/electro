@@ -442,9 +442,9 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 		{
 			if(!full_match) return nullptr;
 
-			auto _rhsident = std::dynamic_pointer_cast<ASTTypedIdent>(args[0]);
-			VMType datatype = _rhsident->GetDataType();
-			t_astbaseptr rhsident = std::dynamic_pointer_cast<ASTBase>(_rhsident->GetIdent());
+			auto _lhsident = std::dynamic_pointer_cast<ASTTypedIdent>(args[0]);
+			VMType datatype = _lhsident->GetDataType();
+			t_astbaseptr lhsident = std::dynamic_pointer_cast<ASTBase>(_lhsident->GetIdent());
 			t_astbaseptr rhsexpr = std::dynamic_pointer_cast<ASTBase>(args[2]);
 
 			if(datatype != rhsexpr->GetDataType() && rhsexpr->GetDataType() != VMType::UNKNOWN)
@@ -457,16 +457,17 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 				throw std::runtime_error(ostrerr.str());
 			}
 
-			if(rhsident->GetType() != ASTType::TOKEN)
+			if(lhsident->GetType() != ASTType::TOKEN)
 			{
 				throw std::runtime_error(
 					"Expected a symbol name on lhs of assignment.");
 			}
 
-			auto symname = std::dynamic_pointer_cast<ASTToken<std::string>>(rhsident);
+			auto symname = std::dynamic_pointer_cast<ASTToken<std::string>>(lhsident);
 			symname->SetIdent(true);
 			symname->SetLValue(true);
 			symname->SetDataType(/*rhsexpr->GetDataType()*/ datatype);
+			//std::cout << "assigning " << symname->GetLexerValue() << std::endl;
 
 			return std::make_shared<ASTBinary>(
 				expr->GetId(), 0, rhsexpr, symname, op_assign->GetId());

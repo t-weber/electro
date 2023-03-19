@@ -49,26 +49,32 @@ ASTAsm::ASTAsm(std::ostream& ostr,
 
 void ASTAsm::visit(
 	[[maybe_unused]] ASTToken<t_lval>* ast,
-	[[maybe_unused]] std::size_t level)
+	[[maybe_unused]] std::size_t level,
+	[[maybe_unused]] bool gen_code)
 {
 	std::cerr << "Error: " << __func__ << " not implemented." << std::endl;
 }
 
 
-void ASTAsm::visit(ASTToken<t_real>* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTToken<t_real>* ast, [[maybe_unused]] std::size_t level, bool gen_code)
 {
 	if(!ast->HasLexerValue())
 		return;
+	if(!gen_code)
+		return;
+
 	t_real val = static_cast<t_real>(ast->GetLexerValue());
 
-	m_ostr->put(static_cast<t_byte>(OpCode::PUSH));
+	m_ostr->put(static_cast<t_byte>(OpCode::PUSH_R));
 	m_ostr->write(reinterpret_cast<const char*>(&val), sizeof(t_real));
 }
 
 
-void ASTAsm::visit(ASTToken<t_int>* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTToken<t_int>* ast, [[maybe_unused]] std::size_t level, bool gen_code)
 {
 	if(!ast->HasLexerValue())
+		return;
+	if(!gen_code)
 		return;
 	t_int val = static_cast<t_int>(ast->GetLexerValue());
 
@@ -77,7 +83,7 @@ void ASTAsm::visit(ASTToken<t_int>* ast, [[maybe_unused]] std::size_t level)
 }
 
 
-void ASTAsm::visit(ASTToken<t_str>* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTToken<t_str>* ast, [[maybe_unused]] std::size_t level, bool gen_code)
 {
 	if(!ast->HasLexerValue())
 		return;
@@ -125,14 +131,22 @@ void ASTAsm::visit(ASTToken<t_str>* ast, [[maybe_unused]] std::size_t level)
 				ast->SetDataType(sym->ty);
 		}
 
-		m_ostr->put(static_cast<t_byte>(OpCode::PUSH));
-		// relative address
-		t_int addr = encode_addr<t_int>(sym->addr, sym->loc);
-		m_ostr->write(reinterpret_cast<const char*>(&addr), sizeof(t_int));
+		// push relative address
+		if(gen_code)
+		{
+			m_ostr->put(static_cast<t_byte>(OpCode::PUSH));
+			t_int addr = encode_addr<t_int>(sym->addr, sym->loc);
+			m_ostr->write(reinterpret_cast<const char*>(&addr), sizeof(t_int));
 
-		// dereference it, if the variable is on the rhs of an assignment
-		if(!ast->IsLValue() && !sym->is_func)
-			m_ostr->put(static_cast<t_byte>(OpCode::RDMEM));
+			// dereference it, if the variable is on the rhs of an assignment
+			if(!ast->IsLValue() && !sym->is_func)
+			{
+				if(ast->GetDataType() == VMType::INT)
+					m_ostr->put(static_cast<t_byte>(OpCode::RDMEM));
+				else if(ast->GetDataType() == VMType::REAL)
+					m_ostr->put(static_cast<t_byte>(OpCode::RDMEM_R));
+			}
+		}
 	}
 
 	// the token names a string literal
@@ -160,122 +174,135 @@ void ASTAsm::visit(ASTToken<t_str>* ast, [[maybe_unused]] std::size_t level)
 
 void ASTAsm::visit(
 	[[maybe_unused]] ASTToken<void*>* ast,
-	[[maybe_unused]] std::size_t level)
+	[[maybe_unused]] std::size_t level,
+	[[maybe_unused]] bool gen_code)
 {
 	std::cerr << "Error: " << __func__ << " not implemented." << std::endl;
 }
 
 
-void ASTAsm::visit(ASTUnary* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTUnary* ast, [[maybe_unused]] std::size_t level, bool gen_code)
 {
 	// run the operand
-	ast->GetChild(0)->accept(this, level+1);
+	ast->GetChild(0)->accept(this, level+1, gen_code);
 
 	if(ast->GetDataType() == VMType::UNKNOWN)
 		ast->DeriveDataType();
-	VMType ty = ast->GetDataType();
 
-	std::size_t opid = ast->GetOpId();
-	OpCode op = std::get<OpCode>(m_ops->at(opid));
-
-	if(op == OpCode::ADD || op == OpCode::ADD_R)
-		op = OpCode::NOP;
-	else if(op == OpCode::SUB)
+	if(gen_code)
 	{
-		if(ty == VMType::INT)
-			op = OpCode::USUB;
-		else if(ty == VMType::REAL)
-			op = OpCode::USUB_R;
-		else
-			throw_err(ast, "Invalid data type in unary expression.");
-	}
-	else
-		throw_err(ast, "Invalid unary expression.");
+		VMType ty = ast->GetDataType();
 
-	m_ostr->put(static_cast<t_byte>(op));
+		std::size_t opid = ast->GetOpId();
+		OpCode op = std::get<OpCode>(m_ops->at(opid));
+
+		if(op == OpCode::ADD || op == OpCode::ADD_R)
+			op = OpCode::NOP;
+		else if(op == OpCode::SUB)
+		{
+			if(ty == VMType::INT)
+				op = OpCode::USUB;
+			else if(ty == VMType::REAL)
+				op = OpCode::USUB_R;
+			else
+				throw_err(ast, "Invalid data type in unary expression.");
+		}
+		else
+			throw_err(ast, "Invalid unary expression.");
+
+		m_ostr->put(static_cast<t_byte>(op));
+	}
 }
 
 
-void ASTAsm::visit(ASTBinary* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTBinary* ast, [[maybe_unused]] std::size_t level, bool gen_code)
 {
-	// run the operands
+	// run the operands to get the data types
 	for(std::size_t childidx=0; childidx<2; ++childidx)
 	{
 		auto child = ast->GetChild(childidx);
-		child->accept(this, level+1);
+		child->accept(this, level+1, false);
 	}
 
 	if(ast->GetDataType() == VMType::UNKNOWN)
 		ast->DeriveDataType();
 
-	std::size_t opid = ast->GetOpId();
-	VMType ty = ast->GetDataType();
-
-	// iterate the operands
-	for(std::size_t childidx=0; childidx<2; ++childidx)
+	if(gen_code)
 	{
-		auto child = ast->GetChild(childidx);
-		VMType subty = child->GetDataType();
-		if(subty != ty && opid != '=' /* no cast on assignments */)
+		std::size_t opid = ast->GetOpId();
+		VMType ty = ast->GetDataType();
+
+		// run the operands
+		for(std::size_t childidx=0; childidx<2; ++childidx)
 		{
-			// child type is different from derived type -> cast
+			auto child = ast->GetChild(childidx);
+			child->accept(this, level+1, gen_code);
+
+			VMType subty = child->GetDataType();
+			if(subty != ty /*&& opid != '='*/ /* no cast on assignments */)
+			{
+				// child type is different from derived type -> cast
+				if(ty == VMType::INT)
+					m_ostr->put(static_cast<t_byte>(OpCode::FTOI));
+				else if(ty == VMType::REAL)
+					m_ostr->put(static_cast<t_byte>(OpCode::ITOF));
+			}
+		}
+
+		// generate the binary operation
+		OpCode op = std::get<OpCode>(m_ops->at(opid));
+		if(op != OpCode::INVALID)	// use opcode directly
+		{
 			if(ty == VMType::INT)
-				m_ostr->put(static_cast<t_byte>(OpCode::FTOI));
+				m_ostr->put(static_cast<t_byte>(op));
 			else if(ty == VMType::REAL)
-				m_ostr->put(static_cast<t_byte>(OpCode::ITOF));
+				m_ostr->put(static_cast<t_byte>(
+					convert_vm_opcode_int_to_real(op)));
+			else
+				throw_err(ast, "Invalid data type in binary expression.");
+		}
+		else
+		{
+			// TODO: decide on special cases
 		}
 	}
-
-	// generate the binary operation
-	OpCode op = std::get<OpCode>(m_ops->at(opid));
-	if(op != OpCode::INVALID)	// use opcode directly
-	{
-		if(ty == VMType::INT)
-			m_ostr->put(static_cast<t_byte>(op));
-		else if(ty == VMType::REAL)
-			m_ostr->put(static_cast<t_byte>(
-				convert_vm_opcode_int_to_real(op)));
-		else
-			throw_err(ast, "Invalid data type in binary expression.");
-	}
-	else
-	{
-		// TODO: decide on special cases
-	}
 }
 
 
-void ASTAsm::visit(ASTList* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTList* ast, [[maybe_unused]] std::size_t level, bool gen_code)
 {
 	for(std::size_t i=0; i<ast->NumChildren(); ++i)
-		ast->GetChild(i)->accept(this, level+1);
+		ast->GetChild(i)->accept(this, level+1, gen_code);
 }
 
 
-void ASTAsm::visit(ASTCondition* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTCondition* ast, [[maybe_unused]] std::size_t level, bool gen_code)
 {
 	// condition
-	ast->GetCondition()->accept(this, level+1);
+	ast->GetCondition()->accept(this, level+1, gen_code);
 
 	t_int skipEndCond = 0;             // how many bytes to skip to jump to end of the if block?
 	t_int skipEndIf = 0;               // how many bytes to skip to jump to end of the entire if statement?
 	std::streampos skip_addr = 0;      // stream position with the condition jump label
 	std::streampos skip_else_addr = 0; // stream position with the if block jump label
 
-	// if the condition is not fulfilled...
-	m_ostr->put(static_cast<t_byte>(OpCode::NOT));
+	if(gen_code)
+	{
+		// if the condition is not fulfilled...
+		m_ostr->put(static_cast<t_byte>(OpCode::NOT));
 
-	// ...skip to the end of the if block
-	m_ostr->put(static_cast<t_byte>(OpCode::PUSH)); // push jump address
-	skip_addr = m_ostr->tellp();
-	skipEndCond = encode_addr<t_int>(skipEndCond, ADDR_FLAG_IP);
-	m_ostr->write(reinterpret_cast<const char*>(&skipEndCond), sizeof(t_int));
-	m_ostr->put(static_cast<t_byte>(OpCode::JMPCND));
+		// ...skip to the end of the if block
+		m_ostr->put(static_cast<t_byte>(OpCode::PUSH)); // push jump address
+		skip_addr = m_ostr->tellp();
+		skipEndCond = encode_addr<t_int>(skipEndCond, ADDR_FLAG_IP);
+		m_ostr->write(reinterpret_cast<const char*>(&skipEndCond), sizeof(t_int));
+		m_ostr->put(static_cast<t_byte>(OpCode::JMPCND));
+	}
 
 	// if block
 	std::streampos before_if_block = m_ostr->tellp();
-	ast->GetIfBlock()->accept(this, level+1);
-	if(ast->GetElseBlock())
+	ast->GetIfBlock()->accept(this, level+1, gen_code);
+	if(ast->GetElseBlock() && gen_code)
 	{
 		// skip to end of if statement if there's an else block
 		m_ostr->put(static_cast<t_byte>(OpCode::PUSH)); // push jump address
@@ -286,31 +313,38 @@ void ASTAsm::visit(ASTCondition* ast, [[maybe_unused]] std::size_t level)
 	}
 	std::streampos after_if_block = m_ostr->tellp();
 
-	// go back and fill in missing number of bytes to skip
-	skipEndCond = after_if_block - before_if_block;
-	m_ostr->seekp(skip_addr);
-	skipEndCond = encode_addr<t_int>(skipEndCond, ADDR_FLAG_IP);
-	m_ostr->write(reinterpret_cast<const char*>(&skipEndCond), sizeof(t_int));
-	m_ostr->seekp(after_if_block);
+	if(gen_code)
+	{
+		// go back and fill in missing number of bytes to skip
+		skipEndCond = after_if_block - before_if_block;
+		m_ostr->seekp(skip_addr);
+		skipEndCond = encode_addr<t_int>(skipEndCond, ADDR_FLAG_IP);
+		m_ostr->write(reinterpret_cast<const char*>(&skipEndCond), sizeof(t_int));
+		m_ostr->seekp(after_if_block);
+	}
 
 	// else block
 	if(ast->GetElseBlock())
 	{
 		std::streampos before_else_block = m_ostr->tellp();
-		ast->GetElseBlock()->accept(this, level+1);
-		std::streampos after_else_block = m_ostr->tellp();
+		ast->GetElseBlock()->accept(this, level+1, gen_code);
 
-		// go back and fill in missing number of bytes to skip
-		skipEndIf = after_else_block - before_else_block;
-		m_ostr->seekp(skip_else_addr);
-		skipEndIf = encode_addr<t_int>(skipEndIf, ADDR_FLAG_IP);
-		m_ostr->write(reinterpret_cast<const char*>(&skipEndIf), sizeof(t_int));
-		m_ostr->seekp(after_else_block);
+		if(gen_code)
+		{
+			std::streampos after_else_block = m_ostr->tellp();
+
+			// go back and fill in missing number of bytes to skip
+			skipEndIf = after_else_block - before_else_block;
+			m_ostr->seekp(skip_else_addr);
+			skipEndIf = encode_addr<t_int>(skipEndIf, ADDR_FLAG_IP);
+			m_ostr->write(reinterpret_cast<const char*>(&skipEndIf), sizeof(t_int));
+			m_ostr->seekp(after_else_block);
+		}
 	}
 }
 
 
-void ASTAsm::visit(ASTLoop* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTLoop* ast, [[maybe_unused]] std::size_t level, bool gen_code)
 {
 	std::size_t labelLoop = m_glob_label++;
 
@@ -320,85 +354,91 @@ void ASTAsm::visit(ASTLoop* ast, [[maybe_unused]] std::size_t level)
 
 	// run condition
 	std::streampos loop_begin = m_ostr->tellp();
-	ast->GetCondition()->accept(this, level+1); // condition
+	ast->GetCondition()->accept(this, level+1, gen_code); // condition
 
 	t_int skip = 0;  // how many bytes to skip to jump to end of the block?
 	std::streampos skip_addr = 0;
 
 	// if the condition is not fulfilled...
-	m_ostr->put(static_cast<t_byte>(OpCode::NOT));
+	if(gen_code)
+	{
+		m_ostr->put(static_cast<t_byte>(OpCode::NOT));
 
-	// ... jump to the end
-	m_ostr->put(static_cast<t_byte>(OpCode::PUSH)); // push jump address
-	skip_addr = m_ostr->tellp();
-	skip = encode_addr<t_int>(skip, ADDR_FLAG_IP);
-	m_ostr->write(reinterpret_cast<const char*>(&skip), sizeof(t_int));
-	m_ostr->put(static_cast<t_byte>(OpCode::JMPCND));
+		// ... jump to the end
+		m_ostr->put(static_cast<t_byte>(OpCode::PUSH)); // push jump address
+		skip_addr = m_ostr->tellp();
+		skip = encode_addr<t_int>(skip, ADDR_FLAG_IP);
+		m_ostr->write(reinterpret_cast<const char*>(&skip), sizeof(t_int));
+		m_ostr->put(static_cast<t_byte>(OpCode::JMPCND));
+	}
 
 	// run loop block
 	std::streampos before_block = m_ostr->tellp();
-	ast->GetBlock()->accept(this, level+1); // block
+	ast->GetBlock()->accept(this, level+1, gen_code); // block
 
-	// loop back
-	m_ostr->put(static_cast<t_byte>(OpCode::PUSH)); // push jump address
-	std::streampos after_block = m_ostr->tellp();
-	t_int skip_back = loop_begin - after_block;
-	skip_back -= sizeof(t_int) + 1;
-	skip_back = encode_addr<t_int>(skip_back, ADDR_FLAG_IP);
-	m_ostr->write(reinterpret_cast<const char*>(&skip_back), sizeof(t_int));
-	m_ostr->put(static_cast<t_byte>(OpCode::JMP));
-
-	// go back and fill in missing number of bytes to skip
-	after_block = m_ostr->tellp();
-	skip = after_block - before_block;
-	skip = encode_addr<t_int>(skip, ADDR_FLAG_IP);
-	m_ostr->seekp(skip_addr);
-	m_ostr->write(reinterpret_cast<const char*>(&skip), sizeof(t_int));
-
-	// fill in any saved, unset start-of-loop jump addresses (continues)
-	while(true)
+	if(gen_code)
 	{
-		auto iter = m_loop_begin_comefroms.find(ostrLabel.str());
-		if(iter == m_loop_begin_comefroms.end())
-			break;
+		// loop back
+		m_ostr->put(static_cast<t_byte>(OpCode::PUSH)); // push jump address
+		std::streampos after_block = m_ostr->tellp();
+		t_int skip_back = loop_begin - after_block;
+		skip_back -= sizeof(t_int) + 1;
+		skip_back = encode_addr<t_int>(skip_back, ADDR_FLAG_IP);
+		m_ostr->write(reinterpret_cast<const char*>(&skip_back), sizeof(t_int));
+		m_ostr->put(static_cast<t_byte>(OpCode::JMP));
 
-		std::streampos pos = iter->second;
-		m_loop_begin_comefroms.erase(iter);
+		// go back and fill in missing number of bytes to skip
+		after_block = m_ostr->tellp();
+		skip = after_block - before_block;
+		skip = encode_addr<t_int>(skip, ADDR_FLAG_IP);
+		m_ostr->seekp(skip_addr);
+		m_ostr->write(reinterpret_cast<const char*>(&skip), sizeof(t_int));
 
-		t_int to_skip = loop_begin - pos;
-		// already skipped over address and jmp instruction
-		to_skip -= sizeof(t_int);
-		to_skip = encode_addr<t_int>(to_skip, ADDR_FLAG_IP);
-		m_ostr->seekp(pos);
-		m_ostr->write(reinterpret_cast<const char*>(&to_skip), sizeof(t_int));
+		// fill in any saved, unset start-of-loop jump addresses (continues)
+		while(true)
+		{
+			auto iter = m_loop_begin_comefroms.find(ostrLabel.str());
+			if(iter == m_loop_begin_comefroms.end())
+				break;
+
+			std::streampos pos = iter->second;
+			m_loop_begin_comefroms.erase(iter);
+
+			t_int to_skip = loop_begin - pos;
+			// already skipped over address and jmp instruction
+			to_skip -= sizeof(t_int);
+			to_skip = encode_addr<t_int>(to_skip, ADDR_FLAG_IP);
+			m_ostr->seekp(pos);
+			m_ostr->write(reinterpret_cast<const char*>(&to_skip), sizeof(t_int));
+		}
+
+		// fill in any saved, unset end-of-loop jump addresses (breaks)
+		while(true)
+		{
+			auto iter = m_loop_end_comefroms.find(ostrLabel.str());
+			if(iter == m_loop_end_comefroms.end())
+				break;
+
+			std::streampos pos = iter->second;
+			m_loop_end_comefroms.erase(iter);
+
+			t_int to_skip = after_block - pos;
+			// already skipped over address and jmp instruction
+			to_skip -= sizeof(t_int);
+			to_skip = encode_addr<t_int>(to_skip, ADDR_FLAG_IP);
+			m_ostr->seekp(pos);
+			m_ostr->write(reinterpret_cast<const char*>(&to_skip), sizeof(t_int));
+		}
+
+		// go to end of stream
+		m_ostr->seekp(after_block);
 	}
-
-	// fill in any saved, unset end-of-loop jump addresses (breaks)
-	while(true)
-	{
-		auto iter = m_loop_end_comefroms.find(ostrLabel.str());
-		if(iter == m_loop_end_comefroms.end())
-			break;
-
-		std::streampos pos = iter->second;
-		m_loop_end_comefroms.erase(iter);
-
-		t_int to_skip = after_block - pos;
-		// already skipped over address and jmp instruction
-		to_skip -= sizeof(t_int);
-		to_skip = encode_addr<t_int>(to_skip, ADDR_FLAG_IP);
-		m_ostr->seekp(pos);
-		m_ostr->write(reinterpret_cast<const char*>(&to_skip), sizeof(t_int));
-	}
-
-	// go to end of stream
-	m_ostr->seekp(after_block);
 
 	m_cur_loop.pop_back();
 }
 
 
-void ASTAsm::visit(ASTFunc* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTFunc* ast, [[maybe_unused]] std::size_t level, bool gen_code)
 {
 	if(m_cur_func != "")
 		throw_err(ast, "Nested functions are not allowed.");
@@ -418,12 +458,15 @@ void ASTAsm::visit(ASTFunc* ast, [[maybe_unused]] std::size_t level)
 	std::streampos jmp_end_streampos;
 	t_int end_func_addr = 0;
 
-	// jump to the end of the function to prevent accidental execution
-	m_ostr->put(static_cast<t_byte>(OpCode::PUSH)); // push jump address
-	jmp_end_streampos = m_ostr->tellp();
-	end_func_addr = encode_addr<t_int>(end_func_addr, ADDR_FLAG_IP);
-	m_ostr->write(reinterpret_cast<const char*>(&end_func_addr), sizeof(t_int));
-	m_ostr->put(static_cast<t_byte>(OpCode::JMP));
+	if(gen_code)
+	{
+		// jump to the end of the function to prevent accidental execution
+		m_ostr->put(static_cast<t_byte>(OpCode::PUSH)); // push jump address
+		jmp_end_streampos = m_ostr->tellp();
+		end_func_addr = encode_addr<t_int>(end_func_addr, ADDR_FLAG_IP);
+		m_ostr->write(reinterpret_cast<const char*>(&end_func_addr), sizeof(t_int));
+		m_ostr->put(static_cast<t_byte>(OpCode::JMP));
+	}
 
 
 	// function arguments
@@ -447,35 +490,38 @@ void ASTAsm::visit(ASTFunc* ast, [[maybe_unused]] std::size_t level)
 	// add function to symbol table
 	m_symtab.AddSymbol(func_name, before_block, ADDR_FLAG_MEM, VMType::UNKNOWN, true, num_args);
 
-	ast->GetBlock()->accept(this, level+1); // block
+	ast->GetBlock()->accept(this, level+1, gen_code); // block
 
 
-	std::streampos ret_streampos = m_ostr->tellp();
-
-	// push number of arguments and return
-	m_ostr->put(static_cast<t_byte>(OpCode::PUSH));
-	m_ostr->write(reinterpret_cast<const char*>(&num_args), sizeof(t_int));
-	m_ostr->put(static_cast<t_byte>(OpCode::RET));
-
-	// fill in end-of-function jump address
-	std::streampos end_func_streampos = m_ostr->tellp();
-	end_func_addr = end_func_streampos - before_block;
-	end_func_addr = encode_addr<t_int>(end_func_addr, ADDR_FLAG_IP);
-	m_ostr->seekp(jmp_end_streampos);
-	m_ostr->write(reinterpret_cast<const char*>(&end_func_addr), sizeof(t_int));
-
-	// fill in any saved, unset end-of-function jump addresses
-	for(std::streampos pos : m_endfunc_comefroms)
+	if(gen_code)
 	{
-		t_int to_skip = ret_streampos - pos;
-		// already skipped over address and jmp instruction
-		to_skip -= sizeof(t_int) + 1;
-		to_skip = encode_addr<t_int>(to_skip, ADDR_FLAG_IP);
-		m_ostr->seekp(pos);
-		m_ostr->write(reinterpret_cast<const char*>(&to_skip), sizeof(t_int));
+		std::streampos ret_streampos = m_ostr->tellp();
+
+		// push number of arguments and return
+		m_ostr->put(static_cast<t_byte>(OpCode::PUSH));
+		m_ostr->write(reinterpret_cast<const char*>(&num_args), sizeof(t_int));
+		m_ostr->put(static_cast<t_byte>(OpCode::RET));
+
+		// fill in end-of-function jump address
+		std::streampos end_func_streampos = m_ostr->tellp();
+		end_func_addr = end_func_streampos - before_block;
+		end_func_addr = encode_addr<t_int>(end_func_addr, ADDR_FLAG_IP);
+		m_ostr->seekp(jmp_end_streampos);
+		m_ostr->write(reinterpret_cast<const char*>(&end_func_addr), sizeof(t_int));
+
+		// fill in any saved, unset end-of-function jump addresses
+		for(std::streampos pos : m_endfunc_comefroms)
+		{
+			t_int to_skip = ret_streampos - pos;
+			// already skipped over address and jmp instruction
+			to_skip -= sizeof(t_int) + 1;
+			to_skip = encode_addr<t_int>(to_skip, ADDR_FLAG_IP);
+			m_ostr->seekp(pos);
+			m_ostr->write(reinterpret_cast<const char*>(&to_skip), sizeof(t_int));
+		}
+		m_endfunc_comefroms.clear();
+		m_ostr->seekp(end_func_streampos);
 	}
-	m_endfunc_comefroms.clear();
-	m_ostr->seekp(end_func_streampos);
 
 	m_cur_func = "";
 	m_cur_rettype = VMType::UNKNOWN;
@@ -483,14 +529,14 @@ void ASTAsm::visit(ASTFunc* ast, [[maybe_unused]] std::size_t level)
 }
 
 
-void ASTAsm::visit(ASTFuncCall* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTFuncCall* ast, [[maybe_unused]] std::size_t level, bool gen_code)
 {
 	const std::string& func_name = ast->GetName();
 	t_int num_args = static_cast<t_int>(ast->NumArgs());
 
 	// push the function arguments
 	if(ast->GetArgs())
-		ast->GetArgs()->accept(this, level+1);
+		ast->GetArgs()->accept(this, level+1, gen_code);
 
 	// call internal function
 	// get function address and push it
@@ -511,28 +557,31 @@ void ASTAsm::visit(ASTFuncCall* ast, [[maybe_unused]] std::size_t level)
 		}
 	}
 
-	// push relative function address
-	m_ostr->put(static_cast<t_byte>(OpCode::PUSH));
-
-	// already skipped over address and jmp instruction
-	std::streampos addr_pos = m_ostr->tellp();
-	t_int to_skip = static_cast<t_int>(func_addr - addr_pos);
-	to_skip -= sizeof(t_int) + 1;
-	to_skip = encode_addr<t_int>(to_skip, ADDR_FLAG_IP);
-	m_ostr->write(reinterpret_cast<const char*>(&to_skip), sizeof(t_int));
-
-	m_ostr->put(static_cast<t_byte>(OpCode::CALL));
-
-	if(!sym)
+	if(gen_code)
 	{
-		// function address not yet known
-		m_func_comefroms.emplace_back(
-			std::make_tuple(func_name, addr_pos, num_args, ast));
+		// push relative function address
+		m_ostr->put(static_cast<t_byte>(OpCode::PUSH));
+
+		// already skipped over address and jmp instruction
+		std::streampos addr_pos = m_ostr->tellp();
+		t_int to_skip = static_cast<t_int>(func_addr - addr_pos);
+		to_skip -= sizeof(t_int) + 1;
+		to_skip = encode_addr<t_int>(to_skip, ADDR_FLAG_IP);
+		m_ostr->write(reinterpret_cast<const char*>(&to_skip), sizeof(t_int));
+
+		m_ostr->put(static_cast<t_byte>(OpCode::CALL));
+
+		if(!sym)
+		{
+			// function address not yet known
+			m_func_comefroms.emplace_back(
+				std::make_tuple(func_name, addr_pos, num_args, ast));
+		}
 	}
 }
 
 
-void ASTAsm::visit(ASTJump* ast, [[maybe_unused]] std::size_t level)
+void ASTAsm::visit(ASTJump* ast, [[maybe_unused]] std::size_t level, bool gen_code)
 {
 	if(ast->GetJumpType() == ASTJump::JumpType::RETURN)
 	{
@@ -540,7 +589,7 @@ void ASTAsm::visit(ASTJump* ast, [[maybe_unused]] std::size_t level)
 
 		if(ast->GetExpr())
 		{
-			ast->GetExpr()->accept(this, level+1);
+			ast->GetExpr()->accept(this, level+1, gen_code);
 			expr_type = ast->GetExpr()->GetDataType();
 		}
 
@@ -551,22 +600,25 @@ void ASTAsm::visit(ASTJump* ast, [[maybe_unused]] std::size_t level)
 		//	<< ", actual data type: " << get_vm_type_name(expr_type)
 		//	<< std::endl;
 
-		if(ast->GetExpr())
+		if(gen_code)
 		{
-			// cast if data types are different
-			if(m_cur_rettype == VMType::INT && expr_type == VMType::REAL)
-				m_ostr->put(static_cast<t_byte>(OpCode::FTOI));
-			else if(m_cur_rettype == VMType::REAL && expr_type == VMType::INT)
-				m_ostr->put(static_cast<t_byte>(OpCode::ITOF));
-		}
+			if(ast->GetExpr())
+			{
+				// cast if data types are different
+				if(m_cur_rettype == VMType::INT && expr_type == VMType::REAL)
+					m_ostr->put(static_cast<t_byte>(OpCode::FTOI));
+				else if(m_cur_rettype == VMType::REAL && expr_type == VMType::INT)
+					m_ostr->put(static_cast<t_byte>(OpCode::ITOF));
+			}
 
-		// jump to the end of the function
-		m_ostr->put(static_cast<t_byte>(OpCode::PUSH)); // push jump address
-		m_endfunc_comefroms.push_back(m_ostr->tellp());
-		t_int dummy_addr = 0;
-		dummy_addr = encode_addr<t_int>(dummy_addr, ADDR_FLAG_IP);
-		m_ostr->write(reinterpret_cast<const char*>(&dummy_addr), sizeof(t_int));
-		m_ostr->put(static_cast<t_byte>(OpCode::JMP));
+			// jump to the end of the function
+			m_ostr->put(static_cast<t_byte>(OpCode::PUSH)); // push jump address
+			m_endfunc_comefroms.push_back(m_ostr->tellp());
+			t_int dummy_addr = 0;
+			dummy_addr = encode_addr<t_int>(dummy_addr, ADDR_FLAG_IP);
+			m_ostr->write(reinterpret_cast<const char*>(&dummy_addr), sizeof(t_int));
+			m_ostr->put(static_cast<t_byte>(OpCode::JMP));
+		}
 	}
 	else if(ast->GetJumpType() == ASTJump::JumpType::BREAK
 		|| ast->GetJumpType() == ASTJump::JumpType::CONTINUE)
@@ -591,25 +643,29 @@ void ASTAsm::visit(ASTJump* ast, [[maybe_unused]] std::size_t level)
 		if(static_cast<std::size_t>(loop_depth) >= m_cur_loop.size() || loop_depth < 0)
 			loop_depth = static_cast<t_int>(m_cur_loop.size()-1);
 
-		const std::string& cur_loop = *(m_cur_loop.rbegin() + loop_depth);
+		if(gen_code)
+		{
+			const std::string& cur_loop = *(m_cur_loop.rbegin() + loop_depth);
 
-		// jump to the beginning (continue) or end (break) of the loop
-		m_ostr->put(static_cast<t_byte>(OpCode::PUSH)); // push jump address
-		if(ast->GetJumpType() == ASTJump::JumpType::BREAK)
-			m_loop_end_comefroms.insert(std::make_pair(cur_loop, m_ostr->tellp()));
-		else if(ast->GetJumpType() == ASTJump::JumpType::CONTINUE)
-			m_loop_begin_comefroms.insert(std::make_pair(cur_loop, m_ostr->tellp()));
-		t_int dummy_addr = 0;
-		dummy_addr = encode_addr<t_int>(dummy_addr, ADDR_FLAG_IP);
-		m_ostr->write(reinterpret_cast<const char*>(&dummy_addr), sizeof(t_int));
-		m_ostr->put(static_cast<t_byte>(OpCode::JMP));
+			// jump to the beginning (continue) or end (break) of the loop
+			m_ostr->put(static_cast<t_byte>(OpCode::PUSH)); // push jump address
+			if(ast->GetJumpType() == ASTJump::JumpType::BREAK)
+				m_loop_end_comefroms.insert(std::make_pair(cur_loop, m_ostr->tellp()));
+			else if(ast->GetJumpType() == ASTJump::JumpType::CONTINUE)
+				m_loop_begin_comefroms.insert(std::make_pair(cur_loop, m_ostr->tellp()));
+			t_int dummy_addr = 0;
+			dummy_addr = encode_addr<t_int>(dummy_addr, ADDR_FLAG_IP);
+			m_ostr->write(reinterpret_cast<const char*>(&dummy_addr), sizeof(t_int));
+			m_ostr->put(static_cast<t_byte>(OpCode::JMP));
+		}
 	}
 }
 
 
 void ASTAsm::visit(
 	[[maybe_unused]] ASTTypedIdent* ast,
-	[[maybe_unused]] std::size_t level)
+	[[maybe_unused]] std::size_t level,
+	[[maybe_unused]] bool gen_code)
 {
 	// should not be present in final ast
 	std::cerr << "Error: " << __func__ << " not implemented." << std::endl;

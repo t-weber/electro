@@ -156,14 +156,22 @@ bool VM::Run()
 			case OpCode::FTOI: // converts t_real value to t_int
 			{
 				t_real data = PopRaw<t_real>();
-				PushRaw<t_int>(t_int(data));
+				t_int conv = t_int(data);
+				if(m_debug)
+					std::cout << "converted " << data << " to " << conv << "." << std::endl;
+
+				PushRaw<t_int>(conv);
 				break;
 			}
 
 			case OpCode::ITOF: // converts t_int value to t_real
 			{
 				t_int data = PopRaw<t_int>();
-				PushRaw<t_real>(t_real(data));
+				t_real conv = t_real(data);
+				if(m_debug)
+					std::cout << "converted " << data << " to " << conv << "." << std::endl;
+
+				PushRaw<t_real>(conv);
 				break;
 			}
 
@@ -196,6 +204,17 @@ bool VM::Run()
 				break;
 			}
 
+			case OpCode::WRMEM_R:
+			{
+				// variable address
+				t_int addr = PopAddress();
+
+				// pop data and write it to memory
+				t_real val = PopRaw<t_real>();
+				WriteMemRaw<t_real>(addr, val);
+				break;
+			}
+
 			case OpCode::RDMEM:
 			{
 				// variable address
@@ -204,6 +223,17 @@ bool VM::Run()
 				// read and push data from memory
 				t_int val = ReadMemRaw<t_int>(addr);
 				PushRaw<t_int>(val);
+				break;
+			}
+
+			case OpCode::RDMEM_R:
+			{
+				// variable address
+				t_int addr = PopAddress();
+
+				// read and push data from memory
+				t_real val = ReadMemRaw<t_real>(addr);
+				PushRaw<t_real>(val);
 				break;
 			}
 

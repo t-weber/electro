@@ -72,8 +72,22 @@ void ASTBase::DeriveDataType()
 			{
 				VMType ty1 = child1->GetDataType();
 				VMType ty2 = child2->GetDataType();
+				bool type_set = false;
 
-				SetDataType(derive_data_type(ty1, ty2));
+				if(GetType() == ASTType::BINARY)
+				{
+					ASTBinary* bin = dynamic_cast<ASTBinary*>(this);
+
+					// use lhs variable type on assignments
+					if(bin->GetOpId() == '=')
+					{
+						SetDataType(ty2);
+						type_set = true;
+					}
+				}
+
+				if(!type_set)
+					SetDataType(derive_data_type(ty1, ty2));
 			}
 		}
 	}
