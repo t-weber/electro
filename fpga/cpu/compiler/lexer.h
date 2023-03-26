@@ -30,38 +30,53 @@ using t_lexer_match = std::tuple<t_symbol_id, t_lval, std::size_t>;
 
 enum class Token : t_symbol_id
 {
+	// constants
 	REAL        = 1000,
 	INT         = 1001,
 	STR         = 1002,
-	IDENT       = 1003,
 
+	// variable identifiers
+	IDENT       = 1100,
+
+	// variable declarators
+	INT_DECL    = 1200,
+	REAL_DECL   = 1201,
+
+	// comparison operators
 	EQU         = 2000,
 	NEQU        = 2001,
 	GEQU        = 2002,
 	LEQU        = 2003,
 
 	// logical operators
-	AND         = 3000,
-	OR          = 3001,
+	AND         = 2100,
+	OR          = 2101,
 
 	// binary operators
-	BIN_XOR     = 3100,
-	SHIFT_LEFT  = 3101,
-	SHIFT_RIGHT = 3102,
+	BIN_XOR     = 2200,
+	SHIFT_LEFT  = 2201,
+	SHIFT_RIGHT = 2202,
 
-	IF          = 4000,
-	ELSE        = 4001,
+	// address operators
+	ADDROF      = 2300,
+	DEREF       = 2301,
 
-	LOOP        = 5000,
-	BREAK       = 5001,
-	CONTINUE    = 5002,
+	ASSIGN      = 2400,
 
-	FUNC        = 6000,
-	RETURN      = 6001,
+	// conditionals
+	IF          = 3000,
+	ELSE        = 3001,
 
-	INT_DECL    = 7000,
-	REAL_DECL   = 7001,
+	// loops
+	LOOP        = 3100,
+	BREAK       = 3101,
+	CONTINUE    = 3102,
 
+	// functions
+	FUNC        = 4000,
+	RETURN      = 4001,
+
+	// EOF
 	END         = END_IDENT,
 };
 

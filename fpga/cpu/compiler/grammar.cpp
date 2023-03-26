@@ -9,12 +9,14 @@
 #include "lexer.h"
 #include "ast.h"
 
+
 using t_lalrastbaseptr = lalr1::t_astbaseptr;
 using lalr1::Terminal;
 using lalr1::NonTerminal;
 using lalr1::t_semanticargs;
 using lalr1::t_semantic_id;
 using lalr1::g_eps;
+
 
 // TODO: determine and assign symbol data types
 
@@ -72,18 +74,26 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 
 	keyword_if = std::make_shared<Terminal>(static_cast<std::size_t>(Token::IF), "if");
 	keyword_else = std::make_shared<Terminal>(static_cast<std::size_t>(Token::ELSE), "else");
+
 	keyword_loop = std::make_shared<Terminal>(static_cast<std::size_t>(Token::LOOP), "loop");
-	keyword_func = std::make_shared<Terminal>(static_cast<std::size_t>(Token::FUNC), "func");
-	keyword_return = std::make_shared<Terminal>(static_cast<std::size_t>(Token::RETURN), "return");
 	keyword_continue = std::make_shared<Terminal>(static_cast<std::size_t>(Token::CONTINUE), "continue");
 	keyword_break = std::make_shared<Terminal>(static_cast<std::size_t>(Token::BREAK), "break");
+
+	keyword_func = std::make_shared<Terminal>(static_cast<std::size_t>(Token::FUNC), "func");
+	keyword_return = std::make_shared<Terminal>(static_cast<std::size_t>(Token::RETURN), "return");
+
 	keyword_int = std::make_shared<Terminal>(static_cast<std::size_t>(Token::INT_DECL), "int");
 	keyword_real = std::make_shared<Terminal>(static_cast<std::size_t>(Token::REAL_DECL), "real");
+	keyword_assign = std::make_shared<Terminal>(static_cast<std::size_t>(Token::ASSIGN), "assign");
+
+	op_addrof = std::make_shared<Terminal>(static_cast<std::size_t>(Token::ADDROF), "addrof");
+	op_deref = std::make_shared<Terminal>(static_cast<std::size_t>(Token::DEREF), "deref");
 
 
 	// operator precedences and associativities
 	// see: https://en.cppreference.com/w/c/language/operator_precedence
 	op_assign->SetPrecedence(10, 'r');
+	keyword_assign->SetPrecedence(10, 'r');
 
 	op_or->SetPrecedence(20, 'l');
 	op_and->SetPrecedence(21, 'l');
@@ -111,10 +121,12 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	op_mod->SetPrecedence(80, 'l');
 
 	op_not->SetPrecedence(90, 'l');
-
 	op_binnot->SetPrecedence(100, 'l');
 
 	op_pow->SetPrecedence(110, 'r');
+
+	op_addrof->SetPrecedence(120, 'l');
+	op_deref->SetPrecedence(120, 'l');
 
 
 	// rule id number
@@ -1265,6 +1277,74 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 			t_astbaseptr arg2 = std::dynamic_pointer_cast<ASTBase>(args[2]);
 			return std::make_shared<ASTBinary>(
 				expr->GetId(), 0, arg1, arg2, op_shift_right->GetId());
+		}));
+	}
+	++semanticindex;
+
+
+	// TODO: use op_assign instead of keyword_assign
+	// rule: dereferencing on lhs: expr -> deref expr assign expr
+	if(add_rules)
+	{
+		expr->AddRule({ /*op_deref,*/ expr, keyword_assign, expr }, semanticindex);
+	}
+	if(add_semantics)
+	{
+		rules.emplace(std::make_pair(semanticindex,
+		[this](bool full_match, const t_semanticargs& args, [[maybe_unused]] t_lalrastbaseptr retval) -> t_lalrastbaseptr
+		{
+			if(!full_match) return nullptr;
+
+			t_astbaseptr argaddr = std::dynamic_pointer_cast<ASTBase>(args[0]);
+			t_astbaseptr rhsexpr = std::dynamic_pointer_cast<ASTBase>(args[2]);
+			return std::make_shared<ASTDeref>(expr->GetId(), 0, argaddr, rhsexpr);
+		}));
+	}
+	++semanticindex;
+
+
+	// rule: dereferencing on rhs: expr -> deref expr
+	if(add_rules)
+	{
+		expr->AddRule({ op_deref, expr }, semanticindex);
+	}
+	if(add_semantics)
+	{
+		rules.emplace(std::make_pair(semanticindex,
+		[this](bool full_match, const t_semanticargs& args, [[maybe_unused]] t_lalrastbaseptr retval) -> t_lalrastbaseptr
+		{
+			if(!full_match) return nullptr;
+
+			t_astbaseptr arg = std::dynamic_pointer_cast<ASTBase>(args[1]);
+			return std::make_shared<ASTDeref>(expr->GetId(), 0, arg);
+		}));
+	}
+	++semanticindex;
+
+
+	// rule: address of variable: expr -> addrof ident
+	if(add_rules)
+	{
+		expr->AddRule({ op_addrof, ident }, semanticindex);
+	}
+	if(add_semantics)
+	{
+		rules.emplace(std::make_pair(semanticindex,
+		[this](bool full_match, const t_semanticargs& args, [[maybe_unused]] t_lalrastbaseptr retval) -> t_lalrastbaseptr
+		{
+			if(!full_match) return nullptr;
+			t_astbaseptr rhsident = std::dynamic_pointer_cast<ASTBase>(args[1]);
+
+			if(rhsident->GetType() != ASTType::TOKEN)
+				throw std::runtime_error("Expected a variable or function name.");
+
+			auto identname = std::dynamic_pointer_cast<ASTToken<std::string>>(rhsident);
+			identname->SetIdent(true);
+
+			const std::string& name = identname->GetLexerValue();
+			auto addrofnode = std::make_shared<ASTAddrOf>(expr->GetId(), 0, name);
+			addrofnode->SetLineRange(identname->GetLineRange());
+			return addrofnode;
 		}));
 	}
 	++semanticindex;

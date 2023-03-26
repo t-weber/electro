@@ -32,6 +32,8 @@ std::string ASTPrinter::get_ast_typename(const ::ASTBase* ast)
 			return ty + "/" + subty;
 		}
 		case ASTType::TYPED_IDENT: return "typed_ident";
+		case ASTType::ADDROF: return "address_of";
+		case ASTType::DEREF: return "dereference";
 	}
 
 	return "<unknown>";
@@ -203,6 +205,20 @@ void ASTPrinter::visit(const ASTJump* ast, std::size_t level)
 
 
 void ASTPrinter::visit(const ASTTypedIdent* ast, std::size_t level)
+{
+	print_base(ast, level);
+}
+
+
+void ASTPrinter::visit(const ASTAddrOf* ast, std::size_t level)
+{
+	std::ostringstream _ostr;
+	_ostr << ", name = \"" << ast->GetName() << "\"";
+	print_base(ast, level, _ostr.str().c_str());
+}
+
+
+void ASTPrinter::visit(const ASTDeref* ast, std::size_t level)
 {
 	print_base(ast, level);
 }

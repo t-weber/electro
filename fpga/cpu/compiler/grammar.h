@@ -11,6 +11,7 @@
 #include "lalr1/symbol.h"
 #include "lalr1/ast.h"
 
+
 using lalr1::NonTerminalPtr;
 using lalr1::TerminalPtr;
 using lalr1::t_semanticrules;
@@ -69,17 +70,22 @@ private:
 		op_lt{}, op_gt{}, op_gequ{}, op_lequ{};
 	TerminalPtr op_shift_left{}, op_shift_right{};
 	TerminalPtr op_binand{}, op_binor{}, op_binxor{}, op_binnot{};
+	TerminalPtr op_addrof{}, op_deref{};
+
 	TerminalPtr bracket_open{}, bracket_close{};
 	TerminalPtr block_begin{}, block_end{};
+	TerminalPtr comma{}, colon{}, stmt_end{};
+	TerminalPtr sym_real{}, sym_int{}, sym_str{}, ident{};
+
 	TerminalPtr keyword_if{}, keyword_else{}, keyword_loop{},
 		keyword_break{}, keyword_continue{};
 	TerminalPtr keyword_func{}, keyword_extern{}, keyword_return{};
 	TerminalPtr keyword_int{}, keyword_real{};
-	TerminalPtr comma{}, colon{}, stmt_end{};
-	TerminalPtr sym_real{}, sym_int{}, sym_str{}, ident{};
+	TerminalPtr keyword_assign{};
 
 	// semantic rules
 	t_semanticrules rules{};
 };
+
 
 #endif

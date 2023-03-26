@@ -34,6 +34,8 @@ public:
 	virtual void visit(const ASTFuncCall* ast, std::size_t level) override;
 	virtual void visit(const ASTJump* ast, std::size_t level) override;
 	virtual void visit(const ASTTypedIdent* ast, std::size_t level) override;
+	virtual void visit(const ASTAddrOf* ast, std::size_t level) override;
+	virtual void visit(const ASTDeref* ast, std::size_t level) override;
 
 	static std::string get_ast_typename(const ::ASTBase* ast);
 	static std::string get_jump_typename(const ASTJump* ast);

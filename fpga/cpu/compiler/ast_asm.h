@@ -43,6 +43,8 @@ public:
 	virtual void visit(ASTFuncCall* ast, std::size_t level, bool gen_code) override;
 	virtual void visit(ASTJump* ast, std::size_t level, bool gen_code) override;
 	virtual void visit(ASTTypedIdent* ast, std::size_t level, bool gen_code) override;
+	virtual void visit(ASTAddrOf* ast, std::size_t level, bool gen_code) override;
+	virtual void visit(ASTDeref* ast, std::size_t level, bool gen_code) override;
 
 	void SetStream(std::ostream* ostr) { m_ostr = ostr; }
 

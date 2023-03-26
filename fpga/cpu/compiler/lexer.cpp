@@ -17,18 +17,10 @@
 using namespace lalr1;
 
 
-template<template<std::size_t, class...> class t_func, class t_params, std::size_t ...seq>
-constexpr void constexpr_loop(const std::index_sequence<seq...>&, const t_params& params)
-{
-	( (std::apply(t_func<seq>{}, params)), ... );
-}
-
-
 
 Lexer::Lexer(std::istream* istr) : m_istr{istr}
 {
 }
-
 
 
 /**
@@ -139,6 +131,21 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 			matches.emplace_back(std::make_tuple(
 				static_cast<t_symbol_id>(Token::REAL_DECL), str, line));
 		}
+		else if(str == "addrof")
+		{
+			matches.emplace_back(std::make_tuple(
+				static_cast<t_symbol_id>(Token::ADDROF), str, line));
+		}
+		else if(str == "deref")
+		{
+			matches.emplace_back(std::make_tuple(
+				static_cast<t_symbol_id>(Token::DEREF), str, line));
+		}
+		else if(str == "assign")
+		{
+			matches.emplace_back(std::make_tuple(
+				static_cast<t_symbol_id>(Token::ASSIGN), str, line));
+		}
 		else
 		{
 			// identifier
@@ -214,7 +221,6 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 }
 
 
-
 /**
  * replace escape sequences
  */
@@ -224,7 +230,6 @@ static void replace_escapes(std::string& str)
 	boost::replace_all(str, "\\t", "\t");
 	boost::replace_all(str, "\\r", "\r");
 }
-
 
 
 /**
@@ -348,8 +353,20 @@ t_lexer_match Lexer::GetNextToken(std::size_t* _line)
 }
 
 
+/**
+ * apply a sequence of functions
+ */
+template<template<std::size_t, class...> class t_func, class t_params, std::size_t ...seq>
+constexpr void apply_seq(const std::index_sequence<seq...>&, const t_params& params)
+{
+	( (std::apply(t_func<seq>{}, params)), ... );
+}
 
-template<std::size_t IDX> struct _Lval_LoopFunc
+
+/**
+ * function for sequential applying
+ */
+template<std::size_t IDX> struct _Lval_SeqFunc
 {
 	void operator()(
 		std::vector<t_toknode>* vec, t_symbol_id id, t_index tableidx,
@@ -364,7 +381,6 @@ template<std::size_t IDX> struct _Lval_LoopFunc
 		}
 	};
 };
-
 
 
 /**
@@ -398,7 +414,7 @@ std::vector<t_toknode> Lexer::GetAllTokens()
 			auto seq = std::make_index_sequence<
 				std::variant_size_v<typename t_lval::value_type>>();
 
-			constexpr_loop<_Lval_LoopFunc>(seq, std::make_tuple(&vec, id, tableidx, lval, line));
+			apply_seq<_Lval_SeqFunc>(seq, std::make_tuple(&vec, id, tableidx, lval, line));
 		}
 		else
 		{

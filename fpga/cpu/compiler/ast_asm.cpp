@@ -197,7 +197,9 @@ void ASTAsm::visit(ASTUnary* ast, [[maybe_unused]] std::size_t level, bool gen_c
 		OpCode op = std::get<OpCode>(m_ops->at(opid));
 
 		if(op == OpCode::ADD || op == OpCode::ADD_R)
+		{
 			op = OpCode::NOP;
+		}
 		else if(op == OpCode::SUB)
 		{
 			if(ty == VMType::INT)
@@ -208,7 +210,9 @@ void ASTAsm::visit(ASTUnary* ast, [[maybe_unused]] std::size_t level, bool gen_c
 				throw_err(ast, "Invalid data type in unary expression.");
 		}
 		else
+		{
 			throw_err(ast, "Invalid unary expression.");
+		}
 
 		m_ostr->put(static_cast<t_byte>(op));
 	}
@@ -669,6 +673,73 @@ void ASTAsm::visit(
 {
 	// should not be present in final ast
 	std::cerr << "Error: " << __func__ << " not implemented." << std::endl;
+}
+
+
+/**
+ * get the address of a variable or function
+ */
+void ASTAsm::visit(ASTAddrOf* ast, [[maybe_unused]] std::size_t level, bool gen_code)
+{
+	t_str varname = ast->GetName();
+	if(m_cur_func != "")
+		varname = m_cur_func + "/" + varname;
+
+	// get variable address and push it
+	const SymInfo *sym = m_symtab.GetSymbol(varname);
+	if(!sym)
+	{
+		throw_err(ast,
+			"Tried to get address of unknown variable \""
+			+ varname + "\".");
+	}
+
+	// push relative address
+	if(gen_code)
+	{
+		m_ostr->put(static_cast<t_byte>(OpCode::PUSH));
+		t_int addr = encode_addr<t_int>(sym->addr, sym->loc);
+		m_ostr->write(reinterpret_cast<const char*>(&addr), sizeof(t_int));
+	}
+}
+
+
+/**
+ * dereference an address
+ */
+void ASTAsm::visit(ASTDeref* ast, [[maybe_unused]] std::size_t level, bool gen_code)
+{
+	// run the rhs expression if it exists
+	if(ast->NumChildren() == 2)
+		ast->GetChild(1)->accept(this, level+1, gen_code);
+
+	// run the address expression
+	ast->GetChild(0)->accept(this, level+1, gen_code);
+
+	//if(ast->GetDataType() == VMType::UNKNOWN)
+	//	ast->DeriveDataType();
+
+	if(gen_code)
+	{
+		if(!ast->IsLValue())
+		{
+			// dereference the address, if it is on the rhs of an assignment
+			m_ostr->put(static_cast<t_byte>(OpCode::RDMEM));
+
+			// TODO: real type
+			//m_ostr->put(static_cast<t_byte>(OpCode::RDMEM_R));
+
+			// TODO: functions
+		}
+		else
+		{
+			// write to the address, if it is on the lhs of an assignment
+			m_ostr->put(static_cast<t_byte>(OpCode::WRMEM));
+
+			// TODO: real type
+			//m_ostr->put(static_cast<t_byte>(OpCode::WRMEM_R));
+		}
+	}
 }
 
 

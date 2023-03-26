@@ -27,15 +27,23 @@ class ASTBase;
 using t_astbaseptr = std::shared_ptr<ASTBase>;
 
 template<class t_lval> class ASTToken;
+
 class ASTUnary;
 class ASTBinary;
+
 class ASTList;
+
 class ASTCondition;
 class ASTLoop;
+
 class ASTFunc;
 class ASTFuncCall;
 class ASTJump;
+
 class ASTTypedIdent;
+
+class ASTAddrOf;
+class ASTDeref;
 
 
 enum class ASTType
@@ -55,6 +63,9 @@ enum class ASTType
 	FUNCCALL,
 
 	TYPED_IDENT,
+
+	ADDROF,
+	DEREF,
 };
 
 
@@ -80,6 +91,8 @@ public:
 	virtual void visit(const ASTFuncCall* ast, std::size_t level) = 0;
 	virtual void visit(const ASTJump* ast, std::size_t level) = 0;
 	virtual void visit(const ASTTypedIdent* ast, std::size_t level) = 0;
+	virtual void visit(const ASTAddrOf* ast, std::size_t level) = 0;
+	virtual void visit(const ASTDeref* ast, std::size_t level) = 0;
 };
 
 
@@ -105,6 +118,8 @@ public:
 	virtual void visit(ASTFuncCall* ast, std::size_t level, bool gen_code) = 0;
 	virtual void visit(ASTJump* ast, std::size_t level, bool gen_code) = 0;
 	virtual void visit(ASTTypedIdent* ast, std::size_t level, bool gen_code) = 0;
+	virtual void visit(ASTAddrOf* ast, std::size_t level, bool gen_code) = 0;
+	virtual void visit(ASTDeref* ast, std::size_t level, bool gen_code) = 0;
 };
 
 
@@ -259,8 +274,8 @@ private:
 class ASTUnary : public ASTBaseAcceptor<ASTUnary>
 {
 public:
-	ASTUnary(std::size_t id, std::size_t tableidx, const t_astbaseptr& arg1, std::size_t opid)
-		: ASTBaseAcceptor<ASTUnary>{id, tableidx}, m_arg1{arg1}, m_opid{opid}
+	ASTUnary(std::size_t id, std::size_t tableidx, const t_astbaseptr& arg, std::size_t opid)
+		: ASTBaseAcceptor<ASTUnary>{id, tableidx}, m_arg{arg}, m_opid{opid}
 	{}
 
 	virtual ~ASTUnary() = default;
@@ -271,18 +286,18 @@ public:
 	virtual std::size_t NumChildren() const override { return 1; }
 	virtual t_astbaseptr GetChild(std::size_t i) const override
 	{
-		return i==0 ? m_arg1 : nullptr;
+		return i==0 ? m_arg : nullptr;
 	}
 
 	virtual void SetChild(std::size_t i, const t_astbaseptr& ast) override
 	{
 		if(i==0)
-			m_arg1 = ast;
+			m_arg = ast;
 	}
 
 
 private:
-	t_astbaseptr m_arg1{};
+	t_astbaseptr m_arg{};
 	std::size_t m_opid{};
 };
 
@@ -742,6 +757,89 @@ public:
 
 private:
 	t_astbaseptr m_ident{};
+};
+
+
+
+/**
+ * node for variable/function address
+ */
+class ASTAddrOf : public ASTBaseAcceptor<ASTAddrOf>
+{
+public:
+	ASTAddrOf(std::size_t id, std::size_t tableidx,
+		const std::string& name)
+		: ASTBaseAcceptor<ASTAddrOf>{id, tableidx},
+			m_name{name}
+	{}
+
+	virtual ~ASTAddrOf() = default;
+
+	virtual ASTType GetType() const override { return ASTType::ADDROF; }
+	virtual VMType GetDataType() const override { return VMType::INT; }
+
+	const std::string& GetName() const { return m_name; }
+	void SetName(const std::string& name) { m_name = name; }
+
+
+private:
+	std::string m_name{};  // name of the variable or function
+};
+
+
+
+/**
+ * node for dereferencing addresses
+ */
+class ASTDeref : public ASTBaseAcceptor<ASTDeref>
+{
+public:
+	ASTDeref(std::size_t id, std::size_t tableidx,
+		const t_astbaseptr& arg, const t_astbaseptr& expr = nullptr)
+		: ASTBaseAcceptor<ASTDeref>{id, tableidx},
+			m_arg{arg}, m_expr{expr}
+	{}
+
+	virtual ~ASTDeref() = default;
+
+	virtual ASTType GetType() const override { return ASTType::DEREF; }
+
+	virtual std::size_t NumChildren() const override
+	{
+		if(m_expr)
+			return 2;
+		return 1;
+	}
+
+	virtual t_astbaseptr GetChild(std::size_t i) const override
+	{
+		switch(i)
+		{
+			case 0: return m_arg;
+			case 1: return m_expr;
+		}
+		return nullptr;
+	}
+
+	virtual void SetChild(std::size_t i, const t_astbaseptr& ast) override
+	{
+		switch(i)
+		{
+			case 0: m_arg = ast; break;
+			case 1: m_expr = ast; break;
+		}
+	}
+
+	bool IsLValue() const
+	{
+		// if there's an rhs expression, this is an lvalue
+		return m_expr.operator bool();
+	}
+
+
+private:
+	t_astbaseptr m_arg{};   // address to dereference
+	t_astbaseptr m_expr{};  // rhs in case of assignment
 };
 
 
