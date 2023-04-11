@@ -1,5 +1,5 @@
 /**
- * script compiler example
+ * compiler
  * @author Tobias Weber (orcid: 0000-0002-7230-1932)
  * @date 08-jun-2022
  * @license see 'LICENSE' file
@@ -40,15 +40,15 @@ using namespace lalr1;
 #endif
 
 
-#if __has_include("script_parser.h")
-	#include "script_parser.h"
-	#include "script_parser.cpp"
+#if __has_include("compiler_parser.h")
+	#include "compiler_parser.h"
+	#include "compiler_parser.cpp"
 
 	#define USE_RECASC 1
 
-#elif __has_include("script.tab")
+#elif __has_include("compiler.tab")
 	#include "core/parser.h"
-	#include "script.tab"
+	#include "compiler.tab"
 
 	#define USE_RECASC 0
 
@@ -87,7 +87,7 @@ lalr1_run_parser(const fs::path& script_file, const fs::path& bin_file,
 		const auto& rules = grammar.GetSemanticRules();
 
 #if USE_RECASC != 0
-		ScriptParser parser;
+		Compiler parser;
 #else
 		// get created parsing tables
 		auto [shift_tab, reduce_tab, jump_tab, num_rhs, lhs_idx] = get_lalr1_tables();

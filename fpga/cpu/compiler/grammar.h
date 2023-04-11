@@ -1,5 +1,5 @@
 /**
- * script grammar example
+ * grammar of the compiler
  * @author Tobias Weber (orcid: 0000-0002-7230-1932)
  * @date 08-jun-2022
  * @license see 'LICENSE' file
@@ -15,12 +15,13 @@
 using lalr1::NonTerminalPtr;
 using lalr1::TerminalPtr;
 using lalr1::t_semanticrules;
+using lalr1::t_symbol_id;
 
 
 /**
  * non-terminals identifiers
  */
-enum : std::size_t
+enum : t_symbol_id
 {
 	START,       // start
 
@@ -63,8 +64,10 @@ private:
 		idents{}, typed_ident{};
 
 	// terminals
-	TerminalPtr op_assign{}, op_plus{}, op_minus{},
-		op_mult{}, op_div{}, op_mod{}, op_pow{};
+	TerminalPtr op_assign{}, op_derefassign{};
+	TerminalPtr op_plus{}, op_minus{},
+		op_mult{}, op_div{},
+		op_mod{}, op_pow{};
 	TerminalPtr op_and{}, op_or{}, op_not{},
 		op_equ{}, op_nequ{},
 		op_lt{}, op_gt{}, op_gequ{}, op_lequ{};
@@ -81,7 +84,6 @@ private:
 		keyword_break{}, keyword_continue{};
 	TerminalPtr keyword_func{}, keyword_extern{}, keyword_return{};
 	TerminalPtr keyword_int{}, keyword_real{};
-	TerminalPtr keyword_assign{};
 
 	// semantic rules
 	t_semanticrules rules{};

@@ -91,7 +91,7 @@ target_link_libraries(compilergen
 )
 
 # script compiler
-if(EXISTS "${CMAKE_BINARY_DIR}/script_parser.cpp" OR EXISTS "${CMAKE_BINARY_DIR}/script.tab")
+if(EXISTS "${CMAKE_BINARY_DIR}/compiler_parser.cpp" OR EXISTS "${CMAKE_BINARY_DIR}/compiler.tab")
 	add_executable(compiler
 		compiler/compiler.cpp
 		compiler/grammar.cpp compiler/grammar.h
@@ -101,10 +101,10 @@ if(EXISTS "${CMAKE_BINARY_DIR}/script_parser.cpp" OR EXISTS "${CMAKE_BINARY_DIR}
 		PUBLIC ${LibLalr1_INCLUDE_DIRECTORIES})
 endif()
 
-if(EXISTS "${CMAKE_BINARY_DIR}/script_parser.cpp")
+if(EXISTS "${CMAKE_BINARY_DIR}/compiler_parser.cpp")
 		target_link_libraries(compiler script
 	)
-elseif(EXISTS "${CMAKE_BINARY_DIR}/script.tab")
+elseif(EXISTS "${CMAKE_BINARY_DIR}/compiler.tab")
 	target_link_libraries(compiler script script-vm
 		${LibLalr1Parser_LIBRARIES}
 	)

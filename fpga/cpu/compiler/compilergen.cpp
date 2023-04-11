@@ -1,5 +1,5 @@
 /**
- * script compiler generator example
+ * compiler generator
  * @author Tobias Weber (orcid: 0000-0002-7230-1932)
  * @date 08-jun-2022
  * @license see 'LICENSE' file
@@ -92,18 +92,18 @@ static bool lr1_create_parser(
 		if(verbose)
 			std::cout << "\n\n" << (*collsLALR) << std::endl;
 		if(write_graph)
-			collsLALR->SaveGraph("script_lalr", 1);
+			collsLALR->SaveGraph("compiler_lalr", 1);
 
 		if(create_ascent_parser)
 		{
-			const char* parser_file = "script_parser.cpp";
+			const char* parser_file = "compiler_parser.cpp";
 			ParserGen parsergen(collsLALR);
 			parsergen.SetGenDebugCode(gen_debug_code);
 			parsergen.SetGenErrorCode(gen_error_code);
 			parsergen.SetAcceptingRule(0);
 			parsergen.SetUseStateNames(false);
 
-			parsergen.SaveParser(parser_file, "ScriptParser");
+			parsergen.SaveParser(parser_file, "Compiler");
 
 			std::cout << "Created recursive ascent parser \""
 				<< parser_file << "\"." << std::endl;
@@ -117,7 +117,7 @@ static bool lr1_create_parser(
 
 			if(exporter.CreateParseTables())
 			{
-				const char* lalr_tables = "script.tab";
+				const char* lalr_tables = "compiler.tab";
 				tables_ok = exporter.SaveParseTablesCXX(lalr_tables);
 				std::cout << "Created LALR(1) tables \""
 					<< lalr_tables << "\"." << std::endl;
@@ -156,7 +156,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	bool name_states = false;
 	bool show_help = false;
 
-	args::options_description arg_descr("Script compiler generator arguments");
+	args::options_description arg_descr("Compiler generator arguments");
 	arg_descr.add_options()
 		("asc,a", args::bool_switch(&create_asc), "create a recursive ascent parser [default]")
 		("table,t", args::bool_switch(&create_tables), "create LALR(1) tables")
@@ -180,7 +180,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
 	if(show_help)
 	{
-		std::cout << "Script compiler generator"
+		std::cout << "Compiler generator"
 			<< " by Tobias Weber <tobias.weber@tum.de>, 2022-2023."
 			<< std::endl;
 		std::cout << "Internal data type lengths:"

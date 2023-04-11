@@ -1,5 +1,5 @@
 /**
- * script grammar example
+ * grammar of the compiler
  * @author Tobias Weber (orcid: 0000-0002-7230-1932)
  * @date 08-jun-2022
  * @license see 'LICENSE' file
@@ -34,6 +34,7 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 
 	// terminals
 	op_assign = std::make_shared<Terminal>('=', "=");
+	op_derefassign = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::DEREF_ASSIGN), "<<=");
 	op_plus = std::make_shared<Terminal>('+', "+");
 	op_minus = std::make_shared<Terminal>('-', "-");
 	op_mult = std::make_shared<Terminal>('*', "*");
@@ -41,22 +42,22 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	op_mod = std::make_shared<Terminal>('%', "%");
 	op_pow = std::make_shared<Terminal>('^', "^");
 
-	op_equ = std::make_shared<Terminal>(static_cast<std::size_t>(Token::EQU), "==");
-	op_nequ = std::make_shared<Terminal>(static_cast<std::size_t>(Token::NEQU), "!=");
-	op_gequ = std::make_shared<Terminal>(static_cast<std::size_t>(Token::GEQU), ">=");
-	op_lequ = std::make_shared<Terminal>(static_cast<std::size_t>(Token::LEQU), "<=");
-	op_and = std::make_shared<Terminal>(static_cast<std::size_t>(Token::AND), "&&");
-	op_or = std::make_shared<Terminal>(static_cast<std::size_t>(Token::OR), "||");
+	op_equ = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::EQU), "==");
+	op_nequ = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::NEQU), "!=");
+	op_gequ = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::GEQU), ">=");
+	op_lequ = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::LEQU), "<=");
+	op_and = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::AND), "&&");
+	op_or = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::OR), "||");
 	op_gt = std::make_shared<Terminal>('>', ">");
 	op_lt = std::make_shared<Terminal>('<', "<");
 	op_not = std::make_shared<Terminal>('!', "!");
 	op_binand = std::make_shared<Terminal>('&', "&");
 	op_binor = std::make_shared<Terminal>('|', "|");
 	op_binnot = std::make_shared<Terminal>('~', "~");
-	op_binxor = std::make_shared<Terminal>(static_cast<std::size_t>(Token::BIN_XOR), "xor");
+	op_binxor = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::BIN_XOR), "xor");
 
-	op_shift_left = std::make_shared<Terminal>(static_cast<std::size_t>(Token::SHIFT_LEFT), "<<");
-	op_shift_right = std::make_shared<Terminal>(static_cast<std::size_t>(Token::SHIFT_RIGHT), ">>");
+	op_shift_left = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::SHIFT_LEFT), "<<");
+	op_shift_right = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::SHIFT_RIGHT), ">>");
 
 	bracket_open = std::make_shared<Terminal>('(', "(");
 	bracket_close = std::make_shared<Terminal>(')', ")");
@@ -67,33 +68,32 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	colon = std::make_shared<Terminal>(':', ":");
 	stmt_end = std::make_shared<Terminal>(';', ";");
 
-	sym_real = std::make_shared<Terminal>(static_cast<std::size_t>(Token::REAL), "real");
-	sym_int = std::make_shared<Terminal>(static_cast<std::size_t>(Token::INT), "integer");
-	sym_str = std::make_shared<Terminal>(static_cast<std::size_t>(Token::STR), "string");
-	ident = std::make_shared<Terminal>(static_cast<std::size_t>(Token::IDENT), "ident");
+	sym_real = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::REAL), "real");
+	sym_int = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::INT), "integer");
+	sym_str = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::STR), "string");
+	ident = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::IDENT), "ident");
 
-	keyword_if = std::make_shared<Terminal>(static_cast<std::size_t>(Token::IF), "if");
-	keyword_else = std::make_shared<Terminal>(static_cast<std::size_t>(Token::ELSE), "else");
+	keyword_if = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::IF), "if");
+	keyword_else = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::ELSE), "else");
 
-	keyword_loop = std::make_shared<Terminal>(static_cast<std::size_t>(Token::LOOP), "loop");
-	keyword_continue = std::make_shared<Terminal>(static_cast<std::size_t>(Token::CONTINUE), "continue");
-	keyword_break = std::make_shared<Terminal>(static_cast<std::size_t>(Token::BREAK), "break");
+	keyword_loop = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::LOOP), "loop");
+	keyword_continue = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::CONTINUE), "continue");
+	keyword_break = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::BREAK), "break");
 
-	keyword_func = std::make_shared<Terminal>(static_cast<std::size_t>(Token::FUNC), "func");
-	keyword_return = std::make_shared<Terminal>(static_cast<std::size_t>(Token::RETURN), "return");
+	keyword_func = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::FUNC), "func");
+	keyword_return = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::RETURN), "return");
 
-	keyword_int = std::make_shared<Terminal>(static_cast<std::size_t>(Token::INT_DECL), "int");
-	keyword_real = std::make_shared<Terminal>(static_cast<std::size_t>(Token::REAL_DECL), "real");
-	keyword_assign = std::make_shared<Terminal>(static_cast<std::size_t>(Token::ASSIGN), "assign");
+	keyword_int = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::INT_DECL), "int");
+	keyword_real = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::REAL_DECL), "real");
 
-	op_addrof = std::make_shared<Terminal>(static_cast<std::size_t>(Token::ADDROF), "addrof");
-	op_deref = std::make_shared<Terminal>(static_cast<std::size_t>(Token::DEREF), "deref");
+	op_addrof = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::ADDROF), "addrof");
+	op_deref = std::make_shared<Terminal>(static_cast<t_symbol_id>(Token::DEREF), "deref");
 
 
 	// operator precedences and associativities
 	// see: https://en.cppreference.com/w/c/language/operator_precedence
 	op_assign->SetPrecedence(10, 'r');
-	keyword_assign->SetPrecedence(10, 'r');
+	op_derefassign->SetPrecedence(10, 'r');
 
 	op_or->SetPrecedence(20, 'l');
 	op_and->SetPrecedence(21, 'l');
@@ -1282,11 +1282,10 @@ void ScriptGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	++semanticindex;
 
 
-	// TODO: use op_assign instead of keyword_assign
-	// rule: dereferencing on lhs: expr -> deref expr assign expr
+	// rule: dereferencing on lhs: expr -> expr deref_assign expr
 	if(add_rules)
 	{
-		expr->AddRule({ /*op_deref,*/ expr, keyword_assign, expr }, semanticindex);
+		expr->AddRule({ expr, op_derefassign, expr }, semanticindex);
 	}
 	if(add_semantics)
 	{

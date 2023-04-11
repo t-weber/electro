@@ -141,10 +141,10 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 			matches.emplace_back(std::make_tuple(
 				static_cast<t_symbol_id>(Token::DEREF), str, line));
 		}
-		else if(str == "assign")
+		else if(str == "<<=")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_symbol_id>(Token::ASSIGN), str, line));
+				static_cast<t_symbol_id>(Token::DEREF_ASSIGN), str, line));
 		}
 		else
 		{
