@@ -5,12 +5,13 @@
 -- @license see 'LICENSE' file
 --
 -- ghdl -a --std=08 conv.vhdl  &&  ghdl -a --std=08 counter.vhdl  &&  ghdl -a --std=08 sevenseg.vhdl  &&  ghdl -a --std=08 counter_tb.vhdl  &&  ghdl -e --std=08 counter_tb counter_tb_arch
--- ghdl -r --std=08 counter_tb counter_tb_arch --vcd=counter_tb.vcd
+-- ghdl -r --std=08 counter_tb counter_tb_arch --vcd=counter_tb.vcd --stop-time=250ns
 -- gtkwave counter_tb.vcd
 --
 
 library ieee;
 use ieee.std_logic_1164.all;
+use work.conv.all;
 
 
 entity counter_tb is
@@ -27,8 +28,11 @@ architecture counter_tb_arch of counter_tb is
 
 begin
 
+	-- clock
 	clk <= not clk after clk_delay;
 
+
+	-- instantiate modules
 	counter_ent : entity work.counter
 		generic map(num_ctrbits => 4)
 		port map(in_rst => '0', in_clk => clk, out_ctr => count);
@@ -36,5 +40,14 @@ begin
 	sevenseg_ent : entity work.sevenseg
 		generic map(zero_is_on => '0', inverse_numbering => '0')
 		port map(in_digit => count, out_leds => hex_out);
+
+
+	-- log process
+	logger : process(clk) begin
+		report "clk = " & std_logic'image(clk) &
+			", count = " & integer'image(to_int(count)) &
+			", hex = " & to_hstring(hex_out);
+	end process;
+
 
 end architecture;

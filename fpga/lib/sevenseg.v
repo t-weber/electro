@@ -11,11 +11,9 @@ module sevenseg
 		parameter inverse_numbering = 0
 	)
 	(
-		input [3:0] in_digit,
-		output [6:0] out_leds
+		input wire [3:0] in_digit,
+		output wire [6:0] out_leds
 	);
-
-wire [6:0] leds;
 
 // constants, see: https://en.wikipedia.org/wiki/Seven-segment_display
 //localparam [6:0] ledvec[2*16-1 : 0] =
@@ -34,24 +32,54 @@ localparam [0 : 7*2*16-1] ledvec =
 	7'h39, 7'h5e, 7'h79, 7'h71  // c-f
 };
 
-assign leds =
-	(in_digit == 4'h0) ? ledvec[inverse_numbering*16*7 + 1*7 - 1 -: 7] :
-	(in_digit == 4'h1) ? ledvec[inverse_numbering*16*7 + 2*7 - 1 -: 7] :
-	(in_digit == 4'h2) ? ledvec[inverse_numbering*16*7 + 3*7 - 1 -: 7] :
-	(in_digit == 4'h3) ? ledvec[inverse_numbering*16*7 + 4*7 - 1 -: 7] :
-	(in_digit == 4'h4) ? ledvec[inverse_numbering*16*7 + 5*7 - 1 -: 7] :
-	(in_digit == 4'h5) ? ledvec[inverse_numbering*16*7 + 6*7 - 1 -: 7] :
-	(in_digit == 4'h6) ? ledvec[inverse_numbering*16*7 + 7*7 - 1 -: 7] :
-	(in_digit == 4'h7) ? ledvec[inverse_numbering*16*7 + 8*7 - 1 -: 7] :
-	(in_digit == 4'h8) ? ledvec[inverse_numbering*16*7 + 9*7 - 1 -: 7] :
-	(in_digit == 4'h9) ? ledvec[inverse_numbering*16*7 + 10*7 - 1 -: 7] :
-	(in_digit == 4'ha) ? ledvec[inverse_numbering*16*7 + 11*7 - 1 -: 7] :
-	(in_digit == 4'hb) ? ledvec[inverse_numbering*16*7 + 12*7 - 1 -: 7] :
-	(in_digit == 4'hc) ? ledvec[inverse_numbering*16*7 + 13*7 - 1 -: 7] :
-	(in_digit == 4'hd) ? ledvec[inverse_numbering*16*7 + 14*7 - 1 -: 7] :
-	(in_digit == 4'he) ? ledvec[inverse_numbering*16*7 + 15*7 - 1 -: 7] :
-	(in_digit == 4'hf) ? ledvec[inverse_numbering*16*7 + 16*7 - 1 -: 7] :
-	7'h00;
+localparam combinatorial = 1;
+wire [6:0] leds;
+//reg [6:0] leds;
+
+generate if(combinatorial)
+	assign leds =
+		(in_digit == 4'h0) ? ledvec[inverse_numbering*16*7 + 1*7 - 1 -: 7] :
+		(in_digit == 4'h1) ? ledvec[inverse_numbering*16*7 + 2*7 - 1 -: 7] :
+		(in_digit == 4'h2) ? ledvec[inverse_numbering*16*7 + 3*7 - 1 -: 7] :
+		(in_digit == 4'h3) ? ledvec[inverse_numbering*16*7 + 4*7 - 1 -: 7] :
+		(in_digit == 4'h4) ? ledvec[inverse_numbering*16*7 + 5*7 - 1 -: 7] :
+		(in_digit == 4'h5) ? ledvec[inverse_numbering*16*7 + 6*7 - 1 -: 7] :
+		(in_digit == 4'h6) ? ledvec[inverse_numbering*16*7 + 7*7 - 1 -: 7] :
+		(in_digit == 4'h7) ? ledvec[inverse_numbering*16*7 + 8*7 - 1 -: 7] :
+		(in_digit == 4'h8) ? ledvec[inverse_numbering*16*7 + 9*7 - 1 -: 7] :
+		(in_digit == 4'h9) ? ledvec[inverse_numbering*16*7 + 10*7 - 1 -: 7] :
+		(in_digit == 4'ha) ? ledvec[inverse_numbering*16*7 + 11*7 - 1 -: 7] :
+		(in_digit == 4'hb) ? ledvec[inverse_numbering*16*7 + 12*7 - 1 -: 7] :
+		(in_digit == 4'hc) ? ledvec[inverse_numbering*16*7 + 13*7 - 1 -: 7] :
+		(in_digit == 4'hd) ? ledvec[inverse_numbering*16*7 + 14*7 - 1 -: 7] :
+		(in_digit == 4'he) ? ledvec[inverse_numbering*16*7 + 15*7 - 1 -: 7] :
+		(in_digit == 4'hf) ? ledvec[inverse_numbering*16*7 + 16*7 - 1 -: 7] :
+		7'h00;
+else
+	// for testing, should synthesise into the same
+	always@(in_digit)
+	begin
+		case(in_digit)
+			4'h0: leds <= ledvec[inverse_numbering*16*7 + 1*7 - 1 -: 7];
+			4'h1: leds <= ledvec[inverse_numbering*16*7 + 2*7 - 1 -: 7];
+			4'h2: leds <= ledvec[inverse_numbering*16*7 + 3*7 - 1 -: 7];
+			4'h3: leds <= ledvec[inverse_numbering*16*7 + 4*7 - 1 -: 7];
+			4'h4: leds <= ledvec[inverse_numbering*16*7 + 5*7 - 1 -: 7];
+			4'h5: leds <= ledvec[inverse_numbering*16*7 + 6*7 - 1 -: 7];
+			4'h6: leds <= ledvec[inverse_numbering*16*7 + 7*7 - 1 -: 7];
+			4'h7: leds <= ledvec[inverse_numbering*16*7 + 8*7 - 1 -: 7];
+			4'h8: leds <= ledvec[inverse_numbering*16*7 + 9*7 - 1 -: 7];
+			4'h9: leds <= ledvec[inverse_numbering*16*7 + 10*7 - 1 -: 7];
+			4'ha: leds <= ledvec[inverse_numbering*16*7 + 11*7 - 1 -: 7];
+			4'hb: leds <= ledvec[inverse_numbering*16*7 + 12*7 - 1 -: 7];
+			4'hc: leds <= ledvec[inverse_numbering*16*7 + 13*7 - 1 -: 7];
+			4'hd: leds <= ledvec[inverse_numbering*16*7 + 14*7 - 1 -: 7];
+			4'he: leds <= ledvec[inverse_numbering*16*7 + 15*7 - 1 -: 7];
+			4'hf: leds <= ledvec[inverse_numbering*16*7 + 16*7 - 1 -: 7];
+			default: leds <= 7'h0;
+		endcase
+	end
+endgenerate
 
 generate if(zero_is_on)
 	assign out_leds = ~leds;
