@@ -20,6 +20,9 @@ package conv is
 	-- std_logic_vector -> integer
 	pure function to_int(vec : std_logic_vector) return integer;
 
+	-- std_logic -> integer
+	pure function log_to_int(l : std_logic) return integer;
+
 	-- integer/natural -> std_logic_vector
 	pure function int_to_logvec(val : integer; len : natural) return std_logic_vector;
 	pure function nat_to_logvec(val : natural; len : natural) return std_logic_vector;
@@ -37,6 +40,16 @@ package body conv is
 	pure function to_int(vec : std_logic_vector) return integer is
 	begin
 		return to_integer(unsigned(vec));
+	end function;
+
+
+	--
+	-- std_logic -> integer
+	--
+	pure function log_to_int(l : std_logic) return integer is
+	begin
+		-- using qualified expression
+		return to_integer(unsigned'("" & l));
 	end function;
 
 

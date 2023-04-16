@@ -37,6 +37,7 @@
 
 # hdl files
 *.cf
+*.vcd
 
 # temporary files
 *.c_
