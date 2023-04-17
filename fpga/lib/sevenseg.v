@@ -33,25 +33,7 @@ localparam [0 : 7*2*16-1] ledvec =
 };
 
 wire [6:0] leds;
-
-assign leds =
-	(in_digit == 4'h0) ? ledvec[inverse_numbering*16*7 + 1*7 - 1 -: 7] :
-	(in_digit == 4'h1) ? ledvec[inverse_numbering*16*7 + 2*7 - 1 -: 7] :
-	(in_digit == 4'h2) ? ledvec[inverse_numbering*16*7 + 3*7 - 1 -: 7] :
-	(in_digit == 4'h3) ? ledvec[inverse_numbering*16*7 + 4*7 - 1 -: 7] :
-	(in_digit == 4'h4) ? ledvec[inverse_numbering*16*7 + 5*7 - 1 -: 7] :
-	(in_digit == 4'h5) ? ledvec[inverse_numbering*16*7 + 6*7 - 1 -: 7] :
-	(in_digit == 4'h6) ? ledvec[inverse_numbering*16*7 + 7*7 - 1 -: 7] :
-	(in_digit == 4'h7) ? ledvec[inverse_numbering*16*7 + 8*7 - 1 -: 7] :
-	(in_digit == 4'h8) ? ledvec[inverse_numbering*16*7 + 9*7 - 1 -: 7] :
-	(in_digit == 4'h9) ? ledvec[inverse_numbering*16*7 + 10*7 - 1 -: 7] :
-	(in_digit == 4'ha) ? ledvec[inverse_numbering*16*7 + 11*7 - 1 -: 7] :
-	(in_digit == 4'hb) ? ledvec[inverse_numbering*16*7 + 12*7 - 1 -: 7] :
-	(in_digit == 4'hc) ? ledvec[inverse_numbering*16*7 + 13*7 - 1 -: 7] :
-	(in_digit == 4'hd) ? ledvec[inverse_numbering*16*7 + 14*7 - 1 -: 7] :
-	(in_digit == 4'he) ? ledvec[inverse_numbering*16*7 + 15*7 - 1 -: 7] :
-	(in_digit == 4'hf) ? ledvec[inverse_numbering*16*7 + 16*7 - 1 -: 7] :
-	7'h00;
+assign leds = ledvec[inverse_numbering*16*7 + (in_digit+1)*7 - 1 -: 7];
 
 generate if(zero_is_on)
 	assign out_leds = ~leds;

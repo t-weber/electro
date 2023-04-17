@@ -63,24 +63,7 @@ architecture sevenseg_impl of sevenseg is
 
 	signal leds : std_logic_vector(6 downto 0);
 begin
-	with in_digit select leds <=
-		ledvec(inv_numb,  0)(6 downto 0) when x"0",
-		ledvec(inv_numb,  1)(6 downto 0) when x"1",
-		ledvec(inv_numb,  2)(6 downto 0) when x"2",
-		ledvec(inv_numb,  3)(6 downto 0) when x"3",
-		ledvec(inv_numb,  4)(6 downto 0) when x"4",
-		ledvec(inv_numb,  5)(6 downto 0) when x"5",
-		ledvec(inv_numb,  6)(6 downto 0) when x"6",
-		ledvec(inv_numb,  7)(6 downto 0) when x"7",
-		ledvec(inv_numb,  8)(6 downto 0) when x"8",
-		ledvec(inv_numb,  9)(6 downto 0) when x"9",
-		ledvec(inv_numb, 10)(6 downto 0) when x"a",
-		ledvec(inv_numb, 11)(6 downto 0) when x"b",
-		ledvec(inv_numb, 12)(6 downto 0) when x"c",
-		ledvec(inv_numb, 13)(6 downto 0) when x"d",
-		ledvec(inv_numb, 14)(6 downto 0) when x"e",
-		ledvec(inv_numb, 15)(6 downto 0) when x"f",
-		(others=>'0') when others;
+	leds <= ledvec(inv_numb,  to_int(in_digit))(6 downto 0);
 
 	--with zero_is_on select out_leds <=
 	--	not leds(6 downto 0) when '1',
