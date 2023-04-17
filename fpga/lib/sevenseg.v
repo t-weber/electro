@@ -16,7 +16,6 @@ module sevenseg
 	);
 
 // constants, see: https://en.wikipedia.org/wiki/Seven-segment_display
-//localparam [6:0] ledvec[2*16-1 : 0] =
 localparam [0 : 7*2*16-1] ledvec =
 {
 	// non-inverted numbering
