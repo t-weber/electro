@@ -14,8 +14,8 @@ use work.conv.all;
 entity debounce is
 	generic(
 		-- number of clock ticks to consider the signal stable
-		constant STABLE_TICKS : natural := 32;
-		constant STABLE_TICKS_BITS : natural := 6  -- log2(STABLE_TICKS) + 1
+		constant STABLE_TICKS : natural := 50;
+		constant STABLE_TICKS_BITS : natural := 7  -- ceil(log2(STABLE_TICKS)) + 1
 	);
 
 	port(
