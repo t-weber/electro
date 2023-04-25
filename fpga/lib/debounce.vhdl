@@ -31,14 +31,19 @@ entity debounce is
 end entity;
 
 
+
+--                     1       -----
+-- debounces a switch:        |
+--                     0 -----
 architecture debounce_switch_impl of debounce is
 	-- number of steps to sample in shift register
 	constant NUM_STEPS : natural := 3;
 
 	signal shiftreg : std_logic_vector(0 to NUM_STEPS-1);
-	signal signal_changed : std_logic;
+	signal signal_changed : std_logic := '0';
 	signal debounced, debounced_next : std_logic;
-	signal stable_counter, next_stable_counter : std_logic_vector(STABLE_TICKS_BITS-1 downto 0) := (others => '0');
+	signal stable_counter, stable_counter_next
+		: std_logic_vector(STABLE_TICKS_BITS-1 downto 0) := (others => '0');
 begin
 
 	-- has the signal toggled?
@@ -48,7 +53,7 @@ begin
 	out_debounced <= debounced;
 
 	-- count the cycles the signal has been stable
-	next_stable_counter <= inc_logvec(stable_counter, 1);
+	stable_counter_next <= inc_logvec(stable_counter, 1);
 	
 	
 	-- clock process
@@ -64,7 +69,7 @@ begin
 			if(signal_changed = '1') then
 				stable_counter <= (others => '0');
 			else
-				stable_counter <= next_stable_counter;
+				stable_counter <= stable_counter_next;
 			end if;
 			
 			debounced <= debounced_next;
@@ -83,4 +88,76 @@ begin
 		end if;
 	end process;
 	
+end architecture;
+
+
+
+--                     1       -----
+-- debounces a button:        |     |
+--                     0 -----       -----
+architecture debounce_button_impl of debounce is
+	type t_btnstate is (NotPressed, Pressed, Released);
+	signal btnstate, btnstate_next : t_btnstate := NotPressed;
+
+	signal debounced, debounced_next : std_logic := '0';
+	signal stable_counter, stable_counter_next
+		: std_logic_vector(STABLE_TICKS_BITS-1 downto 0) := (others => '0');
+begin
+
+	-- output the debounced signal
+	out_debounced <= debounced;
+
+
+	-- clock process
+	clk_proc : process(in_clk)
+	begin
+		if rising_edge(in_clk) then
+			btnstate <= btnstate_next;
+			stable_counter <= stable_counter_next;
+			debounced <= debounced_next;
+		end if;
+	end process;
+
+
+	-- debouncing process
+	debounce_proc : process(btnstate, stable_counter, in_signal)
+	begin
+                btnstate_next <= btnstate;
+                stable_counter_next <= stable_counter;
+		debounced_next <= '0';
+
+		case btnstate is
+			when NotPressed =>
+				-- button being pressed?
+				if in_signal = '1' then
+					stable_counter_next <= inc_logvec(stable_counter, 1);
+				else
+					stable_counter_next <= (others => '0');
+				end if;
+
+				if to_int(stable_counter) = STABLE_TICKS then
+					stable_counter_next <= (others => '0');
+					btnstate_next <= Pressed;
+				end if;
+
+			when Pressed => 
+				-- button being released?
+				if in_signal = '0' then
+					stable_counter_next <= inc_logvec(stable_counter, 1);
+				else
+					stable_counter_next <= (others => '0');
+				end if;
+
+				if to_int(stable_counter) = STABLE_TICKS then
+					stable_counter_next <= (others => '0');
+					btnstate_next <= Released;
+				end if;
+
+			when Released => 
+				stable_counter_next <= (others => '0');
+				btnstate_next <= NotPressed;
+				debounced_next <= '1';
+		end case;
+	end process;
+
 end architecture;

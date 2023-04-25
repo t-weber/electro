@@ -5,6 +5,12 @@
  * @license see 'LICENSE' file
  */
 
+
+/**
+ *                     1       -----
+ * debounces a switch:        |
+ *                     0 -----
+ */
 module debounce_switch
 #(
 	parameter STABLE_TICKS = 50,
