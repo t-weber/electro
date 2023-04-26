@@ -11,7 +11,7 @@ module edgedet
 	parameter POS_EDGE = 1
 )
 (
-	input wire in_clk,
+	input wire in_clk, in_rst,
 	input wire in_signal,
 	output wire out_edge
 );
@@ -30,11 +30,17 @@ endgenerate
 
 
 // synchronise to clock
-always@(posedge in_clk) begin
-	shiftreg[0] <= in_signal;
+always_ff@(posedge in_clk, posedge in_rst) begin
+	if(in_rst == 1) begin
+		shiftreg <= 0;
+	end
 
-	for(shift_idx=1; shift_idx<NUM_STEPS; ++shift_idx) begin
-		shiftreg[shift_idx] <= shiftreg[shift_idx-1];
+	else if(in_clk == 1) begin
+		shiftreg[0] <= in_signal;
+
+		for(shift_idx=1; shift_idx<NUM_STEPS; ++shift_idx) begin
+			shiftreg[shift_idx] <= shiftreg[shift_idx-1];
+		end
 	end
 end
 

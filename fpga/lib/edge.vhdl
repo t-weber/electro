@@ -19,8 +19,8 @@ entity edge is
 	);
 
 	port(
-		-- clock
-		in_clk : in std_logic;
+		-- clock and reset
+		in_clk, in_rst : in std_logic;
 
 		-- signal to get edge from
 		in_signal : in std_logic;
@@ -44,9 +44,12 @@ begin
 
 
 	-- synchronise to clock
-	sync_proc : process(in_clk)
+	sync_proc : process(in_clk, in_rst)
 	begin
-		if rising_edge(in_clk) then
+		if(in_rst = '1') then
+			shiftreg <= (others => '0');
+
+		elsif rising_edge(in_clk) then
 			shiftreg(0) <= in_signal;
 
 			shiftloop: for i in 1 to NUM_STEPS-1 loop

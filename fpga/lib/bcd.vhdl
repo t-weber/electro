@@ -42,7 +42,7 @@ end entity;
 
 
 architecture bcd_impl of bcd is
-	type t_state is (Idle, Shift, Add, NextIndex);
+	type t_state is (Idle, Reset, Shift, Add, NextIndex);
 	signal state, state_next : t_state := Shift;
 
 	signal bcdnum, bcdnum_next : std_logic_vector(OUT_BITS-1 downto 0) := (others=>'0');
@@ -77,23 +77,25 @@ begin
 	-- conversion process
 	conv_proc : process(state, bitidx, bcdidx, bcdnum, in_start, in_num)
 	begin
-		-- save registers
+		-- keep values
 		state_next <= state;
 		bcdnum_next <= bcdnum;
 		bitidx_next <= bitidx;
 		bcdidx_next <= bcdidx;
 
-
 		case state is
 			-- wait for start signal
 			when Idle =>
 				if in_start='1' then
-					-- reset
-					bcdnum_next <= (others=>'0');
-					bitidx_next <= IN_BITS - 1;
-					bcdidx_next <= NUM_BCD_DIGITS - 1;
-					state_next <= Shift;
+					state_next <= Reset;
 				end if;
+
+			-- reset
+			when Reset =>
+				bcdnum_next <= (others=>'0');
+				bitidx_next <= IN_BITS - 1;
+				bcdidx_next <= NUM_BCD_DIGITS - 1;
+				state_next <= Shift;
 
 			-- shift left
 			when Shift =>

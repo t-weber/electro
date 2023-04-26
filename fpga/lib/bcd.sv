@@ -32,7 +32,7 @@ module bcd
 );
 
 
-typedef enum bit [1:0] { Idle, Shift, Add, NextIndex } t_state;
+typedef enum bit [2:0] { Idle, Reset, Shift, Add, NextIndex } t_state;
 
 t_state state = Shift;
 t_state state_next = Shift;
@@ -49,13 +49,15 @@ assign out_finished = (state==Idle ? 1'b1 : 1'b0);
 
 
 // clock process
-always@(posedge in_clk, posedge in_rst) begin
+always_ff@(posedge in_clk, posedge in_rst) begin
 	if(in_rst == 1) begin
 		state <= Shift;
 		bcdnum <= 0;
 		bitidx <= IN_BITS[IN_BITS-1 : 0] - 1'b1;
 		bcdidx <= NUM_BCD_DIGITS[NUM_BCD_DIGITS-1 : 0] - 1'b1;
-	end else begin
+	end
+
+	else if(in_clk == 1) begin
 		state <= state_next;
 		bcdnum <= bcdnum_next;
 		bitidx <= bitidx_next;
@@ -65,7 +67,8 @@ end
 
 
 // conversion process
-always@(state, bitidx, bcdidx, bcdnum, in_start, in_num) begin
+//always@(state, bitidx, bcdidx, bcdnum, in_start, in_num) begin
+always_comb begin
 	// save registers
 	state_next <= state;
 	bcdnum_next <= bcdnum;
@@ -76,7 +79,12 @@ always@(state, bitidx, bcdidx, bcdnum, in_start, in_num) begin
 		// wait for the start signal
 		Idle:
 			if(in_start == 1) begin
-				// reset
+				state_next <= Reset;
+			end
+
+		// reset
+		Reset:
+			begin
 				bcdnum_next <= 0;
 				bitidx_next <= IN_BITS[IN_BITS-1 : 0] - 1'b1;
 				bcdidx_next <= NUM_BCD_DIGITS[NUM_BCD_DIGITS-1 : 0] - 1'b1;

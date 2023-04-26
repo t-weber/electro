@@ -19,8 +19,9 @@ entity debounce is
 	);
 
 	port(
-		-- clock
+		-- clock and reset
 		in_clk : in std_logic;
+		in_rst : in std_logic;
 
 		-- signal to debounce
 		in_signal : in std_logic;
@@ -57,8 +58,13 @@ begin
 	
 	
 	-- clock process
-	clk_proc : process(in_clk) begin
-		if rising_edge(in_clk) then
+	clk_proc : process(in_clk, in_rst) begin
+		if in_rst = '1' then
+			shiftreg <= (others => '0');
+			debounced <= '0';
+			stable_counter <= (others => '0');
+
+		elsif rising_edge(in_clk) then
 			-- write signal in shift register
 			shiftreg(0) <= in_signal;
 			shiftloop: for i in 1 to NUM_STEPS-1 loop
@@ -109,9 +115,14 @@ begin
 
 
 	-- clock process
-	clk_proc : process(in_clk)
+	clk_proc : process(in_clk, in_rst)
 	begin
-		if rising_edge(in_clk) then
+		if in_rst = '1' then
+			btnstate <= NotPressed;
+			debounced <= '0';
+			stable_counter <= (others => '0');
+
+		elsif rising_edge(in_clk) then
 			btnstate <= btnstate_next;
 			stable_counter <= stable_counter_next;
 			debounced <= debounced_next;
@@ -122,8 +133,8 @@ begin
 	-- debouncing process
 	debounce_proc : process(btnstate, stable_counter, in_signal)
 	begin
-                btnstate_next <= btnstate;
-                stable_counter_next <= stable_counter;
+		btnstate_next <= btnstate;
+		stable_counter_next <= stable_counter;
 		debounced_next <= '0';
 
 		case btnstate is

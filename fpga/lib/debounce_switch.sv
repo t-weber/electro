@@ -17,7 +17,7 @@ module debounce_switch
 	parameter STABLE_TICKS_BITS = 7  // ceil(log2(STABLE_TICKS)) + 1
 )
 (
-	input wire in_clk,
+	input wire in_clk, in_rst,
 	input wire in_signal,
 	output wire out_debounced
 );
@@ -44,26 +44,34 @@ end
 
 // clock process
 integer shift_idx;
-always@(posedge in_clk) begin
-	// write signal in shift register
-	shiftreg[0] <= in_signal;
-	for(shift_idx=1; shift_idx<NUM_STEPS; ++shift_idx) begin
-		shiftreg[shift_idx] <= shiftreg[shift_idx-1];
-	end
-
-	// count the cycles the signal has been stable
-	if(signal_changed == 1) begin
+always_ff@(posedge in_clk, posedge in_rst) begin
+	if(in_rst == 1) begin
+		shiftreg <= 0;
+		debounced <= 0;
 		stable_counter <= 0;
-	end else begin
-		stable_counter <= next_stable_counter;
-	end;
+	end
+	else if(in_clk == 1) begin
+		// write signal in shift register
+		shiftreg[0] <= in_signal;
+		for(shift_idx=1; shift_idx<NUM_STEPS; ++shift_idx) begin
+			shiftreg[shift_idx] <= shiftreg[shift_idx-1];
+		end
 
-	debounced <= debounced_next;
+		// count the cycles the signal has been stable
+		if(signal_changed == 1) begin
+			stable_counter <= 0;
+		end else begin
+			stable_counter <= next_stable_counter;
+		end
+
+		debounced <= debounced_next;
+	end
 end
 
 
 // output sampling process
-always@(stable_counter, debounced, shiftreg[NUM_STEPS-1]) begin
+//always@(stable_counter, debounced, shiftreg[NUM_STEPS-1]) begin
+always_comb begin
 	// keep value
 	debounced_next <= debounced;
 
