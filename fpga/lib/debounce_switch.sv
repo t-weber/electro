@@ -31,14 +31,14 @@ assign signal_changed = shiftreg[0] ^ shiftreg[1];
 
 
 // output the debounced signal
-logic debounced, debounced_next;
+logic debounced = 0, debounced_next = 0;
 assign out_debounced = debounced;
 
 
 // count the cycles the signal has been stable
-logic [STABLE_TICKS_BITS-1 : 0] stable_counter, next_stable_counter;
+logic [STABLE_TICKS_BITS-1 : 0] stable_counter = 0, stable_counter_next = 0;
 always@(stable_counter) begin
-	next_stable_counter <= stable_counter + 1'b1;
+	stable_counter_next <= stable_counter + 1'b1;
 end
 
 
@@ -61,7 +61,7 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 		if(signal_changed == 1) begin
 			stable_counter <= 0;
 		end else begin
-			stable_counter <= next_stable_counter;
+			stable_counter <= stable_counter_next;
 		end
 
 		debounced <= debounced_next;
