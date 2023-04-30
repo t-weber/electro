@@ -18,8 +18,8 @@ use work.conv.all;
 entity sevenseg is
 	generic
 	(
-		zero_is_on : in std_logic := '0';
-		inverse_numbering : in std_logic := '0'
+		ZERO_IS_ON : in std_logic := '0';
+		INVERSE_NUMBERING : in std_logic := '0'
 	);
 
 	port
@@ -38,8 +38,8 @@ architecture sevenseg_impl of sevenseg is
 
 	type t_ledvec is array(0 to 1, 0 to 15) of std_logic_vector(7 downto 0);
 
-	-- inverse_numbering as integer
-	constant inv_numb : integer := log_to_int(inverse_numbering);
+	-- INVERSE_NUMBERING as integer
+	constant inv_numb : integer := log_to_int(INVERSE_NUMBERING);
 
 	-- constants, see: https://en.wikipedia.org/wiki/Seven-segment_display
 	constant ledvec : t_ledvec := 
@@ -65,15 +65,15 @@ architecture sevenseg_impl of sevenseg is
 begin
 	leds <= ledvec(inv_numb,  to_int(in_digit))(6 downto 0);
 
-	--with zero_is_on select out_leds <=
+	--with ZERO_IS_ON select out_leds <=
 	--	not leds(6 downto 0) when '1',
 	--	leds(6 downto 0) when others;
 
-	gen_leds_zero_on : if zero_is_on='1' generate
+	gen_leds_zero_on : if ZERO_IS_ON='1' generate
 		out_leds <= not leds;
 	end generate;
 
-	gen_leds_zero_off : if zero_is_on='0' generate
+	gen_leds_zero_off : if ZERO_IS_ON='0' generate
 		out_leds <= leds;
 	end generate;
 end architecture;

@@ -1,14 +1,14 @@
-//
-// seven segment leds
-// @author Tobias Weber <tobias.weber@tum.de>
-// @date 15-apr-2023
-// @license see 'LICENSE' file
-//
+/**
+ * seven segment leds
+ * @author Tobias Weber <tobias.weber@tum.de>
+ * @date 15-apr-2023
+ * @license see 'LICENSE' file
+ */
 
 module sevenseg
 	#(
-		parameter zero_is_on = 0,
-		parameter inverse_numbering = 0
+		parameter ZERO_IS_ON = 0,
+		parameter INVERSE_NUMBERING = 0
 	)
 	(
 		input wire [3:0] in_digit,
@@ -36,14 +36,14 @@ localparam [0:1][0:15][6:0] ledvec =
 };
 
 wire [6:0] leds;
-assign leds = ledvec[inverse_numbering][in_digit];
+assign leds = ledvec[INVERSE_NUMBERING][in_digit];
 
 /*logic [6:0] leds;
 always_comb begin
-	leds <= ledvec[inverse_numbering][in_digit];
+	leds <= ledvec[INVERSE_NUMBERING][in_digit];
 end*/
 
-generate if(zero_is_on)
+generate if(ZERO_IS_ON)
 	assign out_leds = ~leds;
 else
 	assign out_leds = leds;
