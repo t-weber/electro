@@ -8,17 +8,17 @@
  */
 
 module adder_test(
-	output [6 : 0] hex0, hex1, hex2, hex3
+	output wire [6 : 0] hex0, hex1, hex2, hex3
 );
 
 	localparam BITS = 16;
 
 	logic [BITS-1 : 0] a, b;
 	logic [BITS-1 : 0] sum;
-	
+
 	assign a = 16'h1234;
 	assign b = 16'h2345;
-	
+
 	ripplecarryadder #(.BITS(BITS)) cnt(.in_a(a), .in_b(b), .out_sum(sum));
 
 	sevenseg #(.ZERO_IS_ON(1), .INVERSE_NUMBERING(1)) seg0(.in_digit(sum[3:0]), .out_leds(hex0));

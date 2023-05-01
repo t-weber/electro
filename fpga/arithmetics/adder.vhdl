@@ -59,7 +59,7 @@ entity ripplecarryadder is
 end entity;
 
 
-architecture ripplcarryadder_impl of ripplecarryadder is
+architecture ripplecarryadder_impl of ripplecarryadder is
 	signal carry : std_logic_vector(BITS-1 downto 0);
 begin
 	adder_0 : entity work.adder

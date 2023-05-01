@@ -86,7 +86,7 @@ begin
 		case state is
 			-- wait for start signal
 			when Idle =>
-				if in_start='1' then
+				if in_start = '1' then
 					state_next <= Reset;
 				end if;
 

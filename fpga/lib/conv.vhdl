@@ -29,6 +29,9 @@ package conv is
 
 	-- increments a std_logic_vector
 	pure function inc_logvec(vec : std_logic_vector; inc : natural) return std_logic_vector;
+
+	-- creates a std_logic_vector with an initial value
+	--pure function create_logvec(val : std_logic; len : natural range 1 to natural'high) return std_logic_vector;
 end package;
 
 

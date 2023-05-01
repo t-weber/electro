@@ -56,7 +56,7 @@ module ripplecarryadder
 	genvar adder_idx;
 	generate
 		for(adder_idx=1; adder_idx<BITS; ++adder_idx) begin : genadders
-			adder #(.FULL_ADDER(1)) addr_n
+			adder #(.FULL_ADDER(1)) adder_n
 				(.in_a(in_a[adder_idx]), .in_b(in_b[adder_idx]),
 				.in_carry(carry[adder_idx-1]),
 				.out_sum(out_sum[adder_idx]), .out_carry(carry[adder_idx]));
