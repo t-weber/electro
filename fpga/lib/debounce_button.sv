@@ -14,7 +14,7 @@
 module debounce_button
 #(
 	parameter STABLE_TICKS = 50,
-	parameter STABLE_TICKS_BITS = 7  // ceil(log2(STABLE_TICKS)) + 1
+	parameter STABLE_TICKS_BITS = $clog2(STABLE_TICKS) + 1
 )
 (
 	input wire in_clk, in_rst,

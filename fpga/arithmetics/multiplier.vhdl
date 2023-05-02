@@ -51,7 +51,7 @@ architecture multiplier_impl of multiplier is
 	signal state, state_next : t_state := Reset;
 
 	-- in_a bit index
-	signal bitidx, bitidx_next : natural;
+	signal bitidx, bitidx_next : natural range 0 to IN_BITS-1;
 	-- shifted b_value
 	signal b_shifted, b_shifted_next : std_logic_vector(OUT_BITS-1 downto 0);
 	signal b_sum : std_logic_vector(OUT_BITS-1 downto 0);

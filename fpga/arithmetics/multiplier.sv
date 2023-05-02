@@ -45,7 +45,7 @@ t_state state = Reset, state_next = Reset;
 logic [OUT_BITS-1 : 0] prod, prod_next;           // current product value
 logic [OUT_BITS-1 : 0] b_shifted, b_shifted_next; // shifted b_value
 logic [OUT_BITS-1 : 0] b_sum;                     // prod * b_shifted
-int unsigned bitidx, bitidx_next;                 // in_a bit index
+int unsigned bitidx, bitidx_next;                 // in_a bit index (TODO: range 0 to IN_BITS-1)
 
 // add shifted b value to current product value
 ripplecarryadder #(.BITS(OUT_BITS)) sum(
