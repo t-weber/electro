@@ -29,6 +29,9 @@ template<> struct native_uint<double> { using type = std::uint64_t; };
 template<class t_float> using native_uint_t = typename native_uint<t_float>::type;
 
 
+/**
+ * 2^n
+ */
 template<typename T>
 constexpr T int_pow2(T n)
 {
@@ -45,6 +48,9 @@ constexpr T int_pow2(T n)
 }
 
 
+/**
+ * print as binary
+ */
 template<typename t_int>
 void print_bin(std::ostream& ostr, t_int val, t_int len)
 {
@@ -60,10 +66,53 @@ void print_bin(std::ostream& ostr, t_int val, t_int len)
 }
 
 
+/**
+ * e.g., 00010100 -> 3
+ */
+template<class t_int>
+t_int count_initial_zeros(t_int value, t_int length)
+{
+	t_int idx = 0;
+
+	for(; idx < length; ++idx)
+	{
+		if(value & (t_int{1} << static_cast<unsigned>(length - idx)))
+			break;
+	}
+
+	return idx;
+}
+
+
+/**
+ * normalise the float's mantissa
+ */
+template<class t_int>
+void normalise_float(t_int& mant, t_int& expo, t_int mant_len, t_int mant_mask)
+{
+	while(mant > (mant_mask | t_int{1}<<static_cast<unsigned>(mant_len)))
+	{
+		mant >>= 1;
+		expo += 1;
+	}
+
+	if(mant)
+	{
+		t_int dist = count_initial_zeros<t_int>(mant, mant_len);
+		mant <<= static_cast<unsigned>(dist);
+		expo -= static_cast<unsigned>(dist);
+	}
+}
+
+
+/**
+ * floating point number with arbitrary sizes
+ */
+template<class _t_int = multiprec::cpp_int>
 class ArbFloat
 {
 public:
-	using t_int = multiprec::cpp_int;
+	using t_int = _t_int;
 
 
 public:
@@ -83,31 +132,30 @@ public:
 
 
 	/**
+	 * copying
+	 */
+	ArbFloat(const ArbFloat& flt) = default;
+	constexpr ArbFloat& operator=(const ArbFloat& flt) = default;
+
+
+	/**
 	 * set the bits from the corresponding native float type
 	 */
 	template<class t_float = float>
-	void InterpretFrom(t_float _f)
+	void InterpretFrom(t_float f)
 	{
 		using t_native_uint = native_uint_t<t_float>;
-		const t_native_uint f = *reinterpret_cast<t_native_uint*>(&_f);
-
-		m_value = 0;
-		for(std::size_t idx=0; idx<sizeof(_f)*8; ++idx)
-		{
-			if(f & (1 << idx))
-				multiprec::bit_set(m_value, idx);
-		}
+		m_value = *reinterpret_cast<t_native_uint*>(&f);
 	}
 
 
 	/**
 	 * interpret the value as a native float type
 	 */
-	template<class t_float>
+	template<class t_float = float>
 	t_float InterpretAs() const
 	{
 		using t_native_uint = native_uint_t<t_float>;
-
 		t_native_uint val = static_cast<t_native_uint>(m_value);
 		return *reinterpret_cast<t_float*>(&val);
 	}
@@ -194,6 +242,18 @@ public:
 
 
 	/**
+	 * set the sign of the mantissa: 1: negativ, 0: positive
+	 */
+	void SetSign(bool sign)
+	{
+		if(sign)
+			multiprec::bit_set(m_value, static_cast<unsigned>(m_total_len - 1));
+		else
+			multiprec::bit_unset(m_value, static_cast<unsigned>(m_total_len - 1));
+	}
+
+
+	/**
 	 * increment the exponent, keeping the full floating point value
 	 */
 	void IncExp(t_int val = 1)
@@ -216,6 +276,109 @@ public:
 
 		SetExponent(expo, false);
 		SetMantissa(mant);
+	}
+
+
+	/**
+	 * normalise the mantissa
+	 */
+	void Normalise()
+	{
+		IncExp(m_mant_shift);
+	}
+
+
+	/**
+	 * multiply with another float
+	 */
+	void Mult(const ArbFloat& flt)
+	{
+		t_int mant_a = GetMantissa(true);
+		t_int mant_b = flt.GetMantissa(true);
+		t_int mant_c = (mant_a * mant_b) >> static_cast<unsigned>(m_mant_len);
+
+		t_int exp_c = GetExponent(true) + flt.GetExponent(true);
+
+		normalise_float<t_int>(mant_c, exp_c, m_mant_len, m_mant_mask);
+
+		SetSign(GetSign() ^ flt.GetSign());
+		SetMantissa(mant_c);
+		SetExponent(exp_c, true);
+	}
+
+
+	/**
+	 * divide by another float
+	 */
+	void Div(const ArbFloat& flt)
+	{
+		t_int mant_a = GetMantissa(true);
+		t_int mant_b = flt.GetMantissa(true);
+
+		t_int exp_a = GetExponent(true);
+		t_int exp_b = flt.GetExponent(true);
+
+		// shift the dividend to not lose significant digits
+		mant_a <<= static_cast<unsigned>(m_mant_len);
+		exp_a -= m_mant_len;
+
+		t_int mant_c = (mant_a / mant_b) << static_cast<unsigned>(m_mant_len);
+		t_int exp_c = exp_a - exp_b;
+
+		normalise_float<t_int>(mant_c, exp_c, m_mant_len, m_mant_mask);
+
+		SetSign(GetSign() ^ flt.GetSign());
+		SetMantissa(mant_c);
+		SetExponent(exp_c, true);
+	}
+
+
+	/**
+	 * add another float
+	 */
+	void Add(const ArbFloat& flt)
+	{
+		t_int mant_a = GetMantissa(true);
+		t_int mant_b = flt.GetMantissa(true);
+
+		t_int exp_a = GetExponent(true);
+		t_int exp_b = flt.GetExponent(true);
+
+		// find a common exponent
+		if(exp_a > exp_b)
+		{
+			mant_b >>= static_cast<unsigned>(exp_a - exp_b);
+			exp_b += exp_a - exp_b;
+		}
+		else if(exp_b > exp_a)
+		{
+			mant_a >>= static_cast<unsigned>(exp_b - exp_a);
+			exp_a += exp_b - exp_a;
+		}
+
+		// set signs
+		if(GetSign())
+			mant_a = -mant_a;
+		if(flt.GetSign())
+			mant_b = -mant_b;
+
+		// add mantissas
+		t_int exp_c = exp_a;
+		t_int mant_c = mant_a + mant_b;
+
+		// get sign
+		bool sign_c = false;
+		if(mant_c < 0)
+		{
+			sign_c = true;
+			mant_c = -mant_c;
+		}
+
+		normalise_float<t_int>(mant_c, exp_c, m_mant_len, m_mant_mask);
+
+		SetSign(sign_c);
+		SetMantissa(mant_c);
+		SetExponent(exp_c, true);
 	}
 
 
