@@ -13,6 +13,7 @@
 #include <QtWidgets/QGridLayout>
 #include <QtWidgets/QSpacerItem>
 #include <QtWidgets/QDialogButtonBox>
+#include <QtWidgets/QPushButton>
 #include <QtWidgets/QAbstractButton>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QFrame>
@@ -37,7 +38,7 @@ void FloatDlg::SetupGUI()
 	// create gui grid
 	QGridLayout* grid = new QGridLayout{this};
 	grid->setSpacing(4);
-	grid->setContentsMargins(12, 12, 12, 12);
+	grid->setContentsMargins(8, 8, 8, 8);
 
 	// float value
 	QLabel *labelFloat = new QLabel("Float:", this);
@@ -78,6 +79,11 @@ void FloatDlg::SetupGUI()
 	grid->addWidget(m_spinExpLen, 4, 1, 1, 1);
 	grid->addWidget(m_spinMantLen, 4, 2, 1, 1);
 
+	QPushButton *btnSinglePrec = new QPushButton{"Single Precision", this};
+	QPushButton *btnDoublePrec = new QPushButton{"Double Precision", this};
+	grid->addWidget(btnSinglePrec, 5, 1, 1, 1);
+	grid->addWidget(btnDoublePrec, 5, 2, 1, 1);
+
 	// OK button
 	QSpacerItem *spacer = new QSpacerItem{1, 1, QSizePolicy::Fixed, QSizePolicy::Expanding};
 	grid->addItem(spacer, grid->rowCount(), 0, 1, 3);
@@ -116,6 +122,16 @@ void FloatDlg::SetupGUI()
 	connect(m_spinMantLen, static_cast<void (QSpinBox::*)(int)>(
 		&QSpinBox::valueChanged),
 		this, &FloatDlg::MantissaLengthChanged);
+	connect(btnSinglePrec, &QAbstractButton::clicked,[this]()
+	{
+		m_spinMantLen->setValue(23);
+		m_spinExpLen->setValue(8);
+	});
+	connect(btnDoublePrec, &QAbstractButton::clicked,[this]()
+	{
+		m_spinMantLen->setValue(52);
+		m_spinExpLen->setValue(11);
+	});
 
 	// restore settings
 	QSettings sett{this};
