@@ -42,6 +42,10 @@ int main()
 	//d.Div(d);
 	d.PrintInfos();
 	std::cout << "\nnative value:  " << d.InterpretAs<double>() << std::endl;
+	std::cout << "--------------------------------------------------------------------------------\n";
+	d.ConvertFrom(f);
+	d.PrintInfos();
+	std::cout << "\nnative value:  " << d.InterpretAs<double>() << std::endl;
 
 	return 0;
 }

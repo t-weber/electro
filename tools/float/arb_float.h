@@ -1,6 +1,6 @@
 /**
  * arbitrary-sized floating points
- * @author Tobias Weber
+ * @author Tobias Weber (orcid: 0000-0002-7230-1932)
  * @date 18-May-2023
  * @license see 'LICENSE' file
  *
@@ -52,9 +52,10 @@ constexpr T int_pow2(T n)
  * print as binary
  */
 template<typename t_int>
-void print_bin(std::ostream& ostr, t_int val, t_int len)
+void print_bin(std::ostream& ostr, t_int val, t_int len, bool inc_0b = true)
 {
-	ostr << "0b";
+	if(inc_0b)
+		ostr << "0b";
 
 	for(t_int i=len-1; i>=0; --i)
 	{
@@ -62,6 +63,28 @@ void print_bin(std::ostream& ostr, t_int val, t_int len)
 			ostr << '1';
 		else
 			ostr << '0';
+	}
+}
+
+
+/**
+ * print as binary, separating the components
+ */
+template<typename t_int>
+void print_bin_sep(std::ostream& ostr, t_int val, t_int len, t_int exp_len, bool inc_0b = true)
+{
+	if(inc_0b)
+		ostr << "0b";
+
+	for(t_int i=len-1; i>=0; --i)
+	{
+		if(multiprec::bit_test(val, static_cast<int>(i)))
+			ostr << '1';
+		else
+			ostr << '0';
+
+		if(i == len-1 || i == len-1-exp_len)
+			ostr << " | ";
 	}
 }
 
@@ -85,7 +108,7 @@ t_int count_initial_zeros(t_int value, t_int length)
 
 
 /**
- * normalise the float's mantissa
+ * normalise the float's mantissa (including the 1.)
  */
 template<class t_int>
 void normalise_float(t_int& mant, t_int& expo, t_int mant_len, t_int mant_mask)
@@ -138,6 +161,94 @@ public:
 	constexpr ArbFloat& operator=(const ArbFloat& flt) = default;
 
 
+	t_int GetTotalLength() const
+	{
+		return m_total_len;
+	}
+
+
+	t_int GetExponentLength() const
+	{
+		return m_exp_len;
+	}
+
+
+	t_int GetMantissaLength() const
+	{
+		return m_mant_len;
+	}
+
+
+	bool IsZero() const
+	{
+		return m_value == 0;
+	}
+
+
+	bool IsNegativeZero() const
+	{
+		return GetSign() && GetExponent(false)==0 && GetMantissa(false)==0;
+	}
+
+
+	/**
+	 * conert from another float of possibly different bit sizes
+	 */
+	void ConvertFrom(const ArbFloat& flt)
+	{
+		if(flt.IsZero())
+		{
+			m_value = 0;
+			return;
+		}
+		if(flt.IsNegativeZero())
+		{
+			m_value = 0;
+			SetSign(true);
+			return;
+		}
+
+		auto [old_num, old_denom] = flt.GetMantissaRatio();
+		auto [new_num, new_denom] = GetMantissaRatio();
+
+		SetSign(flt.GetSign());
+		SetMantissa(/*old_num*/ flt.GetMantissa(false) * new_denom / old_denom);
+		SetExponent(flt.GetExponent(true), true);
+		m_mant_shift = 0;
+	}
+
+
+	/**
+	 * set the bits from a string with 0/1 values
+	 */
+	void SetBinary(const std::string& bin)
+	{
+		unsigned bit_idx = 0;
+
+		for(char ch : bin)
+		{
+			if(ch == '0')
+			{
+				multiprec::bit_unset(m_value,
+					static_cast<unsigned>(m_total_len) - bit_idx - 1);
+
+				++bit_idx;
+			}
+			else if(ch == '1')
+			{
+				multiprec::bit_set(m_value,
+					static_cast<unsigned>(m_total_len) - bit_idx - 1);
+
+				++bit_idx;
+			}
+
+			// string larger than total bit size?
+			if(bit_idx >= static_cast<unsigned>(m_total_len))
+				break;
+		}
+	}
+
+
 	/**
 	 * set the bits from the corresponding native float type
 	 */
@@ -162,7 +273,7 @@ public:
 
 
 	/**
-	 * get the value of the mantissa
+	 * get the value of the mantissa (including or excluding the 1.)
 	 */
 	t_int GetMantissa(bool inc_one = true) const
 	{
@@ -382,13 +493,58 @@ public:
 	}
 
 
+	/**
+	 * get the float's bits
+	 */
+	t_int GetRawValue() const
+	{
+		return m_value;
+	}
+
+
+	/**
+	 * print an expression representing the float's value
+	 */
+	std::string PrintExpression() const
+	{
+		auto [num, denom] = GetMantissaRatio();
+		t_int expo = GetExponent(true);
+
+		std::ostringstream ostr;
+		if(GetSign())
+			ostr << "-";
+		ostr << num << " / " << denom << " * 2^";
+		if(expo < 0)
+			ostr << "(" << expo << ")";
+		else
+			ostr << expo;
+		return ostr.str();
+	}
+
+
+	/**
+	 * print a binary representation of the float
+	 */
+	std::string PrintBinary(bool separate = false, bool inc_0b = true) const
+	{
+		auto [num, denom] = GetMantissaRatio();
+		t_int expo = GetExponent(true);
+
+		std::ostringstream ostr;
+		if(separate)
+			print_bin_sep<t_int>(ostr, m_value, m_total_len, m_exp_len, inc_0b);
+		else
+			print_bin<t_int>(ostr, m_value, m_total_len, inc_0b);
+		return ostr.str();
+	}
+
+
 	void PrintInfos(std::ostream& ostr = std::cout) const
 	{
 		ostr << "raw mantissa:  " << GetMantissa(false) << "\n";
 		ostr << "raw exponent:  " << GetExponent(false) << "\n";
 		ostr << "raw value:     " << m_value << "\n";
-		ostr << "raw value:     ";
-		print_bin<t_int>(ostr, m_value, m_total_len);
+		ostr << "raw value:     " << PrintBinary();
 
 		auto [num, denom] = GetMantissaRatio();
 		t_int expo = GetExponent(true);
@@ -396,9 +552,7 @@ public:
 		ostr << "mantissa:      " << num << " / " << denom << "\n";
 		ostr << "sign:          " << (GetSign() ? "1" : "0") << "\n";
 		ostr << "value:         ";
-		if(GetSign())
-			ostr << "-";
-		ostr << num << " / " << denom << " * 2^" << expo << "\n";
+		ostr << PrintExpression() << "\n\n";
 
 		ostr << "\ntotal size:    " << m_total_len << " bits\n";
 		ostr << "mantissa size: " << m_mant_len << " bits\n";
