@@ -44,29 +44,36 @@ void FloatDlg::SetupGUI()
 	QLabel *labelFloat = new QLabel("Float:", this);
 	QLabel *labelFloatExpr = new QLabel("Expression:", this);
 	QLabel *labelFloatBin = new QLabel("Binary:", this);
+	QLabel *labelFloatHex = new QLabel("Hexadecimal:", this);
 	labelFloat->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 	labelFloatExpr->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 	labelFloatBin->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-	grid->addWidget(labelFloat, 0, 0, 1, 1);
-	grid->addWidget(labelFloatExpr, 1, 0, 1, 1);
-	grid->addWidget(labelFloatBin, 2, 0, 1, 1);
+	labelFloatHex->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
 	m_editFloat = new QLineEdit(this);
 	m_editFloatExpr = new QLineEdit(this);
 	m_editFloatBin = new QLineEdit(this);
+	m_editFloatHex = new QLineEdit(this);
 	m_editFloatExpr->setReadOnly(true);
-	grid->addWidget(m_editFloat, 0, 1, 1, 2);
-	grid->addWidget(m_editFloatExpr, 1, 1, 1, 2);
-	grid->addWidget(m_editFloatBin, 2, 1, 1, 2);
+
+	int grid_y = 0;
+	grid->addWidget(labelFloat, grid_y, 0, 1, 1);
+	grid->addWidget(m_editFloat, grid_y++, 1, 1, 2);
+	grid->addWidget(labelFloatExpr, grid_y, 0, 1, 1);
+	grid->addWidget(m_editFloatExpr, grid_y++, 1, 1, 2);
+	grid->addWidget(labelFloatBin, grid_y, 0, 1, 1);
+	grid->addWidget(m_editFloatBin, grid_y++, 1, 1, 2);
+	grid->addWidget(labelFloatHex, grid_y, 0, 1, 1);
+	grid->addWidget(m_editFloatHex, grid_y++, 1, 1, 2);
 
 	// float settings
 	QFrame *line = new QFrame{this};
 	line->setFrameShape(QFrame::HLine);
-	grid->addWidget(line, 3, 0, 1, 3);
+	grid->addWidget(line, grid_y++, 0, 1, 3);
 
 	QLabel *labelLengths = new QLabel("Bit Lengths:", this);
 	labelLengths->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-	grid->addWidget(labelLengths, 4, 0, 1, 1);
+	grid->addWidget(labelLengths, grid_y, 0, 1, 1);
 
 	m_spinExpLen = new QSpinBox{this};
 	m_spinMantLen = new QSpinBox{this};
@@ -76,13 +83,13 @@ void FloatDlg::SetupGUI()
 	m_spinMantLen->setToolTip("Length of the mantissa.");
 	m_spinExpLen->setValue((int)m_value.GetExponentLength());
 	m_spinMantLen->setValue((int)m_value.GetMantissaLength());
-	grid->addWidget(m_spinExpLen, 4, 1, 1, 1);
-	grid->addWidget(m_spinMantLen, 4, 2, 1, 1);
+	grid->addWidget(m_spinExpLen, grid_y, 1, 1, 1);
+	grid->addWidget(m_spinMantLen, grid_y++, 2, 1, 1);
 
 	QPushButton *btnSinglePrec = new QPushButton{"Single Precision", this};
 	QPushButton *btnDoublePrec = new QPushButton{"Double Precision", this};
-	grid->addWidget(btnSinglePrec, 5, 1, 1, 1);
-	grid->addWidget(btnDoublePrec, 5, 2, 1, 1);
+	grid->addWidget(btnSinglePrec, grid_y, 1, 1, 1);
+	grid->addWidget(btnDoublePrec, grid_y++, 2, 1, 1);
 
 	// OK button
 	QSpacerItem *spacer = new QSpacerItem{1, 1, QSizePolicy::Fixed, QSizePolicy::Expanding};
@@ -116,6 +123,9 @@ void FloatDlg::SetupGUI()
 	connect(m_editFloatBin, static_cast<void (QLineEdit::*)(
 		const QString&)>(&QLineEdit::textEdited),
 		this, &FloatDlg::FloatBinChanged);
+	connect(m_editFloatHex, static_cast<void (QLineEdit::*)(
+		const QString&)>(&QLineEdit::textEdited),
+		this, &FloatDlg::FloatHexChanged);
 	connect(m_spinExpLen, static_cast<void (QSpinBox::*)(int)>(
 		&QSpinBox::valueChanged),
 		this, &FloatDlg::ExponentLengthChanged);
@@ -183,6 +193,7 @@ void FloatDlg::FloatChanged(const QString& txt)
 
 	m_editFloatExpr->setText(m_value.PrintExpression().c_str());
 	m_editFloatBin->setText(m_value.PrintBinary(true, false).c_str());
+	m_editFloatHex->setText(m_value.PrintHex(false).c_str());
 }
 
 
@@ -198,6 +209,23 @@ void FloatDlg::FloatBinChanged(const QString& txt)
 	str.setNum(d, 'g', std::numeric_limits<double>::digits10);
 	m_editFloat->setText(str);
 	m_editFloatExpr->setText(m_value.PrintExpression().c_str());
+	m_editFloatHex->setText(m_value.PrintHex(false).c_str());
+}
+
+
+void FloatDlg::FloatHexChanged(const QString& txt)
+{
+	m_value.SetHex(txt.toStdString());
+
+	ArbFloat<> f(64, 11);
+	f.ConvertFrom(m_value);
+	double d = f.InterpretAs<double>();
+
+	QString str;
+	str.setNum(d, 'g', std::numeric_limits<double>::digits10);
+	m_editFloat->setText(str);
+	m_editFloatExpr->setText(m_value.PrintExpression().c_str());
+	m_editFloatBin->setText(m_value.PrintBinary(true, false).c_str());
 }
 
 

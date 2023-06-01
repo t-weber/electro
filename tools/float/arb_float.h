@@ -90,6 +90,49 @@ void print_bin_sep(std::ostream& ostr, t_int val, t_int len, t_int exp_len, bool
 
 
 /**
+ * print as hexadecimal
+ */
+template<typename t_int>
+void print_hex(std::ostream& ostr, t_int val, t_int len, bool inc_0x = true)
+{
+	if(inc_0x)
+		ostr << "0x";
+
+	std::vector<char> chs;
+	for(t_int i=0; i<len; i+=4)
+	{
+		char ch = '0';
+
+		switch(static_cast<std::uint8_t>(val & 0xf))
+		{
+			case 0: ch = '0'; break;
+			case 1: ch = '1'; break;
+			case 2: ch = '2'; break;
+			case 3: ch = '3'; break;
+			case 4: ch = '4'; break;
+			case 5: ch = '5'; break;
+			case 6: ch = '6'; break;
+			case 7: ch = '7'; break;
+			case 8: ch = '8'; break;
+			case 9: ch = '9'; break;
+			case 10: ch = 'a'; break;
+			case 11: ch = 'b'; break;
+			case 12: ch = 'c'; break;
+			case 13: ch = 'd'; break;
+			case 14: ch = 'e'; break;
+			case 15: ch = 'f'; break;
+		}
+
+		chs.push_back(ch);
+		val >>= 4;
+	}
+
+	for(auto iter=chs.rbegin(); iter!=chs.rend(); ++iter)
+		ostr << *iter;
+}
+
+
+/**
  * e.g., 00010100 -> 3
  */
 template<class t_int>
@@ -245,6 +288,45 @@ public:
 			// string larger than total bit size?
 			if(bit_idx >= static_cast<unsigned>(m_total_len))
 				break;
+		}
+	}
+
+
+	/**
+	 * set the bits from a string with 0-f values
+	 */
+	void SetHex(const std::string& hex)
+	{
+		m_value = 0;
+		unsigned bit_pos = 0;
+
+		for(auto iter=hex.rbegin(); iter!=hex.rend(); ++iter)
+		{
+			char ch = *iter;
+			t_int val = 0;
+
+			switch(ch)
+			{
+				case '0': val = 0; break;
+				case '1': val = 1; break;
+				case '2': val = 2; break;
+				case '3': val = 3; break;
+				case '4': val = 4; break;
+				case '5': val = 5; break;
+				case '6': val = 6; break;
+				case '7': val = 7; break;
+				case '8': val = 8; break;
+				case '9': val = 9; break;
+				case 'a': case 'A': val = 0xa; break;
+				case 'b': case 'B': val = 0xb; break;
+				case 'c': case 'C': val = 0xc; break;
+				case 'd': case 'D': val = 0xd; break;
+				case 'e': case 'E': val = 0xe; break;
+				case 'f': case 'F': val = 0xf; break;
+			}
+
+			m_value |= val << bit_pos;
+			bit_pos += 4;
 		}
 	}
 
@@ -535,6 +617,17 @@ public:
 			print_bin_sep<t_int>(ostr, m_value, m_total_len, m_exp_len, inc_0b);
 		else
 			print_bin<t_int>(ostr, m_value, m_total_len, inc_0b);
+		return ostr.str();
+	}
+
+
+	/**
+	 * print a hexadecimal representation of the float
+	 */
+	std::string PrintHex(bool inc_0x = true) const
+	{
+		std::ostringstream ostr;
+		print_hex<t_int>(ostr, m_value, m_total_len, inc_0x);
 		return ostr.str();
 	}
 

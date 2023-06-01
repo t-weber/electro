@@ -28,6 +28,7 @@ protected:
 
 	void FloatChanged(const QString&);
 	void FloatBinChanged(const QString&);
+	void FloatHexChanged(const QString&);
 
 	void ExponentLengthChanged(int len);
 	void MantissaLengthChanged(int len);
@@ -46,6 +47,7 @@ private:
 	QLineEdit *m_editFloat{};
 	QLineEdit *m_editFloatExpr{};
 	QLineEdit *m_editFloatBin{};
+	QLineEdit *m_editFloatHex{};
 
 	QSpinBox *m_spinExpLen{}, *m_spinMantLen{};
 };
