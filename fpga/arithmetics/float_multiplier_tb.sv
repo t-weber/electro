@@ -39,11 +39,15 @@ module float_multiplier_tb;
 		rst <= 1;
 		start <= 1;
 
-		a <= 32'hbf000000;   // -0.5
-		b <= 32'h3e800000;   // +0.25
+		//a <= 32'hbf000000;   // -0.5
+		//b <= 32'h3e800000;   // +0.25
 		// expected result: -0.125 = 0xbe000000
 
-		for(iter = 0; iter < 64; ++iter) begin
+		a <= 32'hbf9d70a3;   // -1.23
+		b <= 32'h4015c28f;   // +2.34
+		// expected result: -2.8782 = 0xc038346d
+
+		for(iter = 0; iter < 16; ++iter) begin
 			clk <= !clk;
 			rst <= 0;
 			start <= 0;

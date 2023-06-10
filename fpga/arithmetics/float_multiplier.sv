@@ -33,10 +33,11 @@ module float_multiplier
 // multiplier states
 typedef enum
 {
-	Reset,    // start multiplication
-	Mult,     // perform the multiplication
-	Norm,     // normalise float
-	Finished  // multiplication finished
+	Reset,      // start multiplication
+	Mult,       // perform the multiplication
+	Norm_Over,  // normalise overflowing float
+	Norm_Under, // normalise underflowing float
+	Finished    // multiplication finished
 } t_state;
 
 t_state state = Reset, state_next = Reset;
@@ -57,12 +58,17 @@ assign b_mant = in_b[MANT_BITS-1 : 0] | (1 << MANT_BITS);
 // multiplied values
 logic sign;
 logic [EXP_BITS-1 : 0] exp, exp_next;
-logic [MANT_BITS-1 : 0] mant, mant_next;
+logic [MANT_BITS*2 : 0] mant, mant_next;
+
+wire first_mant_bit;
+wire [MANT_BITS-1 : 0] actual_mant;
+assign first_mant_bit = mant[MANT_BITS];
+assign actual_mant = mant[MANT_BITS-1 : 0];
 
 
 // output product
 assign sign = in_a[BITS-1] ^ in_b[BITS-1];
-assign out_prod = { sign, exp, mant[MANT_BITS-1 : 0]};
+assign out_prod = { sign, exp, actual_mant};
 assign out_finished = (state==Finished ? 1'b1 : 1'b0);
 
 
@@ -90,14 +96,14 @@ always_comb begin
 	mant_next = mant;
 
 	case(state)
-		Reset:
+		Reset:      // start new multiplication
 			begin
 				exp_next = 0;
 				mant_next = 0;
 				state_next = Mult;
 			end
 
-		Mult:
+		Mult:       // perform the multiplication
 			begin
 				// exponent
 				exp_next = a_exp + b_exp - EXP_BIAS;
@@ -105,15 +111,33 @@ always_comb begin
 				// mantissa
 				mant_next = (a_mant * b_mant) >> MANT_BITS;
 
-				state_next = Norm;
+				state_next = Norm_Over;
 			end
 
-		Norm:
+		Norm_Over:  // normalise overflowing float
 			begin
-				state_next = Finished;
+				if(mant >= $pow(2, MANT_BITS+1)) begin
+					mant_next = mant >> 1;
+					exp_next = exp + 1;
+					state_next = Norm_Over;
+				end else begin
+					state_next = Norm_Under;
+				end
 			end
 
-		Finished:
+		Norm_Under: // normalise underflowing float
+			begin
+				//$display("mant = %b, first_bit = %b", mant, first_mant_bit);
+				if(actual_mant != 0 && ~first_mant_bit) begin
+					mant_next = mant << 1;
+					exp_next = exp - 1;
+					state_next = Norm_Under;
+				end else begin
+					state_next = Finished;
+				end
+			end
+
+		Finished:   // multiplication finished
 			// wait for start signal
 			if(in_start) begin
 				state_next = Reset;

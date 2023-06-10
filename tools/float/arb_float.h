@@ -152,9 +152,9 @@ t_int count_initial_zeros(t_int value, t_int length)
  * normalise the float's mantissa (including the 1.)
  */
 template<class t_int>
-void normalise_float(t_int& mant, t_int& expo, t_int mant_len, t_int mant_mask)
+void normalise_float(t_int& mant, t_int& expo, t_int mant_len)
 {
-	while(mant > (mant_mask | t_int{1}<<static_cast<unsigned>(mant_len)))
+	while(mant > t_int{1}<<static_cast<unsigned>(mant_len))
 	{
 		mant >>= 1;
 		expo += 1;
@@ -490,7 +490,7 @@ public:
 
 		t_int exp_c = GetExponent(true) + flt.GetExponent(true);
 
-		normalise_float<t_int>(mant_c, exp_c, m_mant_len, m_mant_mask);
+		normalise_float<t_int>(mant_c, exp_c, m_mant_len);
 
 		SetSign(GetSign() ^ flt.GetSign());
 		SetMantissa(mant_c);
@@ -516,7 +516,7 @@ public:
 		t_int mant_c = (mant_a / mant_b) << static_cast<unsigned>(m_mant_len);
 		t_int exp_c = exp_a - exp_b;
 
-		normalise_float<t_int>(mant_c, exp_c, m_mant_len, m_mant_mask);
+		normalise_float<t_int>(mant_c, exp_c, m_mant_len);
 
 		SetSign(GetSign() ^ flt.GetSign());
 		SetMantissa(mant_c);
@@ -565,7 +565,7 @@ public:
 			mant_c = -mant_c;
 		}
 
-		normalise_float<t_int>(mant_c, exp_c, m_mant_len, m_mant_mask);
+		normalise_float<t_int>(mant_c, exp_c, m_mant_len);
 
 		SetSign(sign_c);
 		SetMantissa(mant_c);
