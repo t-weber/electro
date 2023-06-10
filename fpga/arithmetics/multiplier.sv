@@ -23,7 +23,7 @@ module multiplier
 	// output
 	output wire [OUT_BITS-1 : 0] out_prod,
 
-	// conversion finished?
+	// calculation finished?
 	output wire out_finished
 );
 
@@ -78,58 +78,58 @@ end
 // calculation process
 always_comb begin
 	// save registers
-	state_next <= state;
-	prod_next <= prod;
-	bitidx_next <= bitidx;
-	b_shifted_next <= b_shifted;
+	state_next = state;
+	prod_next = prod;
+	bitidx_next = bitidx;
+	b_shifted_next = b_shifted;
 
 	case(state)
 		Reset:
 			begin
-				prod_next <= 0;
-				bitidx_next <= 0;
-				state_next <= CheckShift;
+				prod_next = 0;
+				bitidx_next = 0;
+				state_next = CheckShift;
 			end
 
 		CheckShift:
 			begin
 				if(in_a[bitidx])
-					state_next <= Shift;
+					state_next = Shift;
 				else
-					state_next <= NextBit;
+					state_next = NextBit;
 			end
 
 		Shift:
 			begin
-				b_shifted_next <= (in_b <<< bitidx);
-				state_next <= Add;
+				b_shifted_next = (in_b <<< bitidx);
+				state_next = Add;
 			end
 
 		Add:
 			begin
 				// use internal adder
-				//prod_next <= prod + b_shifted;
+				//prod_next = prod + b_shifted;
 
 				// use adder module
-				prod_next <= b_sum;
-				state_next <= NextBit;
+				prod_next = b_sum;
+				state_next = NextBit;
 			end
 
 		NextBit:
 			begin
 				//$display("bitidx = %d", bitidx);
 				if(bitidx == IN_BITS-1) begin
-					state_next <= Finished;
+					state_next = Finished;
 				end else begin
-					bitidx_next <= bitidx + 1'b1;
-					state_next <= CheckShift;
+					bitidx_next = bitidx + 1'b1;
+					state_next = CheckShift;
 				end
 			end
 
 		Finished:
 			// wait for start signal
 			if(in_start) begin
-				state_next <= Reset;
+				state_next = Reset;
 			end
 	endcase
 end

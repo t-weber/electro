@@ -30,7 +30,7 @@ entity multiplier is
 		-- output
 		out_prod : out std_logic_vector(OUT_BITS-1 downto 0);
 
-		-- conversion finished?
+		-- calculation finished?
 		out_finished : out std_logic
 	);
 end entity;

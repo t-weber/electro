@@ -36,11 +36,9 @@ template<typename T>
 constexpr T int_pow2(T n)
 {
 	if(n == 0)
-		return 1;
-	else if(n == 1)
-		return 2;
-	else if(n > 1)
-		return 2 * int_pow2<T>(n - 1);
+		return T(1);
+	else if(n > 0)
+		return T(1) << static_cast<unsigned>(n);
 	else if(n < 0)
 		return int_pow2<T>(n + 1) / 2;
 

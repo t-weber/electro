@@ -44,3 +44,4 @@
 micro_proc/lib/characters.c
 
 fpga/cpu/build/**
+tools/float/build/**
