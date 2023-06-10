@@ -10,7 +10,7 @@ module float_multiplier
 	parameter BITS = 32,
 	parameter EXP_BITS = 8,
 	parameter MANT_BITS = BITS-EXP_BITS - 1,
-	parameter EXP_BIAS = $pow(2, EXP_BITS-1) - 1
+	parameter [EXP_BITS-1 : 0] EXP_BIAS = (1'b1 << (EXP_BITS - 1'b1)) - 1'b1
 )
 (
 	// clock and reset
@@ -51,8 +51,8 @@ logic [MANT_BITS : 0] b_mant;
 
 assign a_exp = in_a[BITS-2 : BITS-1-EXP_BITS];
 assign b_exp = in_b[BITS-2 : BITS-1-EXP_BITS];
-assign a_mant = in_a[MANT_BITS-1 : 0] | (1 << MANT_BITS);
-assign b_mant = in_b[MANT_BITS-1 : 0] | (1 << MANT_BITS);
+assign a_mant = in_a[MANT_BITS-1 : 0] | (1'b1 << MANT_BITS);
+assign b_mant = in_b[MANT_BITS-1 : 0] | (1'b1 << MANT_BITS);
 
 
 // multiplied values
@@ -116,9 +116,9 @@ always_comb begin
 
 		Norm_Over:  // normalise overflowing float
 			begin
-				if(mant >= $pow(2, MANT_BITS+1)) begin
-					mant_next = mant >> 1;
-					exp_next = exp + 1;
+				if(mant >= (1'b1 << (MANT_BITS+1'b1))) begin
+					mant_next = mant >> 1'b1;
+					exp_next = exp + 1'b1;
 					state_next = Norm_Over;
 				end else begin
 					state_next = Norm_Under;
@@ -129,8 +129,8 @@ always_comb begin
 			begin
 				//$display("mant = %b, first_bit = %b", mant, first_mant_bit);
 				if(actual_mant != 0 && ~first_mant_bit) begin
-					mant_next = mant << 1;
-					exp_next = exp - 1;
+					mant_next = mant << 1'b1;
+					exp_next = exp - 1'b1;
 					state_next = Norm_Under;
 				end else begin
 					state_next = Finished;

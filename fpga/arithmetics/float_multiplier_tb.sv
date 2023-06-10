@@ -4,7 +4,7 @@
 // @date 10-June-2023
 // @license see 'LICENSE' file
 //
-// iverilog -g2012 -o float_multipier_tb float_multiplier.sv float_multiplier_tb.sv
+// iverilog -g2012 -o float_multiplier_tb float_multiplier.sv float_multiplier_tb.sv
 // ./float_multiplier_tb
 //
 
