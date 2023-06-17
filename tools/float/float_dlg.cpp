@@ -79,17 +79,20 @@ void FloatDlg::SetupGUI()
 	m_spinMantLen = new QSpinBox{this};
 	m_spinExpLen->setPrefix("e = ");
 	m_spinMantLen->setPrefix("m = ");
-	m_spinExpLen->setToolTip("Length of the exponent.");
-	m_spinMantLen->setToolTip("Length of the mantissa.");
 	m_spinExpLen->setValue((int)m_value.GetExponentLength());
 	m_spinMantLen->setValue((int)m_value.GetMantissaLength());
+
 	grid->addWidget(m_spinExpLen, grid_y, 1, 1, 1);
 	grid->addWidget(m_spinMantLen, grid_y++, 2, 1, 1);
 
+	QPushButton *btnHalfPrec = new QPushButton{"Half Precision", this};
 	QPushButton *btnSinglePrec = new QPushButton{"Single Precision", this};
 	QPushButton *btnDoublePrec = new QPushButton{"Double Precision", this};
-	grid->addWidget(btnSinglePrec, grid_y, 1, 1, 1);
-	grid->addWidget(btnDoublePrec, grid_y++, 2, 1, 1);
+	QPushButton *btnQuadPrec = new QPushButton{"Quad Precision", this};
+	grid->addWidget(btnHalfPrec, grid_y, 1, 1, 1);
+	grid->addWidget(btnSinglePrec, grid_y++, 2, 1, 1);
+	grid->addWidget(btnDoublePrec, grid_y, 1, 1, 1);
+	grid->addWidget(btnQuadPrec, grid_y++, 2, 1, 1);
 
 	// OK button
 	QSpacerItem *spacer = new QSpacerItem{1, 1, QSizePolicy::Fixed, QSizePolicy::Expanding};
@@ -132,6 +135,11 @@ void FloatDlg::SetupGUI()
 	connect(m_spinMantLen, static_cast<void (QSpinBox::*)(int)>(
 		&QSpinBox::valueChanged),
 		this, &FloatDlg::MantissaLengthChanged);
+	connect(btnHalfPrec, &QAbstractButton::clicked,[this]()
+	{
+		m_spinMantLen->setValue(10);
+		m_spinExpLen->setValue(5);
+	});
 	connect(btnSinglePrec, &QAbstractButton::clicked,[this]()
 	{
 		m_spinMantLen->setValue(23);
@@ -141,6 +149,11 @@ void FloatDlg::SetupGUI()
 	{
 		m_spinMantLen->setValue(52);
 		m_spinExpLen->setValue(11);
+	});
+	connect(btnQuadPrec, &QAbstractButton::clicked,[this]()
+	{
+		m_spinMantLen->setValue(112);
+		m_spinExpLen->setValue(15);
 	});
 
 	// restore settings
@@ -154,6 +167,16 @@ void FloatDlg::SetupGUI()
 
 	// recalculate
 	FloatChanged(m_editFloat->text());
+}
+
+
+void FloatDlg::SetToolTips(int exp_bias)
+{
+	std::ostringstream ostrExp;
+	ostrExp << "Length of the exponent. Bias: " << exp_bias << ".";
+
+	m_spinExpLen->setToolTip(ostrExp.str().c_str());
+	m_spinMantLen->setToolTip("Length of the mantissa.");
 }
 
 
@@ -194,6 +217,9 @@ void FloatDlg::FloatChanged(const QString& txt)
 	m_editFloatExpr->setText(m_value.PrintExpression().c_str());
 	m_editFloatBin->setText(m_value.PrintBinary(true, false).c_str());
 	m_editFloatHex->setText(m_value.PrintHex(false).c_str());
+
+	int exp_bias = static_cast<int>(m_value.GetExponentBias());
+	SetToolTips(exp_bias);
 }
 
 

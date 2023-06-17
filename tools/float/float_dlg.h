@@ -33,6 +33,8 @@ protected:
 	void ExponentLengthChanged(int len);
 	void MantissaLengthChanged(int len);
 
+	void SetToolTips(int exp_bias = 0);
+
 	virtual void closeEvent(QCloseEvent *evt) override;
 
 

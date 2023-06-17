@@ -29,6 +29,8 @@ package conv is
 
 	-- increments a std_logic_vector
 	pure function inc_logvec(vec : std_logic_vector; inc : natural) return std_logic_vector;
+	-- decrements a std_logic_vector
+	pure function dec_logvec(vec : std_logic_vector; dec : natural) return std_logic_vector;
 
 	-- creates a std_logic_vector with an initial value
 	--pure function create_logvec(val : std_logic; len : natural range 1 to natural'high) return std_logic_vector;
@@ -80,5 +82,14 @@ package body conv is
 	pure function inc_logvec(vec : std_logic_vector; inc : natural) return std_logic_vector is
 	begin
 		return std_logic_vector(unsigned(vec) + inc);
+	end function;
+
+
+	--
+	-- decrements a std_logic_vector by dec
+	--
+	pure function dec_logvec(vec : std_logic_vector; dec : natural) return std_logic_vector is
+	begin
+		return std_logic_vector(unsigned(vec) - dec);
 	end function;
 end package body;

@@ -220,6 +220,12 @@ public:
 	}
 
 
+	t_int GetExponentBias() const
+	{
+		return m_exp_bias;
+	}
+
+
 	bool IsZero() const
 	{
 		return m_value == 0;
