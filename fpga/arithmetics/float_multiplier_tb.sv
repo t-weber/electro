@@ -4,7 +4,7 @@
 // @date 10-June-2023
 // @license see 'LICENSE' file
 //
-// iverilog -g2012 -o float_multiplier_tb float_multiplier.sv float_multiplier_tb.sv
+// iverilog -g2012 -o float_multiplier_tb float_ops.sv float_multiplier_tb.sv
 // ./float_multiplier_tb
 //
 
@@ -25,8 +25,9 @@ module float_multiplier_tb;
 
 
 	// instantiate modules
-	float_multiplier #(.BITS(BITS), .EXP_BITS(EXP_BITS))
+	float_ops #(.BITS(BITS), .EXP_BITS(EXP_BITS))
 		mult(.in_clk(clk), .in_rst(rst),
+			.in_op(2'b00),
 			.in_a(a), .in_b(b), .in_start(1'b1),
 			.out_ready(ready), .out_prod(prod));
 

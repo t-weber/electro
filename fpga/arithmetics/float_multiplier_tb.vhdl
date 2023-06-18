@@ -4,7 +4,7 @@
 -- @date 17-June-2023
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 conv.vhdl  && ghdl -a --std=08 float_multiplier.vhdl  &&  ghdl -a --std=08 float_multiplier_tb.vhdl  &&  ghdl -e --std=08 float_multiplier_tb float_multiplier_tb_arch
+-- ghdl -a --std=08 conv.vhdl  && ghdl -a --std=08 float_ops.vhdl  &&  ghdl -a --std=08 float_multiplier_tb.vhdl  &&  ghdl -e --std=08 float_multiplier_tb float_multiplier_tb_arch
 -- ghdl -r --std=08 float_multiplier_tb float_multiplier_tb_arch --vcd=float_multiplier_tb.vcd --stop-time=1000ns
 -- gtkwave float_multiplier_tb.vcd
 --
@@ -34,9 +34,10 @@ begin
 	clk <= not clk after clk_delay when finished = '0';
 
 	-- instantiate modules
-	mult_ent : entity work.float_multiplier
+	mult_ent : entity work.float_ops
 		generic map(BITS => BITS, EXP_BITS => EXP_BITS)
 		port map(in_clk => clk, in_rst => rst,
+			in_op => "00",
 			in_start => '1', out_ready => ready,
 			in_a => a, in_b => b, out_prod => prod);
 

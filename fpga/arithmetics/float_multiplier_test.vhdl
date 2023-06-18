@@ -35,8 +35,9 @@ begin
 	-- instantiate modules
 	mult_ent : entity work.float_multiplier
 		generic map(BITS => BITS, EXP_BITS => EXP_BITS, MANT_BITS => MANT_BITS)
-		port map(in_clk => CLOCK_50_B7A, in_rst => not KEY(0),
-			in_start => '1', out_ready => LEDR(0),
+		port map(in_clk => clock, in_rst => not key(0),
+			in_start => '1', out_ready => ledr(0),
+			in_op => "00",
 			in_a => a, in_b => b, out_prod => prod);
 
 	sevenseg1_ent : entity work.sevenseg

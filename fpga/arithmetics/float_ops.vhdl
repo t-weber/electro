@@ -1,5 +1,5 @@
 --
--- float multiplier
+-- float operations
 -- @author Tobias Weber <tobias.weber@tum.de>
 -- @date 11-June-2023
 -- @license see 'LICENSE' file
@@ -12,7 +12,7 @@ use ieee.numeric_std.all;
 use work.conv.all;
 
 
-entity float_multiplier is
+entity float_ops is
 	generic(
 		constant BITS : natural := 32;
 		constant EXP_BITS : natural := 8;
@@ -25,8 +25,15 @@ entity float_multiplier is
 		-- start signal
 		in_start : in std_logic;
 
-		-- inputs
+		-- input operands
 		in_a, in_b : in std_logic_vector(BITS-1 downto 0);
+
+		-- requested operation:
+		--   "00" -> multiplication
+		--   "01" -> division
+		--   "10" -> addition
+		--   "11" -> subtraction
+		in_op : in std_logic_vector(1 downto 0);
 
 		-- output
 		out_prod : out std_logic_vector(BITS-1 downto 0);
@@ -37,12 +44,15 @@ entity float_multiplier is
 end entity;
 
 
-architecture float_multiplier_impl of float_multiplier is
-	-- multiplier states
+architecture float_ops_impl of float_ops is
+	-- operation states
 	type t_state is
 	(
-		Ready,      -- start multiplication
-		Mult,       -- perform the multiplication
+		Ready,      -- start floating point operation
+		Mult,       -- perform a multiplication
+		Div,        -- perform a division
+		Add,        -- perform an addition
+		Sub,        -- perform a subtraction
 		Norm_Over,  -- normalise overflowing float
 		Norm_Under  -- normalise underflowing float
 	);
@@ -94,7 +104,12 @@ begin
 		when Ready =>
 			-- wait for start signal
 			if in_start then
-				state_next <= Mult;
+				with in_op select state_next <=
+					Mult when "00",
+					Div when "01",
+					Add when "10",
+					Sub when "11",
+					Ready when others;
 			end if;
 
 		when Mult =>
@@ -108,6 +123,18 @@ begin
 			mant_tmp := std_logic_vector(unsigned(a_full) * unsigned(b_full));
 			mant_next <= (MANT_BITS-1 downto 0 => '0') & mant_tmp(mant'high downto MANT_BITS);
 
+			state_next <= Norm_Over;
+
+		when Div =>
+			-- TODO
+			state_next <= Norm_Over;
+
+		when Add =>
+			-- TODO
+			state_next <= Norm_Over;
+
+		when Sub =>
+			-- TODO
 			state_next <= Norm_Over;
 
 		when Norm_Over =>

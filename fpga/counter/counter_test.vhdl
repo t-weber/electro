@@ -14,7 +14,7 @@ entity counter_test is
 	port
 	(
 		-- input clock
-		clock_50_b7a : in std_logic;
+		clock : in std_logic;
 
 		-- reset key
 		key : in std_logic_vector(0 downto 0);
@@ -46,7 +46,7 @@ begin
 	-- slow clock
 	slow_clk_ent : entity work.clkdiv(clkdiv_impl) 
 		generic map(num_ctrbits => 26, shift_bits => 25)
-		port map(in_rst => not key(0), in_clk => clock_50_b7a, out_clk => slow_clk);
+		port map(in_rst => not key(0), in_clk => clock, out_clk => slow_clk);
 
 	-- counter
 	ctr_ent : entity work.counter

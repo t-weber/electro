@@ -31,6 +31,7 @@ module float_multiplier_test
 	// instantiate modules
 	float_multiplier #(.BITS(BITS), .EXP_BITS(EXP_BITS))
 		mult(.in_clk(clock), .in_rst(~key[0]),
+			.in_op(2'b00),
 			.in_a(a), .in_b(b), .in_start(1),
 			.out_ready(ledr[0]), .out_prod(prod));
 

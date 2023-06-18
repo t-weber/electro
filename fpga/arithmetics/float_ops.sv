@@ -5,7 +5,7 @@
  * @license see 'LICENSE' file
  */
 
-module float_multiplier
+module float_ops
 #(
 	parameter BITS = 32,
 	parameter EXP_BITS = 8,
@@ -19,8 +19,15 @@ module float_multiplier
 	// start signal
 	input wire in_start,
 
-	// inputs
+	// input operands
 	input wire [BITS-1 : 0] in_a, in_b,
+
+	// requested operation:
+	//   2'b00 -> multiplication
+	//   2'b01 -> division
+	//   2'b10 -> addition
+	//   2'b11 -> subtraction
+	input wire [1 : 0] in_op,
 
 	// output
 	output wire [BITS-1 : 0] out_prod,
@@ -34,7 +41,10 @@ module float_multiplier
 typedef enum
 {
 	Ready,      // start multiplication
-	Mult,       // perform the multiplication
+	Mult,       // perform a multiplication
+	Div,        // perform a division
+	Add,        // perform an addition
+	Sub,        // perform a subtraction
 	Norm_Over,  // normalise overflowing float
 	Norm_Under  // normalise underflowing float
 } t_state;
@@ -99,11 +109,16 @@ always_comb begin
 			begin
 				// wait for start signal
 				if(in_start) begin
-					state_next = Mult;
+					state_next = t_state'(
+						in_op == 2'b00 ? Mult :
+						in_op == 2'b01 ? Div :
+						in_op == 2'b10 ? Add :
+						in_op == 2'b11 ? Sub :
+						Ready);
 				end
 			end
 
-		Mult:       // perform the multiplication
+		Mult:       // perform a multiplication
 			begin
 				// exponent
 				exp_next = a_exp + b_exp - EXP_BIAS;
@@ -112,6 +127,21 @@ always_comb begin
 				mant_next = (a_mant * b_mant) >> MANT_BITS;
 
 				state_next = Norm_Over;
+			end
+
+		Div:        // perform a division
+			begin
+				// TODO
+			end
+
+		Add:        // perform an addition
+			begin
+				// TODO
+			end
+
+		Sub:        // perform a subtraction
+			begin
+				// TODO
 			end
 
 		Norm_Over:  // normalise overflowing float
