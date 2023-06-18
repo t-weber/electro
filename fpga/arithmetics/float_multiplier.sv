@@ -1,7 +1,7 @@
 /**
  * float multiplier
  * @author Tobias Weber <tobias.weber@tum.de>
- * @date 16-June-2023
+ * @date 10-June-2023
  * @license see 'LICENSE' file
  */
 
@@ -26,21 +26,20 @@ module float_multiplier
 	output wire [BITS-1 : 0] out_prod,
 
 	// calculation finished?
-	output wire out_finished
+	output wire out_ready
 );
 
 
 // multiplier states
 typedef enum
 {
-	Reset,      // start multiplication
+	Ready,      // start multiplication
 	Mult,       // perform the multiplication
 	Norm_Over,  // normalise overflowing float
-	Norm_Under, // normalise underflowing float
-	Finished    // multiplication finished
+	Norm_Under  // normalise underflowing float
 } t_state;
 
-t_state state = Reset, state_next = Reset;
+t_state state = Ready, state_next = Ready;
 
 
 // input values
@@ -69,13 +68,13 @@ assign actual_mant = mant[MANT_BITS-1 : 0];
 // output product
 assign sign = in_a[BITS-1] ^ in_b[BITS-1];
 assign out_prod = { sign, exp, actual_mant};
-assign out_finished = (state==Finished ? 1'b1 : 1'b0);
+assign out_ready = (state==Ready ? 1'b1 : 1'b0);
 
 
 // clock process
 always_ff@(posedge in_clk, posedge in_rst) begin
 	if(in_rst) begin
-		state <= Reset;
+		state <= Ready;
 		exp <= 0;
 		mant <= 0;
 	end
@@ -96,11 +95,12 @@ always_comb begin
 	mant_next = mant;
 
 	case(state)
-		Reset:      // start new multiplication
+		Ready:      // start new multiplication
 			begin
-				exp_next = 0;
-				mant_next = 0;
-				state_next = Mult;
+				// wait for start signal
+				if(in_start) begin
+					state_next = Mult;
+				end
 			end
 
 		Mult:       // perform the multiplication
@@ -133,14 +133,8 @@ always_comb begin
 					exp_next = exp - 1'b1;
 					state_next = Norm_Under;
 				end else begin
-					state_next = Finished;
+					state_next = Ready;
 				end
-			end
-
-		Finished:   // multiplication finished
-			// wait for start signal
-			if(in_start) begin
-				state_next = Reset;
 			end
 	endcase
 end

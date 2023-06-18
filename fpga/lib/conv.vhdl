@@ -22,6 +22,8 @@ package conv is
 
 	-- std_logic -> integer
 	pure function log_to_int(l : std_logic) return integer;
+	-- boolean -> integer
+	pure function bool_to_int(b : boolean) return integer;
 
 	-- integer/natural -> std_logic_vector
 	pure function int_to_logvec(val : integer; len : natural) return std_logic_vector;
@@ -55,6 +57,19 @@ package body conv is
 	begin
 		-- using qualified expression
 		return to_integer(unsigned'("" & l));
+	end function;
+
+
+	--
+	-- boolean -> integer
+	--
+	pure function bool_to_int(b : boolean) return integer is
+	begin
+		if b=true then
+			return 1;
+		else
+			return 0;
+		end if;
 	end function;
 
 

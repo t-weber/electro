@@ -16,7 +16,7 @@ entity float_multiplier is
 	generic(
 		constant BITS : natural := 32;
 		constant EXP_BITS : natural := 8;
-		constant MANT_BITS : natural := BITS-EXP_BITS - 1
+		constant MANT_BITS : natural := 23 --BITS-EXP_BITS - 1
 	);
 	port(
 		-- clock and reset

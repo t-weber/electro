@@ -17,7 +17,7 @@ module float_multiplier_tb;
 	localparam EXP_BITS = 8;
 
 	reg clk = 0, rst = 0;
-	reg start, finished;
+	reg ready;
 
 	logic [BITS-1 : 0] a, b;
 	logic [BITS-1 : 0] prod;
@@ -27,17 +27,14 @@ module float_multiplier_tb;
 	// instantiate modules
 	float_multiplier #(.BITS(BITS), .EXP_BITS(EXP_BITS))
 		mult(.in_clk(clk), .in_rst(rst),
-			.in_a(a), .in_b(b),
-			.in_start(start),
-			.out_finished(finished),
-			.out_prod(prod));
+			.in_a(a), .in_b(b), .in_start(1'b1),
+			.out_ready(ready), .out_prod(prod));
 
 
 	// run simulation
 	initial begin
 		clk <= 0;
 		rst <= 1;
-		start <= 1;
 
 		//a <= 32'hbf000000;   // -0.5
 		//b <= 32'h3e800000;   // +0.25
@@ -50,11 +47,11 @@ module float_multiplier_tb;
 		for(iter = 0; iter < 16; ++iter) begin
 			clk <= !clk;
 			rst <= 0;
-			start <= 0;
 
 			#10;
-			$display("iter = %0d: t = %0t, clk = %b, finished = %b, %h * %h = %h, exp = %h, mant = %h",
-				iter, $time, clk, finished, a, b, prod, prod[BITS-2 : BITS-1-EXP_BITS], prod[BITS-2-EXP_BITS : 0]);
+			$display("iter = %0d: t = %0t, clk = %b, ready = %b, %h * %h = %h, exp = %h, mant = %h",
+				iter, $time, clk, ready, a, b, prod,
+				prod[BITS-2 : BITS-1-EXP_BITS], prod[BITS-2-EXP_BITS : 0]);
 		end
 	end
 

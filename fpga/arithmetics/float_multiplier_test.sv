@@ -9,7 +9,7 @@
 module float_multiplier_test
 (
 	input wire clock,
-	input wire [1 : 0] key,
+	input wire [0 : 0] key,
 	output wire [6 : 0] hex0, hex1, hex2, hex3,
 	output wire [0 : 0] ledr
 );
@@ -31,10 +31,8 @@ module float_multiplier_test
 	// instantiate modules
 	float_multiplier #(.BITS(BITS), .EXP_BITS(EXP_BITS))
 		mult(.in_clk(clock), .in_rst(~key[0]),
-			.in_a(a), .in_b(b),
-			.in_start(~key[1]),
-			.out_finished(ledr[0]),
-			.out_prod(prod));
+			.in_a(a), .in_b(b), .in_start(1),
+			.out_ready(ledr[0]), .out_prod(prod));
 
 	  sevenseg #(.ZERO_IS_ON(1), .INVERSE_NUMBERING(1))
 			seg0(.in_digit(prod[3:0]), .out_leds(hex0));
