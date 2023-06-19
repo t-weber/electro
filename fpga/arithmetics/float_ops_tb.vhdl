@@ -1,5 +1,5 @@
 --
--- multiplier testbench
+-- floating point operations testbench
 -- @author Tobias Weber <tobias.weber@tum.de>
 -- @date 17-June-2023
 -- @license see 'LICENSE' file

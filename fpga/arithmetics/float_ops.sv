@@ -131,7 +131,13 @@ always_comb begin
 
 		Div:        // perform a division
 			begin
-				// TODO
+				// exponent
+				exp_next = a_exp - MANT_BITS - b_exp + EXP_BIAS;
+
+				// mantissa
+				mant_next = ((a_mant << MANT_BITS) / b_mant) << MANT_BITS;
+
+				state_next = Norm_Over;
 			end
 
 		Add:        // perform an addition

@@ -1,17 +1,17 @@
 //
-// float multiplier testbench
+// floating point operations testbench
 // @author Tobias Weber <tobias.weber@tum.de>
 // @date 10-June-2023
 // @license see 'LICENSE' file
 //
-// iverilog -g2012 -o float_multiplier_tb float_ops.sv float_multiplier_tb.sv
-// ./float_multiplier_tb
+// iverilog -g2012 -o float_ops_tb float_ops.sv float_ops_tb.sv
+// ./float_ops_tb
 //
 
 
 `timescale 1ms / 1us
 
-module float_multiplier_tb;
+module float_ops_tb;
 
 	localparam BITS = 32;
 	localparam EXP_BITS = 8;
@@ -21,13 +21,14 @@ module float_multiplier_tb;
 
 	logic [BITS-1 : 0] a, b;
 	logic [BITS-1 : 0] prod;
+	logic [1 : 0] op = 2'b00;
 	integer iter;
 
 
 	// instantiate modules
 	float_ops #(.BITS(BITS), .EXP_BITS(EXP_BITS))
 		mult(.in_clk(clk), .in_rst(rst),
-			.in_op(2'b00),
+			.in_op(op),
 			.in_a(a), .in_b(b), .in_start(1'b1),
 			.out_ready(ready), .out_prod(prod));
 
@@ -35,7 +36,6 @@ module float_multiplier_tb;
 	// run simulation
 	initial begin
 		clk <= 0;
-		rst <= 1;
 
 		//a <= 32'hbf000000;   // -0.5
 		//b <= 32'h3e800000;   // +0.25
@@ -43,14 +43,29 @@ module float_multiplier_tb;
 
 		a <= 32'hbf9d70a3;   // -1.23
 		b <= 32'h4015c28f;   // +2.34
-		// expected result: -2.8782 = 0xc038346d
+		// expected results: mult: -2.8782 = 0xc038346d, div: -0.52564 = 0xbf069069
 
-		for(iter = 0; iter < 16; ++iter) begin
+		rst <= 1; #10;
+		op <= 2'b00;
+		for(iter = 0; iter < 8; ++iter) begin
 			clk <= !clk;
 			rst <= 0;
 
 			#10;
 			$display("iter = %0d: t = %0t, clk = %b, ready = %b, %h * %h = %h, exp = %h, mant = %h",
+				iter, $time, clk, ready, a, b, prod,
+				prod[BITS-2 : BITS-1-EXP_BITS], prod[BITS-2-EXP_BITS : 0]);
+		end
+
+		rst <= 1; #10;
+		op <= 2'b01;
+		$display("\n");
+		for(iter = 0; iter < 54; ++iter) begin
+			clk <= !clk;
+			rst <= 0;
+
+			#10;
+			$display("iter = %0d: t = %0t, clk = %b, ready = %b, %h / %h = %h, exp = %h, mant = %h",
 				iter, $time, clk, ready, a, b, prod,
 				prod[BITS-2 : BITS-1-EXP_BITS], prod[BITS-2-EXP_BITS : 0]);
 		end

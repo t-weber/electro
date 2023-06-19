@@ -79,6 +79,10 @@ void FloatDlg::SetupGUI()
 	m_spinMantLen = new QSpinBox{this};
 	m_spinExpLen->setPrefix("e = ");
 	m_spinMantLen->setPrefix("m = ");
+	m_spinExpLen->setMinimum(1);
+	m_spinExpLen->setMaximum(999);
+	m_spinMantLen->setMinimum(1);
+	m_spinMantLen->setMaximum(999);
 	m_spinExpLen->setValue((int)m_value.GetExponentLength());
 	m_spinMantLen->setValue((int)m_value.GetMantissaLength());
 
@@ -170,13 +174,34 @@ void FloatDlg::SetupGUI()
 }
 
 
-void FloatDlg::SetToolTips(int exp_bias)
+void FloatDlg::SetToolTips()
 {
 	std::ostringstream ostrExp;
-	ostrExp << "Length of the exponent. Bias: " << exp_bias << ".";
+	ostrExp << "Length of the exponent. Bias: " << m_value.GetExponentBias() << ".";
 
 	m_spinExpLen->setToolTip(ostrExp.str().c_str());
 	m_spinMantLen->setToolTip("Length of the mantissa.");
+
+	std::ostringstream ostrVal;
+	ostrVal
+		<< "Sign: " << m_value.GetSign()
+		<< "; raw exponent: " << m_value.GetExponent(false)
+		<< ", exponent: " << m_value.GetExponent(true)
+		<< "; raw mantissa: " << m_value.GetMantissa(false)
+		<< ", mantissa: " << m_value.GetMantissa(true)
+		<< ".";
+
+	m_editFloatExpr->setToolTip(ostrVal.str().c_str());
+	m_editFloatBin->setToolTip(ostrVal.str().c_str());
+
+	std::ostringstream ostrValHex;
+	ostrValHex << std::hex
+		<< "Sign: " << m_value.GetSign()
+		<< ", raw exponent: 0x" << m_value.GetExponent(false)
+		<< ", raw mantissa: 0x" << m_value.GetMantissa(false)
+		<< ".";
+
+	m_editFloatHex->setToolTip(ostrValHex.str().c_str());
 }
 
 
@@ -218,8 +243,7 @@ void FloatDlg::FloatChanged(const QString& txt)
 	m_editFloatBin->setText(m_value.PrintBinary(true, false).c_str());
 	m_editFloatHex->setText(m_value.PrintHex(false).c_str());
 
-	int exp_bias = static_cast<int>(m_value.GetExponentBias());
-	SetToolTips(exp_bias);
+	SetToolTips();
 }
 
 

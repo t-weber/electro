@@ -117,7 +117,7 @@ begin
 
 		when Mult =>
 			exp_next <= std_logic_vector(
-				signed(in_a(BITS-2 downto BITS-1-EXP_BITS))
+				+ signed(in_a(BITS-2 downto BITS-1-EXP_BITS))
 				+ signed(in_b(BITS-2 downto BITS-1-EXP_BITS))
 				- to_signed(EXP_BIAS, EXP_BITS));
 
@@ -130,7 +130,7 @@ begin
 
 		when Div =>
 			exp_next <= std_logic_vector(
-				signed(in_a(BITS-2 downto BITS-1-EXP_BITS))
+				+ signed(in_a(BITS-2 downto BITS-1-EXP_BITS))
 				- to_signed(MANT_BITS, EXP_BITS)
 				- signed(in_b(BITS-2 downto BITS-1-EXP_BITS))
 				+ to_signed(EXP_BIAS, EXP_BITS));
