@@ -86,8 +86,11 @@ end process;
 
 -- calculation process combinatorics
 calc_proc : process(all)
-	variable a_full, b_full : std_logic_vector(MANT_BITS downto 0);
-	variable mant_tmp : std_logic_vector(a_full'length+b_full'length-1 downto 0);
+	variable a_full_mult, b_full_mult : std_logic_vector(MANT_BITS downto 0);
+	variable mant_tmp_mult : std_logic_vector(a_full_mult'length+b_full_mult'length-1 downto 0);
+
+	variable a_full_div, b_full_div : std_logic_vector(MANT_BITS*2 downto 0);
+	variable mant_tmp_div : std_logic_vector(a_full_div'length-1 downto 0);
 
 	constant EXP_BIAS : natural := 2**(EXP_BITS - 1) - 1;
 
@@ -118,15 +121,26 @@ begin
 				+ signed(in_b(BITS-2 downto BITS-1-EXP_BITS))
 				- to_signed(EXP_BIAS, EXP_BITS));
 
-			a_full := '1' & in_a(MANT_BITS-1 downto 0);
-			b_full := '1' & in_b(MANT_BITS-1 downto 0);
-			mant_tmp := std_logic_vector(unsigned(a_full) * unsigned(b_full));
-			mant_next <= (MANT_BITS-1 downto 0 => '0') & mant_tmp(mant'high downto MANT_BITS);
+			a_full_mult := '1' & in_a(MANT_BITS-1 downto 0);
+			b_full_mult := '1' & in_b(MANT_BITS-1 downto 0);
+			mant_tmp_mult := std_logic_vector(unsigned(a_full_mult) * unsigned(b_full_mult));
+			mant_next <= (MANT_BITS-1 downto 0 => '0') & mant_tmp_mult(mant'high downto MANT_BITS);
 
 			state_next <= Norm_Over;
 
 		when Div =>
-			-- TODO
+			exp_next <= std_logic_vector(
+				signed(in_a(BITS-2 downto BITS-1-EXP_BITS))
+				- to_signed(MANT_BITS, EXP_BITS)
+				- signed(in_b(BITS-2 downto BITS-1-EXP_BITS))
+				+ to_signed(EXP_BIAS, EXP_BITS));
+
+			-- shift the dividend to not lose significant digits
+			a_full_div := '1' & in_a(MANT_BITS-1 downto 0) & (MANT_BITS-1 downto 0 => '0');
+			b_full_div := (MANT_BITS-1 downto 0 => '0') & '1' & in_b(MANT_BITS-1 downto 0);
+			mant_tmp_div := std_logic_vector(unsigned(a_full_div) / unsigned(b_full_div));
+			mant_next <= mant_tmp_div(mant_tmp_div'high-MANT_BITS downto 0) & (MANT_BITS-1 downto 0 => '0');
+
 			state_next <= Norm_Over;
 
 		when Add =>
