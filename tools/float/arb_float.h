@@ -591,19 +591,43 @@ public:
 	/**
 	 * print an expression representing the float's value
 	 */
-	std::string PrintExpression() const
+	std::string PrintExpression(
+		bool explicit_num = false, bool explicit_denom = false,
+		bool explicit_exp = false) const
 	{
-		auto [num, denom] = GetMantissaRatio();
-		t_int expo = GetExponent(true);
-
 		std::ostringstream ostr;
 		if(GetSign())
 			ostr << "-";
-		ostr << num << " / " << denom << " * 2^";
-		if(expo < 0)
-			ostr << "(" << expo << ")";
+
+		// mantissa
+		auto [num, denom] = GetMantissaRatio();
+		if(explicit_num)
+			ostr << num;
 		else
-			ostr << expo;
+			ostr << "(" << GetMantissa(false) << " + 2^"
+				<< m_mant_len + m_mant_shift << ")";
+
+		ostr << " / ";
+
+		if(explicit_denom)
+			ostr << denom;
+		else
+			ostr << "2^" << m_mant_len;
+
+		// exponent
+		ostr << " * 2^";
+		if(explicit_exp)
+		{
+			t_int expo = GetExponent(true);
+			if(expo < 0)
+				ostr << "(" << expo << ")";
+			else
+				ostr << expo;
+		}
+		else
+		{
+			ostr << "(" << GetExponent(false) << " - " << m_exp_bias << ")";
+		}
 		return ostr.str();
 	}
 

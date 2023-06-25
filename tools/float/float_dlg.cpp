@@ -164,6 +164,13 @@ void FloatDlg::SetupGUI()
 	QSettings sett{this};
 	if(sett.contains("dlg_geo"))
 		restoreGeometry(sett.value("dlg_geo").toByteArray());
+
+	if(sett.contains("exp_len") && sett.contains("mant_len"))
+	{
+		m_spinExpLen->setValue(sett.value("exp_len").toInt());
+		m_spinMantLen->setValue(sett.value("mant_len").toInt());
+	}
+
 	if(sett.contains("float_value"))
 		m_editFloat->setText(sett.value("float_value").toString());
 	else
@@ -174,7 +181,7 @@ void FloatDlg::SetupGUI()
 }
 
 
-void FloatDlg::SetToolTips()
+void FloatDlg::SetNumberToolTips()
 {
 	std::ostringstream ostrExp;
 	ostrExp << "Length of the exponent. Bias: " << m_value.GetExponentBias() << ".";
@@ -191,7 +198,6 @@ void FloatDlg::SetToolTips()
 		<< ", mantissa: " << m_value.GetMantissa(true)
 		<< ".";
 
-	m_editFloatExpr->setToolTip(ostrVal.str().c_str());
 	m_editFloatBin->setToolTip(ostrVal.str().c_str());
 
 	std::ostringstream ostrValHex;
@@ -239,11 +245,12 @@ void FloatDlg::FloatChanged(const QString& txt)
 	//f.PrintInfos();
 	m_value.ConvertFrom(f);
 
-	m_editFloatExpr->setText(m_value.PrintExpression().c_str());
+	m_editFloatExpr->setText(m_value.PrintExpression(false, false, false).c_str());
+	m_editFloatExpr->setToolTip(m_value.PrintExpression(true, true, true).c_str());
 	m_editFloatBin->setText(m_value.PrintBinary(true, false).c_str());
 	m_editFloatHex->setText(m_value.PrintHex(false).c_str());
 
-	SetToolTips();
+	SetNumberToolTips();
 }
 
 
@@ -259,6 +266,7 @@ void FloatDlg::FloatBinChanged(const QString& txt)
 	str.setNum(d, 'g', std::numeric_limits<double>::digits10);
 	m_editFloat->setText(str);
 	m_editFloatExpr->setText(m_value.PrintExpression().c_str());
+	m_editFloatExpr->setToolTip(m_value.PrintExpression(true, true, true).c_str());
 	m_editFloatHex->setText(m_value.PrintHex(false).c_str());
 }
 
@@ -275,6 +283,7 @@ void FloatDlg::FloatHexChanged(const QString& txt)
 	str.setNum(d, 'g', std::numeric_limits<double>::digits10);
 	m_editFloat->setText(str);
 	m_editFloatExpr->setText(m_value.PrintExpression().c_str());
+	m_editFloatExpr->setToolTip(m_value.PrintExpression(true, true, true).c_str());
 	m_editFloatBin->setText(m_value.PrintBinary(true, false).c_str());
 }
 
@@ -285,6 +294,8 @@ void FloatDlg::closeEvent(QCloseEvent *evt)
 	QSettings sett{this};
 	sett.setValue("dlg_geo", saveGeometry());
 	sett.setValue("float_value", m_editFloat->text());
+	sett.setValue("exp_len", m_spinExpLen->value());
+	sett.setValue("mant_len", m_spinMantLen->value());
 
 	QDialog::closeEvent(evt);
 }
