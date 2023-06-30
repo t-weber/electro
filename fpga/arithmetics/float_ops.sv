@@ -53,11 +53,12 @@ t_state state = Ready, state_next = Ready;
 
 
 // input values
-logic [EXP_BITS-1 : 0] a_exp;
-logic [EXP_BITS-1 : 0] b_exp;
-logic [MANT_BITS : 0] a_mant;
-logic [MANT_BITS : 0] b_mant;
+logic [EXP_BITS-1 : 0] a_exp, b_exp;
+logic [MANT_BITS : 0] a_mant, b_mant;
+logic a_sign, b_sign;
 
+assign a_sign = in_a[BITS-1];
+assign b_sign = in_b[BITS-1];
 assign a_exp = in_a[BITS-2 : BITS-1-EXP_BITS];
 assign b_exp = in_b[BITS-2 : BITS-1-EXP_BITS];
 assign a_mant = in_a[MANT_BITS-1 : 0] | (1'b1 << MANT_BITS);
@@ -65,7 +66,7 @@ assign b_mant = in_b[MANT_BITS-1 : 0] | (1'b1 << MANT_BITS);
 
 
 // multiplied values
-logic sign;
+logic sign, sign_next;
 logic [EXP_BITS-1 : 0] exp, exp_next;
 logic [MANT_BITS*2 : 0] mant, mant_next;
 
@@ -76,8 +77,7 @@ assign actual_mant = mant[MANT_BITS-1 : 0];
 
 
 // output product
-assign sign = in_a[BITS-1] ^ in_b[BITS-1];
-assign out_prod = { sign, exp, actual_mant};
+assign out_prod = { sign, exp, actual_mant };
 assign out_ready = (state==Ready ? 1'b1 : 1'b0);
 
 
@@ -87,12 +87,14 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 		state <= Ready;
 		exp <= 0;
 		mant <= 0;
+		sign <= 0;
 	end
 
 	else if(in_clk) begin
 		state <= state_next;
 		exp <= exp_next;
 		mant <= mant_next;
+		sign <= sign_next;
 	end
 end
 
@@ -103,6 +105,7 @@ always_comb begin
 	state_next = state;
 	exp_next = exp;
 	mant_next = mant;
+	sign_next = sign;
 
 	case(state)
 		Ready:      // start new multiplication
@@ -120,34 +123,55 @@ always_comb begin
 
 		Mult:       // perform a multiplication
 			begin
-				// exponent
 				exp_next = a_exp + b_exp - EXP_BIAS;
-
-				// mantissa
 				mant_next = (a_mant * b_mant) >> MANT_BITS;
+				sign_next = a_sign ^ b_sign;
 
 				state_next = Norm_Over;
 			end
 
 		Div:        // perform a division
 			begin
-				// exponent
 				exp_next = a_exp - MANT_BITS - b_exp + EXP_BIAS;
-
-				// mantissa
 				mant_next = ((a_mant << MANT_BITS) / b_mant) << MANT_BITS;
+				sign_next = a_sign ^ b_sign;
 
 				state_next = Norm_Over;
 			end
 
 		Add:        // perform an addition
 			begin
-				// TODO
+				if(a_exp > b_exp) begin
+					exp_next = a_exp;
+
+					if(a_sign == b_sign) begin
+						mant_next = a_mant + (b_mant >> (a_exp - b_exp));
+						sign_next = a_sign;
+					end else if(a_sign != b_sign && a_mant >= b_mant >> (a_exp - b_exp)) begin
+						mant_next = a_mant - (b_mant >> (a_exp - b_exp));
+					end else begin
+						mant_next = - a_mant + (b_mant >> (a_exp - b_exp));
+					end
+				end else if(b_exp > a_exp) begin
+					exp_next = b_exp;
+
+					if(a_sign == b_sign) begin
+						mant_next = b_mant + (a_mant >> (b_exp - a_exp));
+						sign_next = a_sign;
+					end else if(a_sign != b_sign && b_mant >= a_mant >> (b_exp - a_exp)) begin
+						mant_next = b_mant - (a_mant >> (b_exp - a_exp));
+					end else begin
+						mant_next = - b_mant + (a_mant >> (b_exp - a_exp));
+					end
+				end
+
+				state_next = Norm_Over;
 			end
 
 		Sub:        // perform a subtraction
 			begin
-				// TODO
+
+				state_next = Norm_Over;
 			end
 
 		Norm_Over:  // normalise overflowing float

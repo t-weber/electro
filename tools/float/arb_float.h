@@ -198,8 +198,8 @@ public:
 	/**
 	 * copying
 	 */
-	ArbFloat(const ArbFloat& flt) = default;
-	constexpr ArbFloat& operator=(const ArbFloat& flt) = default;
+	ArbFloat(const ArbFloat<t_int>& flt) = default;
+	constexpr ArbFloat<t_int>& operator=(const ArbFloat<t_int>& flt) = default;
 
 
 	t_int GetTotalLength() const
@@ -241,7 +241,7 @@ public:
 	/**
 	 * conert from another float of possibly different bit sizes
 	 */
-	void ConvertFrom(const ArbFloat& flt)
+	void ConvertFrom(const ArbFloat<t_int>& flt)
 	{
 		if(flt.IsZero())
 		{
@@ -488,7 +488,7 @@ public:
 	/**
 	 * multiply with another float
 	 */
-	void Mult(const ArbFloat& flt)
+	void Mult(const ArbFloat<t_int>& flt)
 	{
 		t_int mant_a = GetMantissa(true);
 		t_int mant_b = flt.GetMantissa(true);
@@ -507,7 +507,7 @@ public:
 	/**
 	 * divide by another float
 	 */
-	void Div(const ArbFloat& flt)
+	void Div(const ArbFloat<t_int>& flt)
 	{
 		t_int mant_a = GetMantissa(true);
 		t_int mant_b = flt.GetMantissa(true);
@@ -533,7 +533,7 @@ public:
 	/**
 	 * add another float
 	 */
-	void Add(const ArbFloat& flt)
+	void Add(const ArbFloat<t_int>& flt)
 	{
 		t_int mant_a = GetMantissa(true);
 		t_int mant_b = flt.GetMantissa(true);
@@ -545,12 +545,12 @@ public:
 		if(exp_a > exp_b)
 		{
 			mant_b >>= static_cast<unsigned>(exp_a - exp_b);
-			exp_b += exp_a - exp_b;
+			exp_b = exp_a;
 		}
 		else if(exp_b > exp_a)
 		{
 			mant_a >>= static_cast<unsigned>(exp_b - exp_a);
-			exp_a += exp_b - exp_a;
+			exp_a = exp_b;
 		}
 
 		// set signs
