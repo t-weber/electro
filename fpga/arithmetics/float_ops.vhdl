@@ -60,13 +60,14 @@ architecture float_ops_impl of float_ops is
 	signal state, state_next : t_state := Ready;
 
 	-- current product value
+	signal sign, sign_next : std_logic;
 	signal exp, exp_next : std_logic_vector(EXP_BITS-1 downto 0);
 	signal mant, mant_next : std_logic_vector(MANT_BITS*2 downto 0);
 begin
 
 
 -- output product
-out_prod <= (in_a(BITS-1) xor in_b(BITS-1)) & exp & mant(MANT_BITS-1 downto 0);
+out_prod <= sign & exp & mant(MANT_BITS-1 downto 0);
 out_ready <= '1' when state = Ready else '0';
 
 
@@ -74,10 +75,12 @@ out_ready <= '1' when state = Ready else '0';
 clk_proc : process(in_clk, in_rst) begin
 	if in_rst = '1' then
 		state <= Ready;
+		sign <= '0';
 		exp <= (others => '0');
 		mant <= (others => '0');
 	elsif rising_edge(in_clk) then
 		state <= state_next;
+		sign <= sign_next;
 		exp <= exp_next;
 		mant <= mant_next;
 	end if;
@@ -100,6 +103,7 @@ calc_proc : process(all)
 begin
 	-- save registers
 	state_next <= state;
+	sign_next <= sign;
 	exp_next <= exp;
 	mant_next <= mant;
 
@@ -116,8 +120,10 @@ begin
 			end if;
 
 		when Mult =>
+			sign_next <= in_a(BITS-1) xor in_b(BITS-1);
+
 			exp_next <= std_logic_vector(
-				+ signed(in_a(BITS-2 downto BITS-1-EXP_BITS))
+				  signed(in_a(BITS-2 downto BITS-1-EXP_BITS))
 				+ signed(in_b(BITS-2 downto BITS-1-EXP_BITS))
 				- to_signed(EXP_BIAS, EXP_BITS));
 
@@ -129,8 +135,10 @@ begin
 			state_next <= Norm_Over;
 
 		when Div =>
+			sign_next <= in_a(BITS-1) xor in_b(BITS-1);
+
 			exp_next <= std_logic_vector(
-				+ signed(in_a(BITS-2 downto BITS-1-EXP_BITS))
+				  signed(in_a(BITS-2 downto BITS-1-EXP_BITS))
 				- to_signed(MANT_BITS, EXP_BITS)
 				- signed(in_b(BITS-2 downto BITS-1-EXP_BITS))
 				+ to_signed(EXP_BIAS, EXP_BITS));
@@ -144,7 +152,17 @@ begin
 			state_next <= Norm_Over;
 
 		when Add =>
-			-- TODO
+			if unsigned(in_a(BITS-2 downto BITS-1-EXP_BITS)) >= unsigned(in_b(BITS-2 downto BITS-1-EXP_BITS)) then
+				exp_next <= in_a(BITS-2 downto BITS-1-EXP_BITS);
+
+				if in_a(BITS-1) = in_b(BITS-1) then
+					-- TODO
+					sign_next <= in_a(BITS-1);
+				end if;
+			else
+				exp_next <= in_b(BITS-2 downto BITS-1-EXP_BITS);
+			end if;
+
 			state_next <= Norm_Over;
 
 		when Sub =>

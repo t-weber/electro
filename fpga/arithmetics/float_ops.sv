@@ -9,7 +9,7 @@ module float_ops
 #(
 	parameter BITS = 32,
 	parameter EXP_BITS = 8,
-	parameter MANT_BITS = BITS-EXP_BITS - 1,
+	parameter MANT_BITS = BITS - EXP_BITS - 1,
 	parameter [EXP_BITS-1 : 0] EXP_BIAS = (1'b1 << (EXP_BITS - 1'b1)) - 1'b1
 )
 (
@@ -132,7 +132,7 @@ always_comb begin
 
 		Div:        // perform a division
 			begin
-				exp_next = a_exp - MANT_BITS - b_exp + EXP_BIAS;
+				exp_next = a_exp - EXP_BITS'(MANT_BITS) - b_exp + EXP_BIAS;
 				mant_next = ((a_mant << MANT_BITS) / b_mant) << MANT_BITS;
 				sign_next = a_sign ^ b_sign;
 
@@ -141,7 +141,7 @@ always_comb begin
 
 		Add:        // perform an addition
 			begin
-				if(a_exp > b_exp) begin
+				if(a_exp >= b_exp) begin
 					exp_next = a_exp;
 
 					if(a_sign == b_sign) begin
@@ -149,10 +149,12 @@ always_comb begin
 						sign_next = a_sign;
 					end else if(a_sign != b_sign && a_mant >= b_mant >> (a_exp - b_exp)) begin
 						mant_next = a_mant - (b_mant >> (a_exp - b_exp));
+						sign_next = a_sign;
 					end else begin
 						mant_next = - a_mant + (b_mant >> (a_exp - b_exp));
+						sign_next = b_sign;
 					end
-				end else if(b_exp > a_exp) begin
+				end else begin
 					exp_next = b_exp;
 
 					if(a_sign == b_sign) begin
@@ -160,8 +162,10 @@ always_comb begin
 						sign_next = a_sign;
 					end else if(a_sign != b_sign && b_mant >= a_mant >> (b_exp - a_exp)) begin
 						mant_next = b_mant - (a_mant >> (b_exp - a_exp));
+						sign_next = b_sign;
 					end else begin
 						mant_next = - b_mant + (a_mant >> (b_exp - a_exp));
+						sign_next = a_sign;
 					end
 				end
 
@@ -170,6 +174,33 @@ always_comb begin
 
 		Sub:        // perform a subtraction
 			begin
+				if(a_exp >= b_exp) begin
+					exp_next = a_exp;
+
+					if(a_sign == ~b_sign) begin
+						mant_next = a_mant + (b_mant >> (a_exp - b_exp));
+						sign_next = a_sign;
+					end else if(a_sign != ~b_sign && a_mant >= b_mant >> (a_exp - b_exp)) begin
+						mant_next = a_mant - (b_mant >> (a_exp - b_exp));
+						sign_next = a_sign;
+					end else begin
+						mant_next = - a_mant + (b_mant >> (a_exp - b_exp));
+						sign_next = b_sign;
+					end
+				end else begin
+					exp_next = b_exp;
+
+					if(a_sign == ~b_sign) begin
+						mant_next = b_mant + (a_mant >> (b_exp - a_exp));
+						sign_next = a_sign;
+					end else if(a_sign != ~b_sign && b_mant >= a_mant >> (b_exp - a_exp)) begin
+						mant_next = b_mant - (a_mant >> (b_exp - a_exp));
+						sign_next = b_sign;
+					end else begin
+						mant_next = - b_mant + (a_mant >> (b_exp - a_exp));
+						sign_next = a_sign;
+					end
+				end
 
 				state_next = Norm_Over;
 			end

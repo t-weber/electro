@@ -15,6 +15,7 @@ module float_ops_tb;
 
 	localparam BITS = 32;
 	localparam EXP_BITS = 8;
+	localparam MAX_ITER = 64;
 
 	reg clk = 0, rst = 0;
 	reg ready;
@@ -44,14 +45,15 @@ module float_ops_tb;
 		a <= 32'hbf9d70a3;   // -1.23
 		b <= 32'h4015c28f;   // +2.34
 		// expected results:
-		//	- mult: -2.8782 = 0xc038346d,
+		//	- mul: -2.8782  = 0xc038346d,
 		//	- div: -0.52564 = 0xbf069069
-		//	- add: 1.11 = 0x3f8e147a
+		//	- add:  1.11    = 0x3f8e147a
+		//	- sub: -3.57    = 0xc0647ae1
 
 		// multiplication test
 		rst <= 1; #10;
 		op <= 2'b00;
-		for(iter = 0; iter < 8; ++iter) begin
+		for(iter = 0; iter < MAX_ITER; ++iter) begin
 			clk <= !clk;
 			rst <= 0;
 
@@ -59,13 +61,18 @@ module float_ops_tb;
 			$display("iter = %0d: t = %0t, clk = %b, ready = %b, %h * %h = %h, exp = %h, mant = %h",
 				iter, $time, clk, ready, a, b, prod,
 				prod[BITS-2 : BITS-1-EXP_BITS], prod[BITS-2-EXP_BITS : 0]);
+
+			if(ready) begin
+				#10; clk <= !clk;
+				iter = MAX_ITER;
+			end
 		end
 
 		// division test
 		rst <= 1; #10;
 		op <= 2'b01;
-		$display("\n");
-		for(iter = 0; iter < 54; ++iter) begin
+		$display("");
+		for(iter = 0; iter < MAX_ITER; ++iter) begin
 			clk <= !clk;
 			rst <= 0;
 
@@ -73,13 +80,18 @@ module float_ops_tb;
 			$display("iter = %0d: t = %0t, clk = %b, ready = %b, %h / %h = %h, exp = %h, mant = %h",
 				iter, $time, clk, ready, a, b, prod,
 				prod[BITS-2 : BITS-1-EXP_BITS], prod[BITS-2-EXP_BITS : 0]);
+
+			if(ready) begin
+				#10; clk <= !clk;
+				iter = MAX_ITER;
+			end
 		end
 
 		// addition test
 		rst <= 1; #10;
 		op <= 2'b10;
-		$display("\n");
-		for(iter = 0; iter < 10; ++iter) begin
+		$display("");
+		for(iter = 0; iter < MAX_ITER; ++iter) begin
 			clk <= !clk;
 			rst <= 0;
 
@@ -87,6 +99,30 @@ module float_ops_tb;
 			$display("iter = %0d: t = %0t, clk = %b, ready = %b, %h + %h = %h, exp = %h, mant = %h",
 				iter, $time, clk, ready, a, b, prod,
 				prod[BITS-2 : BITS-1-EXP_BITS], prod[BITS-2-EXP_BITS : 0]);
+
+			if(ready) begin
+				#10; clk <= !clk;
+				iter = MAX_ITER;
+			end
+		end
+
+		// subtraction test
+		rst <= 1; #10;
+		op <= 2'b11;
+		$display("");
+		for(iter = 0; iter < MAX_ITER; ++iter) begin
+			clk <= !clk;
+			rst <= 0;
+
+			#10;
+			$display("iter = %0d: t = %0t, clk = %b, ready = %b, %h - %h = %h, exp = %h, mant = %h",
+				iter, $time, clk, ready, a, b, prod,
+				prod[BITS-2 : BITS-1-EXP_BITS], prod[BITS-2-EXP_BITS : 0]);
+
+			if(ready) begin
+				#10; clk <= !clk;
+				iter = MAX_ITER;
+			end
 		end
 end
 

@@ -1,5 +1,5 @@
 --
--- float multiplier test
+-- floating point operations test
 -- @author Tobias Weber <tobias.weber@tum.de>
 -- @date 18-June-2023
 -- @license see 'LICENSE' file
@@ -10,7 +10,7 @@ use ieee.std_logic_1164.all;
 use work.conv.all;
 
 
-entity float_multiplier_test is
+entity float_ops_test is
 	port
 	(
 		clock : in std_logic;
@@ -21,7 +21,7 @@ entity float_multiplier_test is
 end entity;
 
 
-architecture float_multiplier_test_arch of float_multiplier_test is
+architecture float_ops_test_arch of float_ops_test is
 	constant BITS : natural := 16;
 	constant EXP_BITS : natural := 5;
 	constant MANT_BITS : natural := BITS - EXP_BITS - 1;
@@ -33,7 +33,7 @@ begin
 	-- expected result: -1600 = 0xe640
 
 	-- instantiate modules
-	mult_ent : entity work.float_multiplier
+	ops_ent : entity work.float_ops
 		generic map(BITS => BITS, EXP_BITS => EXP_BITS, MANT_BITS => MANT_BITS)
 		port map(in_clk => clock, in_rst => not key(0),
 			in_start => '1', out_ready => ledr(0),

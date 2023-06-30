@@ -1,12 +1,12 @@
 /**
- * float multiplier test
+ * floating point operations test
  * @author Tobias Weber <tobias.weber@tum.de>
  * @date 11-June-2023
  * @license see 'LICENSE' file
  */
 
 
-module float_multiplier_test
+module float_ops_test
 (
 	input wire clock,
 	input wire [0 : 0] key,
@@ -29,8 +29,8 @@ module float_multiplier_test
 	// expected result: -1600 = 0xe640
 
 	// instantiate modules
-	float_multiplier #(.BITS(BITS), .EXP_BITS(EXP_BITS))
-		mult(.in_clk(clock), .in_rst(~key[0]),
+	float_ops #(.BITS(BITS), .EXP_BITS(EXP_BITS))
+		ops(.in_clk(clock), .in_rst(~key[0]),
 			.in_op(2'b00),
 			.in_a(a), .in_b(b), .in_start(1),
 			.out_ready(ledr[0]), .out_prod(prod));

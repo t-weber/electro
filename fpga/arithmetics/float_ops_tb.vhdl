@@ -28,12 +28,14 @@ architecture float_ops_tb_arch of float_ops_tb is
 
 	signal op : std_logic_vector(1 downto 0) := "00";
 	signal ready, prev_ready  : std_logic := '0';
-	signal mult_finished, div_finished : std_logic := '0';
+	signal mult_finished, div_finished, add_finished, sub_finished : std_logic := '0';
 	signal a, b : std_logic_vector(BITS-1 downto 0) := (others => '0');
 	signal prod : std_logic_vector(BITS-1 downto 0) := (others => '0');
 begin
 	-- clock
-	clk <= not clk after clk_delay when mult_finished = '0' or div_finished = '0';
+	clk <= not clk after clk_delay
+		when mult_finished = '0' or div_finished = '0'
+		or add_finished = '0' or sub_finished = '0';
 
 	-- instantiate modules
 	float_ent : entity work.float_ops
@@ -43,8 +45,12 @@ begin
 			in_start => '1', out_ready => ready,
 			in_a => a, in_b => b, out_prod => prod);
 
-	mult_sim : process(clk) begin
+	float_sim : process(clk) begin
 		rst <= '0';
+
+		if prev_ready = '1' and ready = '1' then
+			report "";
+		end if;
 
 		if op = "00" then
 			prev_ready <= ready;
@@ -70,9 +76,11 @@ begin
 				", " & to_hstring(a) &
 				" * " & to_hstring(b) &
 				" = " & to_hstring(prod);
+
 		elsif op = "01" then
 			prev_ready <= ready;
 			if prev_ready = '0' and ready = '1' then
+				op <= "10";
 				div_finished <= '1';
 			end if;
 
@@ -87,7 +95,44 @@ begin
 				", " & to_hstring(a) &
 				" / " & to_hstring(b) &
 				" = " & to_hstring(prod);
+
+		elsif op = "10" then
+			prev_ready <= ready;
+			if prev_ready = '0' and ready = '1' then
+				op <= "11";
+				add_finished <= '1';
+			end if;
+
+			a <= x"bf9d70a3";  -- -1.23
+			b <= x"4015c28f";  -- +2.34
+			-- expected result: 1.11 = 0x3f8e147a
+
+			report
+				"clk = " & std_logic'image(clk) &
+				", rst = " & std_logic'image(rst) &
+				", ready = " & std_logic'image(ready) &
+				", " & to_hstring(a) &
+				" + " & to_hstring(b) &
+				" = " & to_hstring(prod);
+
+		elsif op = "11" then
+			prev_ready <= ready;
+			if prev_ready = '0' and ready = '1' then
+				sub_finished <= '1';
+			end if;
+
+			a <= x"bf9d70a3";  -- -1.23
+			b <= x"4015c28f";  -- +2.34
+			-- expected result: -3.57 = 0xc0647ae1
+
+			report
+				"clk = " & std_logic'image(clk) &
+				", rst = " & std_logic'image(rst) &
+				", ready = " & std_logic'image(ready) &
+				", " & to_hstring(a) &
+				" - " & to_hstring(b) &
+				" = " & to_hstring(prod);
 		end if;
-	end process;
+end process;
 
 end architecture;
