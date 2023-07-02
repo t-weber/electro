@@ -65,10 +65,12 @@ assign a_mant = in_a[MANT_BITS-1 : 0] | (1'b1 << MANT_BITS);
 assign b_mant = in_b[MANT_BITS-1 : 0] | (1'b1 << MANT_BITS);
 
 
-// multiplied values
+// calculated values
 logic sign, sign_next;
 logic [EXP_BITS-1 : 0] exp, exp_next;
 logic [MANT_BITS*2 : 0] mant, mant_next;
+
+logic [MANT_BITS : 0] a_mant_shifted, b_mant_shifted;
 
 wire first_mant_bit;
 wire [MANT_BITS-1 : 0] actual_mant;
@@ -143,28 +145,30 @@ always_comb begin
 			begin
 				if(a_exp >= b_exp) begin
 					exp_next = a_exp;
+					b_mant_shifted = b_mant >> (a_exp - b_exp);
 
 					if(a_sign == b_sign) begin
-						mant_next = a_mant + (b_mant >> (a_exp - b_exp));
+						mant_next = a_mant + b_mant_shifted;
 						sign_next = a_sign;
-					end else if(a_sign != b_sign && a_mant >= b_mant >> (a_exp - b_exp)) begin
-						mant_next = a_mant - (b_mant >> (a_exp - b_exp));
+					end else if(a_sign != b_sign && a_mant >= b_mant_shifted) begin
+						mant_next = a_mant - b_mant_shifted;
 						sign_next = a_sign;
 					end else begin
-						mant_next = - a_mant + (b_mant >> (a_exp - b_exp));
+						mant_next = - a_mant + b_mant_shifted;
 						sign_next = b_sign;
 					end
 				end else begin
 					exp_next = b_exp;
+					a_mant_shifted = a_mant >> (b_exp - a_exp);
 
 					if(a_sign == b_sign) begin
-						mant_next = b_mant + (a_mant >> (b_exp - a_exp));
+						mant_next = b_mant + a_mant_shifted;
 						sign_next = a_sign;
-					end else if(a_sign != b_sign && b_mant >= a_mant >> (b_exp - a_exp)) begin
-						mant_next = b_mant - (a_mant >> (b_exp - a_exp));
+					end else if(a_sign != b_sign && b_mant >= a_mant_shifted) begin
+						mant_next = b_mant - a_mant_shifted;
 						sign_next = b_sign;
 					end else begin
-						mant_next = - b_mant + (a_mant >> (b_exp - a_exp));
+						mant_next = - b_mant + a_mant_shifted;
 						sign_next = a_sign;
 					end
 				end
@@ -176,28 +180,30 @@ always_comb begin
 			begin
 				if(a_exp >= b_exp) begin
 					exp_next = a_exp;
+					b_mant_shifted = b_mant >> (a_exp - b_exp);
 
 					if(a_sign == ~b_sign) begin
-						mant_next = a_mant + (b_mant >> (a_exp - b_exp));
+						mant_next = a_mant + b_mant_shifted;
 						sign_next = a_sign;
-					end else if(a_sign != ~b_sign && a_mant >= b_mant >> (a_exp - b_exp)) begin
-						mant_next = a_mant - (b_mant >> (a_exp - b_exp));
+					end else if(a_sign != ~b_sign && a_mant >= b_mant_shifted) begin
+						mant_next = a_mant - b_mant_shifted;
 						sign_next = a_sign;
 					end else begin
-						mant_next = - a_mant + (b_mant >> (a_exp - b_exp));
-						sign_next = b_sign;
+						mant_next = - a_mant + b_mant_shifted;
+						sign_next = ~b_sign;
 					end
 				end else begin
 					exp_next = b_exp;
+					a_mant_shifted = a_mant >> (b_exp - a_exp);
 
 					if(a_sign == ~b_sign) begin
-						mant_next = b_mant + (a_mant >> (b_exp - a_exp));
-						sign_next = a_sign;
-					end else if(a_sign != ~b_sign && b_mant >= a_mant >> (b_exp - a_exp)) begin
-						mant_next = b_mant - (a_mant >> (b_exp - a_exp));
-						sign_next = b_sign;
+						mant_next = b_mant + a_mant_shifted;
+						sign_next = ~b_sign;
+					end else if(a_sign != ~b_sign && b_mant >= a_mant_shifted) begin
+						mant_next = b_mant - a_mant_shifted;
+						sign_next = ~b_sign;
 					end else begin
-						mant_next = - b_mant + (a_mant >> (b_exp - a_exp));
+						mant_next = - b_mant + a_mant_shifted;
 						sign_next = a_sign;
 					end
 				end

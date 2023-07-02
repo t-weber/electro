@@ -89,11 +89,18 @@ end process;
 
 -- calculation process combinatorics
 calc_proc : process(all)
-	variable a_full_mult, b_full_mult : std_logic_vector(MANT_BITS downto 0);
-	variable mant_tmp_mult : std_logic_vector(a_full_mult'length+b_full_mult'length-1 downto 0);
+	variable a_exp, b_exp : std_logic_vector(EXP_BITS - 1 downto 0);
+	variable a_mant, b_mant : std_logic_vector(MANT_BITS - 1 downto 0);
+	variable a_sign, b_sign : std_logic;
+
+	variable a_mant_full, b_mant_full : std_logic_vector(MANT_BITS downto 0);
+	variable mant_tmp_mult : std_logic_vector(a_mant_full'length + b_mant_full'length-1 downto 0);
 
 	variable a_full_div, b_full_div : std_logic_vector(MANT_BITS*2 downto 0);
-	variable mant_tmp_div : std_logic_vector(a_full_div'length-1 downto 0);
+	variable mant_tmp_div : std_logic_vector(a_full_div'length - 1 downto 0);
+
+	variable a_mant_shifted, b_mant_shifted : std_logic_vector(MANT_BITS downto 0);
+	variable mant_tmp_add : std_logic_vector(MANT_BITS downto 0);
 
 	constant EXP_BIAS : natural := 2**(EXP_BITS - 1) - 1;
 
@@ -107,66 +114,134 @@ begin
 	exp_next <= exp;
 	mant_next <= mant;
 
+	a_exp := in_a(BITS-2 downto BITS-1-EXP_BITS);
+	b_exp := in_b(BITS-2 downto BITS-1-EXP_BITS);
+
+	a_mant := in_a(MANT_BITS-1 downto 0);
+	b_mant := in_b(MANT_BITS-1 downto 0);
+
+	a_mant_full := '1' & a_mant;
+	b_mant_full := '1' & b_mant;
+
+	a_sign := in_a(BITS-1);
+	b_sign := in_b(BITS-1);
+
+	a_mant_shifted := std_logic_vector(
+		shift_right(unsigned(a_mant_full),
+			to_integer(unsigned(b_exp) - unsigned(a_exp))));
+	b_mant_shifted := std_logic_vector(
+		shift_right(unsigned(b_mant_full),
+			to_integer(unsigned(a_exp) - unsigned(b_exp))));
+
 	case state is
 		when Ready =>
 			-- wait for start signal
-			if in_start then
-				with in_op select state_next <=
-					Mult when "00",
-					Div when "01",
-					Add when "10",
-					Sub when "11",
-					Ready when others;
+			if in_start = '1' then
+				--with in_op select state_next <=
+				--	Mult when "00",
+				--	Div when "01",
+				--	Add when "10",
+				--	Sub when "11",
+				--	Ready when others;
+
+				state_next <=
+					Mult when in_op = "00" else
+					Div when in_op = "01" else
+					Add when in_op = "10" else
+					Sub when in_op = "11";
 			end if;
 
 		when Mult =>
-			sign_next <= in_a(BITS-1) xor in_b(BITS-1);
+			sign_next <= a_sign xor b_sign;
 
 			exp_next <= std_logic_vector(
-				  signed(in_a(BITS-2 downto BITS-1-EXP_BITS))
-				+ signed(in_b(BITS-2 downto BITS-1-EXP_BITS))
+				  signed(a_exp) + signed(b_exp)
 				- to_signed(EXP_BIAS, EXP_BITS));
 
-			a_full_mult := '1' & in_a(MANT_BITS-1 downto 0);
-			b_full_mult := '1' & in_b(MANT_BITS-1 downto 0);
-			mant_tmp_mult := std_logic_vector(unsigned(a_full_mult) * unsigned(b_full_mult));
+			mant_tmp_mult := std_logic_vector(unsigned(a_mant_full) * unsigned(b_mant_full));
 			mant_next <= (MANT_BITS-1 downto 0 => '0') & mant_tmp_mult(mant'high downto MANT_BITS);
 
 			state_next <= Norm_Over;
 
 		when Div =>
-			sign_next <= in_a(BITS-1) xor in_b(BITS-1);
+			sign_next <= a_sign xor b_sign;
 
 			exp_next <= std_logic_vector(
-				  signed(in_a(BITS-2 downto BITS-1-EXP_BITS))
+				  signed(a_exp) - signed(b_exp)
 				- to_signed(MANT_BITS, EXP_BITS)
-				- signed(in_b(BITS-2 downto BITS-1-EXP_BITS))
 				+ to_signed(EXP_BIAS, EXP_BITS));
 
 			-- shift the dividend to not lose significant digits
-			a_full_div := '1' & in_a(MANT_BITS-1 downto 0) & (MANT_BITS-1 downto 0 => '0');
-			b_full_div := (MANT_BITS-1 downto 0 => '0') & '1' & in_b(MANT_BITS-1 downto 0);
+			a_full_div := '1' & a_mant & (MANT_BITS-1 downto 0 => '0');
+			b_full_div := (MANT_BITS-1 downto 0 => '0') & '1' & b_mant;
 			mant_tmp_div := std_logic_vector(unsigned(a_full_div) / unsigned(b_full_div));
 			mant_next <= mant_tmp_div(mant_tmp_div'high-MANT_BITS downto 0) & (MANT_BITS-1 downto 0 => '0');
 
 			state_next <= Norm_Over;
 
 		when Add =>
-			if unsigned(in_a(BITS-2 downto BITS-1-EXP_BITS)) >= unsigned(in_b(BITS-2 downto BITS-1-EXP_BITS)) then
-				exp_next <= in_a(BITS-2 downto BITS-1-EXP_BITS);
+			if unsigned(a_exp) >= unsigned(b_exp) then
+				exp_next <= a_exp;
 
-				if in_a(BITS-1) = in_b(BITS-1) then
-					-- TODO
-					sign_next <= in_a(BITS-1);
+				if a_sign = b_sign then
+					mant_tmp_add := std_logic_vector(unsigned(a_mant_full) + unsigned(b_mant_shifted));
+					sign_next <= a_sign;
+				elsif a_sign /= b_sign and unsigned(a_mant_full) >= unsigned(b_mant_shifted) then
+					mant_tmp_add := std_logic_vector(unsigned(a_mant_full) - unsigned(b_mant_shifted));
+					sign_next <= a_sign;
+				else
+					mant_tmp_add := std_logic_vector(unsigned(b_mant_shifted) - unsigned(a_mant_full));
+					sign_next <= b_sign;
 				end if;
 			else
-				exp_next <= in_b(BITS-2 downto BITS-1-EXP_BITS);
+				exp_next <= b_exp;
+
+				if a_sign = b_sign then
+					mant_tmp_add := std_logic_vector(unsigned(b_mant_full) + unsigned(a_mant_shifted));
+					sign_next <= b_sign;
+				elsif a_sign /= b_sign and unsigned(b_mant_full) >= unsigned(a_mant_shifted) then
+					mant_tmp_add := std_logic_vector(unsigned(b_mant_full) - unsigned(a_mant_shifted));
+					sign_next <= b_sign;
+				else
+					mant_tmp_add := std_logic_vector(unsigned(a_mant_shifted) - unsigned(b_mant_full));
+					sign_next <= a_sign;
+				end if;
 			end if;
 
+			mant_next <= (MANT_BITS-1 downto 0 => '0') & mant_tmp_add(MANT_BITS downto 0);
 			state_next <= Norm_Over;
 
 		when Sub =>
-			-- TODO
+			if unsigned(a_exp) >= unsigned(b_exp) then
+				exp_next <= a_exp;
+
+				if a_sign = not b_sign then
+					mant_tmp_add := std_logic_vector(unsigned(a_mant_full) + unsigned(b_mant_shifted));
+					sign_next <= a_sign;
+				elsif a_sign /= not b_sign and unsigned(a_mant_full) >= unsigned(b_mant_shifted) then
+					mant_tmp_add := std_logic_vector(unsigned(a_mant_full) - unsigned(b_mant_shifted));
+					sign_next <= a_sign;
+				else
+					mant_tmp_add := std_logic_vector(unsigned(b_mant_shifted) - unsigned(a_mant_full));
+					sign_next <= not b_sign;
+				end if;
+			else
+				exp_next <= b_exp;
+
+				if a_sign = not b_sign then
+					--report "case 1";
+					mant_tmp_add := std_logic_vector(unsigned(b_mant_full) + unsigned(a_mant_shifted));
+					sign_next <= not b_sign;
+				elsif a_sign /= not b_sign and unsigned(b_mant_full) >= unsigned(a_mant_shifted) then
+					mant_tmp_add := std_logic_vector(unsigned(b_mant_full) - unsigned(a_mant_shifted));
+					sign_next <= not b_sign;
+				else
+					mant_tmp_add := std_logic_vector(unsigned(a_mant_shifted) - unsigned(b_mant_full));
+					sign_next <= a_sign;
+				end if;
+			end if;
+
+			mant_next <= (MANT_BITS-1 downto 0 => '0') & mant_tmp_add(MANT_BITS downto 0);
 			state_next <= Norm_Over;
 
 		when Norm_Over =>
