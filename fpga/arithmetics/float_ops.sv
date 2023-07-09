@@ -70,7 +70,11 @@ logic sign, sign_next;
 logic [EXP_BITS-1 : 0] exp, exp_next;
 logic [MANT_BITS*2 : 0] mant, mant_next;
 
-logic [MANT_BITS : 0] a_mant_shifted, b_mant_shifted;
+
+// helpers for calculations
+wire [MANT_BITS : 0] a_mant_shifted, b_mant_shifted;
+assign a_mant_shifted = a_mant >> (b_exp - a_exp);
+assign b_mant_shifted = b_mant >> (a_exp - b_exp);
 
 wire first_mant_bit;
 wire [MANT_BITS-1 : 0] actual_mant;
@@ -145,7 +149,6 @@ always_comb begin
 			begin
 				if(a_exp >= b_exp) begin
 					exp_next = a_exp;
-					b_mant_shifted = b_mant >> (a_exp - b_exp);
 
 					if(a_sign == b_sign) begin
 						mant_next = a_mant + b_mant_shifted;
@@ -159,7 +162,6 @@ always_comb begin
 					end
 				end else begin
 					exp_next = b_exp;
-					a_mant_shifted = a_mant >> (b_exp - a_exp);
 
 					if(a_sign == b_sign) begin
 						mant_next = b_mant + a_mant_shifted;
@@ -180,7 +182,6 @@ always_comb begin
 			begin
 				if(a_exp >= b_exp) begin
 					exp_next = a_exp;
-					b_mant_shifted = b_mant >> (a_exp - b_exp);
 
 					if(a_sign == ~b_sign) begin
 						mant_next = a_mant + b_mant_shifted;
@@ -194,7 +195,6 @@ always_comb begin
 					end
 				end else begin
 					exp_next = b_exp;
-					a_mant_shifted = a_mant >> (b_exp - a_exp);
 
 					if(a_sign == ~b_sign) begin
 						mant_next = b_mant + a_mant_shifted;

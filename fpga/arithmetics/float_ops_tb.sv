@@ -15,6 +15,9 @@ module float_ops_tb;
 
 	localparam BITS = 32;
 	localparam EXP_BITS = 8;
+	//localparam BITS = 16;
+	//localparam EXP_BITS = 5;
+
 	localparam MAX_ITER = 64;
 
 	reg clk = 0, rst = 0;
@@ -41,6 +44,9 @@ module float_ops_tb;
 		//a <= 32'hbf000000;   // -0.5
 		//b <= 32'h3e800000;   // +0.25
 		// expected result: -0.125 = 0xbe000000
+
+		//a <= 16'h5640;   // +100
+		//b <= 16'hcc00;   // -0.25
 
 		a <= 32'hbf9d70a3;   // -1.23
 		b <= 32'h4015c28f;   // +2.34
