@@ -20,7 +20,7 @@ module float_ops_test
 
 	wire ready;
 	wire [BITS-1 : 0] a, b;
-	reg [BITS-1 : 0] prod, prod_saved;
+	reg [BITS-1 : 0] result, result_saved;
 
 	assign ledr[0] = ready;
 
@@ -40,20 +40,20 @@ module float_ops_test
 		ops(.in_clk(clock), .in_rst(~key[0]),
 			.in_op(sw[1:0]), //.in_op(2'b00),
 			.in_a(a), .in_b(b), .in_start(1),
-			.out_ready(ready), .out_prod(prod));
+			.out_ready(ready), .out_result(result));
 
 	always@(posedge ready) begin
 		if(ready)
-			prod_saved <= prod;
+			result_saved <= result;
 	end
 
 	sevenseg #(.ZERO_IS_ON(1), .INVERSE_NUMBERING(1))
-		seg0(.in_digit(prod_saved[3:0]), .out_leds(hex0));
+		seg0(.in_digit(result_saved[3:0]), .out_leds(hex0));
 	sevenseg #(.ZERO_IS_ON(1), .INVERSE_NUMBERING(1))
-		seg1(.in_digit(prod_saved[7:4]), .out_leds(hex1));
+		seg1(.in_digit(result_saved[7:4]), .out_leds(hex1));
 	sevenseg #(.ZERO_IS_ON(1), .INVERSE_NUMBERING(1))
-		seg2(.in_digit(prod_saved[11:8]), .out_leds(hex2));
+		seg2(.in_digit(result_saved[11:8]), .out_leds(hex2));
 	sevenseg #(.ZERO_IS_ON(1), .INVERSE_NUMBERING(1))
-		seg3(.in_digit(prod_saved[15:12]), .out_leds(hex3));
+		seg3(.in_digit(result_saved[15:12]), .out_leds(hex3));
 
 endmodule

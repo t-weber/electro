@@ -24,7 +24,7 @@ module float_ops_tb;
 	reg ready;
 
 	logic [BITS-1 : 0] a, b;
-	logic [BITS-1 : 0] prod;
+	logic [BITS-1 : 0] result;
 	logic [1 : 0] op = 2'b00;
 	integer iter;
 
@@ -34,7 +34,7 @@ module float_ops_tb;
 		mult(.in_clk(clk), .in_rst(rst),
 			.in_op(op),
 			.in_a(a), .in_b(b), .in_start(1'b1),
-			.out_ready(ready), .out_prod(prod));
+			.out_ready(ready), .out_result(result));
 
 
 	// run simulation
@@ -65,8 +65,8 @@ module float_ops_tb;
 
 			#10;
 			$display("iter = %0d: t = %0t, clk = %b, ready = %b, %h * %h = %h, exp = %h, mant = %h",
-				iter, $time, clk, ready, a, b, prod,
-				prod[BITS-2 : BITS-1-EXP_BITS], prod[BITS-2-EXP_BITS : 0]);
+				iter, $time, clk, ready, a, b, result,
+				result[BITS-2 : BITS-1-EXP_BITS], result[BITS-2-EXP_BITS : 0]);
 
 			if(ready) begin
 				#10; clk <= !clk;
@@ -84,8 +84,8 @@ module float_ops_tb;
 
 			#10;
 			$display("iter = %0d: t = %0t, clk = %b, ready = %b, %h / %h = %h, exp = %h, mant = %h",
-				iter, $time, clk, ready, a, b, prod,
-				prod[BITS-2 : BITS-1-EXP_BITS], prod[BITS-2-EXP_BITS : 0]);
+				iter, $time, clk, ready, a, b, result,
+				result[BITS-2 : BITS-1-EXP_BITS], result[BITS-2-EXP_BITS : 0]);
 
 			if(ready) begin
 				#10; clk <= !clk;
@@ -103,8 +103,8 @@ module float_ops_tb;
 
 			#10;
 			$display("iter = %0d: t = %0t, clk = %b, ready = %b, %h + %h = %h, exp = %h, mant = %h",
-				iter, $time, clk, ready, a, b, prod,
-				prod[BITS-2 : BITS-1-EXP_BITS], prod[BITS-2-EXP_BITS : 0]);
+				iter, $time, clk, ready, a, b, result,
+				result[BITS-2 : BITS-1-EXP_BITS], result[BITS-2-EXP_BITS : 0]);
 
 			if(ready) begin
 				#10; clk <= !clk;
@@ -122,8 +122,8 @@ module float_ops_tb;
 
 			#10;
 			$display("iter = %0d: t = %0t, clk = %b, ready = %b, %h - %h = %h, exp = %h, mant = %h",
-				iter, $time, clk, ready, a, b, prod,
-				prod[BITS-2 : BITS-1-EXP_BITS], prod[BITS-2-EXP_BITS : 0]);
+				iter, $time, clk, ready, a, b, result,
+				result[BITS-2 : BITS-1-EXP_BITS], result[BITS-2-EXP_BITS : 0]);
 
 			if(ready) begin
 				#10; clk <= !clk;

@@ -36,7 +36,7 @@ entity float_ops is
 		in_op : in std_logic_vector(1 downto 0);
 
 		-- output
-		out_prod : out std_logic_vector(BITS-1 downto 0);
+		out_result : out std_logic_vector(BITS-1 downto 0);
 
 		-- ready to calculate?
 		out_ready : out std_logic
@@ -58,17 +58,27 @@ architecture float_ops_impl of float_ops is
 	);
 
 	signal state, state_next : t_state := Ready;
+	signal selected_op : t_state := Add;
 
-	-- current product value
+	-- current result value
 	signal sign, sign_next : std_logic;
 	signal exp, exp_next : std_logic_vector(EXP_BITS-1 downto 0);
 	signal mant, mant_next : std_logic_vector(MANT_BITS*2 downto 0);
 begin
 
 
--- output product
-out_prod <= sign & exp & mant(MANT_BITS-1 downto 0);
+-- output result
+out_result <= sign & exp & mant(MANT_BITS-1 downto 0);
 out_ready <= '1' when state = Ready else '0';
+
+
+-- decode selected operation
+with in_op select selected_op <=
+	Mult when "00",
+	Div when "01",
+	Add when "10",
+	Sub when "11",
+	Ready when others;
 
 
 -- clock process with flip-flop
@@ -137,18 +147,7 @@ begin
 		when Ready =>
 			-- wait for start signal
 			if in_start = '1' then
-				--with in_op select state_next <=
-				--	Mult when "00",
-				--	Div when "01",
-				--	Add when "10",
-				--	Sub when "11",
-				--	Ready when others;
-
-				state_next <=
-					Mult when in_op = "00" else
-					Div when in_op = "01" else
-					Add when in_op = "10" else
-					Sub when in_op = "11";
+				state_next <= selected_op;
 			end if;
 
 		when Mult =>

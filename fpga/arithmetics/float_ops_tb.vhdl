@@ -21,6 +21,9 @@ end entity;
 architecture float_ops_tb_arch of float_ops_tb is
 	constant BITS : natural := 32;
 	constant EXP_BITS : natural := 8;
+	--constant BITS : natural := 16;
+	--constant EXP_BITS : natural := 5;
+	constant MANT_BITS : natural := BITS - EXP_BITS - 1;
 
 	constant clk_delay : time := 10 ns;
 	signal clk : std_logic := '0';
@@ -30,7 +33,7 @@ architecture float_ops_tb_arch of float_ops_tb is
 	signal ready, prev_ready  : std_logic := '0';
 	signal mult_finished, div_finished, add_finished, sub_finished : std_logic := '0';
 	signal a, b : std_logic_vector(BITS-1 downto 0) := (others => '0');
-	signal prod : std_logic_vector(BITS-1 downto 0) := (others => '0');
+	signal result : std_logic_vector(BITS-1 downto 0) := (others => '0');
 begin
 	-- clock
 	clk <= not clk after clk_delay
@@ -39,11 +42,11 @@ begin
 
 	-- instantiate modules
 	float_ent : entity work.float_ops
-		generic map(BITS => BITS, EXP_BITS => EXP_BITS)
+		generic map(BITS => BITS, EXP_BITS => EXP_BITS, MANT_BITS => MANT_BITS)
 		port map(in_clk => clk, in_rst => rst,
 			in_op => op,
 			in_start => '1', out_ready => ready,
-			in_a => a, in_b => b, out_prod => prod);
+			in_a => a, in_b => b, out_result => result);
 
 	float_sim : process(clk) begin
 		rst <= '0';
@@ -59,15 +62,19 @@ begin
 				mult_finished <= '1';
 			end if;
 
-			--a <= x"bf000000";  -- -0.5
-			--b <= x"3e800000";  -- +0.25
+			a <= x"bf000000";  -- -0.5
+			b <= x"3e800000";  -- +0.25
 			-- expected result: -0.125 = 0xbe000000
 
 			--a <= int_to_logvec(16#bf9d70a3#, BITS);
 			--b <= int_to_logvec(16#4015c28f#, BITS);
-			a <= x"bf9d70a3";  -- -1.23
-			b <= x"4015c28f";  -- +2.34
+			--a <= x"bf9d70a3";  -- -1.23
+			--b <= x"4015c28f";  -- +2.34
 			-- expected result: -2.8782 = 0xc038346d
+
+			--a <= x"cc00";  -- -16
+			--b <= x"5640";  -- +100
+			-- expected result: -1600 = 0xe640
 
 			report
 				"clk = " & std_logic'image(clk) &
@@ -75,7 +82,7 @@ begin
 				", ready = " & std_logic'image(ready) &
 				", " & to_hstring(a) &
 				" * " & to_hstring(b) &
-				" = " & to_hstring(prod);
+				" = " & to_hstring(result);
 
 		elsif op = "01" then
 			prev_ready <= ready;
@@ -88,13 +95,17 @@ begin
 			b <= x"4015c28f";  -- +2.34
 			-- expected result: -0.52564 = 0xbf069069
 
+			--a <= x"cc00";  -- -16
+			--b <= x"5640";  -- +100
+			-- expected result: -0.16 = 0xb11e
+
 			report
 				"clk = " & std_logic'image(clk) &
 				", rst = " & std_logic'image(rst) &
 				", ready = " & std_logic'image(ready) &
 				", " & to_hstring(a) &
 				" / " & to_hstring(b) &
-				" = " & to_hstring(prod);
+				" = " & to_hstring(result);
 
 		elsif op = "10" then
 			prev_ready <= ready;
@@ -107,13 +118,17 @@ begin
 			b <= x"4015c28f";  -- +2.34
 			-- expected result: 1.11 = 0x3f8e147a
 
+			--a <= x"cc00";  -- -16
+			--b <= x"5640";  -- +100
+			-- expected result: 84 = 0x5540
+
 			report
 				"clk = " & std_logic'image(clk) &
 				", rst = " & std_logic'image(rst) &
 				", ready = " & std_logic'image(ready) &
 				", " & to_hstring(a) &
 				" + " & to_hstring(b) &
-				" = " & to_hstring(prod);
+				" = " & to_hstring(result);
 
 		elsif op = "11" then
 			prev_ready <= ready;
@@ -125,13 +140,17 @@ begin
 			b <= x"4015c28f";  -- +2.34
 			-- expected result: -3.57 = 0xc0647ae1
 
+			--a <= x"cc00";  -- -16
+			--b <= x"5640";  -- +100
+			-- expected result: -116 = 0xd740
+
 			report
 				"clk = " & std_logic'image(clk) &
 				", rst = " & std_logic'image(rst) &
 				", ready = " & std_logic'image(ready) &
 				", " & to_hstring(a) &
 				" - " & to_hstring(b) &
-				" = " & to_hstring(prod);
+				" = " & to_hstring(result);
 		end if;
 end process;
 

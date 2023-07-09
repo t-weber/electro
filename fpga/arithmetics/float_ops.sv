@@ -30,7 +30,7 @@ module float_ops
 	input wire [1 : 0] in_op,
 
 	// output
-	output wire [BITS-1 : 0] out_prod,
+	output wire [BITS-1 : 0] out_result,
 
 	// calculation finished?
 	output wire out_ready
@@ -82,8 +82,8 @@ assign first_mant_bit = mant[MANT_BITS];
 assign actual_mant = mant[MANT_BITS-1 : 0];
 
 
-// output product
-assign out_prod = { sign, exp, actual_mant };
+// output result
+assign out_result = { sign, exp, actual_mant };
 assign out_ready = (state==Ready ? 1'b1 : 1'b0);
 
 
