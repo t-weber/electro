@@ -5,35 +5,14 @@
 ; @license see 'LICENSE' file
 ;
 
-; -----------------------------------------------------------------------------
-; memory layout
-; -----------------------------------------------------------------------------
-ZERO_PAGE     = $0000
-STACK_PAGE    = $0100
-IO_START      = $c000
-ROM_START     = $e000
-; -----------------------------------------------------------------------------
-
-
-; -----------------------------------------------------------------------------
-; I/O registers, see: https://en.wikipedia.org/wiki/WDC_65C22
-; -----------------------------------------------------------------------------
-IO_PORT1      = $c001
-IO_PORT2      = $c000
-IO_PORT1_WR   = $c003
-IO_PORT2_WR   = $c002
-IO_AUX_CTRL   = $c00b
-IO_PORTS_CTRL = $c00c
-IO_INT_FLAGS  = $c00d
-IO_INT_ENABLE = $c00e
-; -----------------------------------------------------------------------------
+.include "defs.inc"
 
 
 ; -----------------------------------------------------------------------------
 ; memory test
 ; -----------------------------------------------------------------------------
 START_PAGE    = $01
-END_PAGE      = $c0
+END_PAGE      = $80
 TEST_PATTERN1 = %10101010
 TEST_PATTERN2 = %01010101
 
@@ -57,6 +36,7 @@ main:
 	ldx #$ff
 	txs
 
+test_start:
 	; output status to port 1
 	lda #$ff
 	sta IO_PORT1_WR
@@ -135,16 +115,39 @@ main:
 	lda #%00011111
 	sta IO_PORT1
 
-	jmp end_test
+	; loop test
+	jmp test_start
+	;jmp test_end
+
 	test_error:
 		; output error page number to port 1
 		stx IO_PORT1
 
-		; output error status to port 1
-		;lda #%11111111
-		;sta IO_PORT1
+		ldy #$80
+		error_blink_loop_1a:
+			lda #$ff
+			error_blink_loop_1:
+				dec
+				bne error_blink_loop_1
+			dey
+			bne error_blink_loop_1a
 
-	end_test:
+		; output error status to port 1
+		lda #%11111111
+		sta IO_PORT1
+
+		ldy #$80
+		error_blink_loop_2a:
+			lda #$ff
+			error_blink_loop_2:
+				dec
+				bne error_blink_loop_2
+			dey
+			bne error_blink_loop_2a
+
+		jmp test_error
+
+	test_end:
 		stp
 ; -----------------------------------------------------------------------------
 

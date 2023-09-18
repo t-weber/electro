@@ -16,7 +16,7 @@ clean:
 %.rom: %.o mem.cfg
 	ld65 -C mem.cfg -o $@ $<
 
-%.o: %.asm
+%.o: %.asm defs.inc
 	ca65 --cpu 65c02 -o $@ $<
 
 %.asm: %.c65
