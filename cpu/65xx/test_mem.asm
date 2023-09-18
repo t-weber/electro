@@ -64,26 +64,27 @@ main:
 	sta IO_PORT1
 
 	; test zero page memory
+	ldx #$00
 	ldy #$00
 	addr_loop_zp:
 		; write test pattern 1
-		lda TEST_PATTERN1
+		lda #TEST_PATTERN1
 		sta ZERO_PAGE, y
 
 		; read test pattern 1 back in
 		lda #$00
 		lda ZERO_PAGE, y
-		cmp TEST_PATTERN1
+		cmp #TEST_PATTERN1
 		bne test_error
 
 		; write test pattern 2
-		lda TEST_PATTERN2
+		lda #TEST_PATTERN2
 		sta ZERO_PAGE, y
 
 		; read test pattern 2 back in
 		lda #$00
 		lda ZERO_PAGE, y
-		cmp TEST_PATTERN2
+		cmp #TEST_PATTERN2
 		bne test_error
 
 		iny
@@ -95,39 +96,39 @@ main:
 	sta IO_PORT1
 
 	; test the rest of the memory
-	ldx START_PAGE
+	ldx #START_PAGE
 	page_loop:
-		lda #$00
-		sta page_ptr_2
+		ldy #$00
+		sty page_ptr_2
 		stx page_ptr_1
 
 		ldy #$00
 		addr_loop:
 			; write test pattern 1
-			lda TEST_PATTERN1
+			lda #TEST_PATTERN1
 			sta (page_ptr_2), y
 
 			; read test pattern 1 back in
 			lda #$00
 			lda (page_ptr_2), y
-			cmp TEST_PATTERN1
+			cmp #TEST_PATTERN1
 			bne test_error
 
 			; write test pattern 2
-			lda TEST_PATTERN2
+			lda #TEST_PATTERN2
 			sta (page_ptr_2), y
 
 			; read test pattern 2 back in
 			lda #$00
 			lda (page_ptr_2), y
-			cmp TEST_PATTERN2
+			cmp #TEST_PATTERN2
 			bne test_error
 
 			iny
 			cpy #$00
 			bne addr_loop
 		inx
-		cpx END_PAGE
+		cpx #END_PAGE
 		bne page_loop
 
 	; output status to port 1
@@ -136,9 +137,12 @@ main:
 
 	jmp end_test
 	test_error:
+		; output error page number to port 1
+		stx IO_PORT1
+
 		; output error status to port 1
-		lda #%11111111
-		sta IO_PORT1
+		;lda #%11111111
+		;sta IO_PORT1
 
 	end_test:
 		stp
