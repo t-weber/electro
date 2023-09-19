@@ -40,9 +40,12 @@ test_start:
 	; output status to port 1
 	lda #$ff
 	sta IO_PORT1_WR
-	lda #%01111111
+	lda #%00000000
 	sta IO_PORT1
 
+	; ---------------------------------------------------------------------
+	; write to and read from the same memory cell
+	; ---------------------------------------------------------------------
 	; test zero page memory
 	ldx #$00
 	ldy #$00
@@ -55,7 +58,7 @@ test_start:
 		lda #$00
 		lda ZERO_PAGE, y
 		cmp #TEST_PATTERN1
-		bne test_error
+		bne test_error_zp
 
 		; write test pattern 2
 		lda #TEST_PATTERN2
@@ -65,14 +68,20 @@ test_start:
 		lda #$00
 		lda ZERO_PAGE, y
 		cmp #TEST_PATTERN2
-		bne test_error
+		bne test_error_zp
 
 		iny
 		cpy #$00
 		bne addr_loop_zp
 
+	; bne above can't jump test_error directly
+	jmp after_test_error_zp
+	test_error_zp:
+		jmp test_error
+	after_test_error_zp:
+
 	; output status to port 1
-	lda #%00111111
+	lda #%00000001
 	sta IO_PORT1
 
 	; test the rest of the memory
@@ -112,18 +121,97 @@ test_start:
 		bne page_loop
 
 	; output status to port 1
-	lda #%00011111
+	lda #%00000011
+	sta IO_PORT1
+	; ---------------------------------------------------------------------
+
+	; ---------------------------------------------------------------------
+	; write to all memory cells and then read them all
+	; ---------------------------------------------------------------------
+	; test zero page memory
+	ldx #$00
+	ldy #$00
+	addr_loop_zp_write:
+		; write test pattern 1
+		lda #TEST_PATTERN1
+		sta ZERO_PAGE, y
+
+		iny
+		cpy #$00
+		bne addr_loop_zp_write
+
+	ldy #$00
+	addr_loop_zp_read:
+		; read test pattern 1 back in
+		lda #$00
+		lda ZERO_PAGE, y
+		cmp #TEST_PATTERN1
+		bne test_error
+
+		iny
+		cpy #$00
+		bne addr_loop_zp_read
+
+	; output status to port 1
+	lda #%00000111
 	sta IO_PORT1
 
-	; loop test
+	; test the rest of the memory
+	ldx #START_PAGE
+	page_loop_write:
+		ldy #$00
+		sty page_ptr_2
+		stx page_ptr_1
+
+		ldy #$00
+		addr_loop_write:
+			; write test pattern 1
+			lda #TEST_PATTERN1
+			sta (page_ptr_2), y
+
+			iny
+			cpy #$00
+			bne addr_loop_write
+		inx
+		cpx #END_PAGE
+		bne page_loop_write
+
+	ldx #START_PAGE
+	page_loop_read:
+		ldy #$00
+		sty page_ptr_2
+		stx page_ptr_1
+
+		ldy #$00
+		addr_loop_read:
+			; read test pattern 1 back in
+			lda #$00
+			lda (page_ptr_2), y
+			cmp #TEST_PATTERN1
+			bne test_error
+
+			iny
+			cpy #$00
+			bne addr_loop_read
+		inx
+		cpx #END_PAGE
+		bne page_loop_read
+
+	; output status to port 1
+	lda #%00001111
+	sta IO_PORT1
+	; ---------------------------------------------------------------------
+
+	; loop tests
 	jmp test_start
 	;jmp test_end
 
+	; handle test errors
 	test_error:
 		; output error page number to port 1
 		stx IO_PORT1
 
-		ldy #$80
+		ldy #$c0
 		error_blink_loop_1a:
 			lda #$ff
 			error_blink_loop_1:
@@ -136,7 +224,7 @@ test_start:
 		lda #%11111111
 		sta IO_PORT1
 
-		ldy #$80
+		ldy #$c0
 		error_blink_loop_2a:
 			lda #$ff
 			error_blink_loop_2:

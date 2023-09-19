@@ -7,7 +7,7 @@
 .PRECIOUS: %.asm
 .PHONY: all clean
 
-all: test_io.rom test_mem.rom
+all: test_io.rom test_mem.rom test_timer.rom
 
 clean:
 	rm -vf *.o *.rom
