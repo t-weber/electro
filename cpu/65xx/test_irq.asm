@@ -1,18 +1,11 @@
 ;
-; timer test program
+; test input irq
 ; @author Tobias Weber
-; @date 19-sep-2023
+; @date 23-sep-2023
 ; @license see 'LICENSE' file
 ;
 
 .include "defs.inc"
-
-
-; -----------------------------------------------------------------------------
-; variables
-; -----------------------------------------------------------------------------
-counter = $1000
-; -----------------------------------------------------------------------------
 
 
 
@@ -32,36 +25,29 @@ main:
 	; output to port 1
 	lda #$ff
 	sta IO_PORT1_WR
-	lda counter
+	lda #$00
 	sta IO_PORT1
+
+	; input from port 2
+	lda #$00
+	sta IO_PORT2_WR
 
 	; disable all interrupts
 	lda #%01111111
 	sta IO_INT_ENABLE
 
-	; only enable continuous timer interrupts
-	lda #%11000000
+	; only enable cb1 interrupts
+	lda #%10010000
 	sta IO_INT_ENABLE
 
-	; set continuous timer interrupts
-	lda #%01000000
-	sta IO_AUX_CTRL
-
-	; timer delay
-	lda #$ff
-	sta IO_TIMER1_LATCH_LOW
-	sta IO_TIMER1_CTR_LOW
-	lda #$ff
-	sta IO_TIMER1_LATCH_HIGH
-	sta IO_TIMER1_CTR_HIGH
-
-	lda #$00
-	sta counter
+	; generate interrupt on pos. edge
+	lda #%00010000
+	sta IO_PORTS_CTRL
 
 	cli
 
 	; clear irq
-	lda IO_TIMER1_CTR_LOW
+	lda IO_PORT2
 
 	main_end:
 		wai
@@ -85,17 +71,17 @@ isr_main:
 	clc
 	lda IO_INT_FLAGS
 	rol ; c == bit7, any irq
-	rol ; c == bit6, timer
-	bcs timer_isr
+	rol ; c == bit6, timer 1
+	rol ; c == bit5, timer 2
+	rol ; c == bit4, cb1
+	bcs cb1_isr
 	bra end_isr
 
-	timer_isr:
-		inc counter
-		lda counter
+	cb1_isr:
+		; input from port 2 and output to port 1
+		lda IO_PORT2
 		sta IO_PORT1
 
-		; clear irq
-		lda IO_TIMER1_CTR_LOW
 		bra end_isr
 
 	end_isr:

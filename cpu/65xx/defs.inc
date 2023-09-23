@@ -31,7 +31,7 @@ ROM_START     = $e000
 
 
 ; -----------------------------------------------------------------------------
-; I/O registers, see: https://en.wikipedia.org/wiki/WDC_65C22
+; I/O, see: https://en.wikipedia.org/wiki/WDC_65C22
 ; -----------------------------------------------------------------------------
 IO_PORT1      = $c001
 IO_PORT2      = $c000
@@ -46,8 +46,10 @@ IO_TIMER2_CTR_LOW    = $c008
 IO_TIMER2_CTR_HIGH   = $c009
 
 IO_SHIFT      = $c00a
+
 IO_AUX_CTRL   = $c00b
 IO_PORTS_CTRL = $c00c
+
 IO_INT_FLAGS  = $c00d
 IO_INT_ENABLE = $c00e
 ; -----------------------------------------------------------------------------

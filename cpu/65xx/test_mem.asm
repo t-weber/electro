@@ -75,7 +75,7 @@ test_start:
 		bne addr_loop_zp
 
 	; bne above can't jump test_error directly
-	jmp after_test_error_zp
+	bra after_test_error_zp
 	test_error_zp:
 		jmp test_error
 	after_test_error_zp:
@@ -233,7 +233,7 @@ test_start:
 			dey
 			bne error_blink_loop_2a
 
-		jmp test_error
+		bra test_error
 
 	test_end:
 		stp
