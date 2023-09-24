@@ -1,5 +1,5 @@
 ;
-; test input irq
+; input irq test
 ; @author Tobias Weber
 ; @date 23-sep-2023
 ; @license see 'LICENSE' file
