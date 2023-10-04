@@ -10,8 +10,8 @@
 
 
 sleep:
-;	phy
-;	phx
+	phy
+	phx
 
 	ldx #$40
 	sleep_loop_x:
@@ -22,8 +22,8 @@ sleep:
 		dex
 		bne sleep_loop_x
 
-;	plx
-;	ply
+	plx
+	ply
 	rts
 
 
@@ -197,8 +197,8 @@ lcd_send_nibble_we:
 ; x = data
 lcd_sent_byte_we:
 	; write high nibble
-	;phx
-	stx $0000   ; temporary storage of data byte
+	phx
+	;stx $0000   ; temporary storage of data byte
 	txa
 	ror
 	ror
@@ -209,8 +209,8 @@ lcd_sent_byte_we:
 	jsr lcd_send_nibble_we
 
 	; write low nibble
-	;pla
-	lda $0000   ; temporary storage of data byte
+	pla
+	;lda $0000   ; temporary storage of data byte
 	and #$0f
 	tax
 	jsr lcd_send_nibble_we
@@ -223,6 +223,16 @@ lcd_sent_byte_we:
 ; interrupt service routines
 ; -----------------------------------------------------------------------------
 nmi_main:
+	pha
+	phx
+	phy
+
+	ldx #'X'
+	jsr lcd_sent_byte_we
+
+	ply
+	plx
+	pla
 	rti
 
 
