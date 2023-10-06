@@ -46,13 +46,13 @@ main:
 	; ---------------------------------------------------------------------
 	; write text
 	ldx #'A'
-	jsr lcd_sent_byte_we
+	jsr lcd_send_byte
 	ldx #'B'
-	jsr lcd_sent_byte_we
+	jsr lcd_send_byte
 	ldx #'C'
-	jsr lcd_sent_byte_we
+	jsr lcd_send_byte
 	ldx #'D'
-	jsr lcd_sent_byte_we
+	jsr lcd_send_byte
 	; ---------------------------------------------------------------------
 
 	stp
@@ -65,140 +65,188 @@ main:
 ; lcd interface
 ; -----------------------------------------------------------------------------
 lcd_init:
-	; output to port 1 pins: enable, register select, data 7-4
-	lda #%00111111
-	sta IO_PORT1_WR
+	lda #LCD_IO_PINS
+	sta LCD_IO_PORT_WR
 
 	; ---------------------------------------------------------------------
 	; init
 	jsr sleep
 	ldx #%00000011
-	jsr lcd_send_nibble
+	jsr lcd_send_nibble_cmd
 
 	jsr sleep
 	ldx #%00000011
-	jsr lcd_send_nibble
+	jsr lcd_send_nibble_cmd
 
 	jsr sleep
 	ldx #%00000011
-	jsr lcd_send_nibble
+	jsr lcd_send_nibble_cmd
 
 	ldx #%00000010
-	jsr lcd_send_nibble
+	jsr lcd_send_nibble_cmd
 	; ---------------------------------------------------------------------
 
-	; ---------------------------------------------------------------------
-	; set function
-	; high nibble
-	ldx #%00000010
-	jsr lcd_send_nibble
+	jsr lcd_function
+	jsr lcd_display
+	jsr lcd_clear
+	jsr lcd_return
+	jsr lcd_caret_dir
+	jsr lcd_address
 
-	; low nibble
-	ldx #%00001000
-	jsr lcd_send_nibble
-	; ---------------------------------------------------------------------
+	rts
 
-	; ---------------------------------------------------------------------
-	; set display
-	; high nibble
-	ldx #%00000000
-	jsr lcd_send_nibble
 
-	; low nibble
-	ldx #%00001110
-	jsr lcd_send_nibble
-	; ---------------------------------------------------------------------
-
-	; ---------------------------------------------------------------------
-	; clear
+;
+; clear display
+;
+lcd_clear:
 	; high nibble
 	ldx #%00000000
-	jsr lcd_send_nibble
+	jsr lcd_send_nibble_cmd
 
 	; low nibble
 	ldx #%00000001
-	jsr lcd_send_nibble
-	jsr sleep
-	; ---------------------------------------------------------------------
+	jsr lcd_send_nibble_cmd
 
-	; ---------------------------------------------------------------------
-	; return
+	jsr sleep
+	rts
+
+
+;
+; caret return
+;
+lcd_return:
 	; high nibble
 	ldx #%00000000
-	jsr lcd_send_nibble
+	jsr lcd_send_nibble_cmd
 
 	; low nibble
 	ldx #%00000010
-	jsr lcd_send_nibble
-	jsr sleep
-	; ---------------------------------------------------------------------
+	jsr lcd_send_nibble_cmd
 
-	; ---------------------------------------------------------------------
-	; caret direction
+	jsr sleep
+	rts
+
+
+;
+; set caret direction
+;
+lcd_caret_dir:
 	; high nibble
 	ldx #%00000000
-	jsr lcd_send_nibble
+	jsr lcd_send_nibble_cmd
 
 	; low nibble
 	ldx #%00000110
-	jsr lcd_send_nibble
-	; ---------------------------------------------------------------------
+	jsr lcd_send_nibble_cmd
+	rts
 
-	; ---------------------------------------------------------------------
-	; set address
+
+;
+; set display
+;
+lcd_display:
+	; high nibble
+	ldx #%00000000
+	jsr lcd_send_nibble_cmd
+
+	; low nibble
+	ldx #%00001111
+	jsr lcd_send_nibble_cmd
+	rts
+
+
+;
+; set address
+;
+lcd_address:
 	; high nibble
 	ldx #%00001000
-	jsr lcd_send_nibble
+	jsr lcd_send_nibble_cmd
 
 	; low nibble
 	ldx #%00000110
-	jsr lcd_send_nibble
-	; ---------------------------------------------------------------------
-
+	jsr lcd_send_nibble_cmd
 	rts
 
 
+;
+; set function
+;
+lcd_function:
+	; high nibble
+	ldx #%00000010
+	jsr lcd_send_nibble_cmd
+
+	; low nibble
+	ldx #%00001000
+	jsr lcd_send_nibble_cmd
+	rts
+
+
+;
+; shift display
+;
+lcd_shift:
+	; high nibble
+	ldx #%00000001
+	jsr lcd_send_nibble_cmd
+
+	; low nibble
+	ldx #%00000100
+	jsr lcd_send_nibble_cmd
+	rts
+
+
+;
 ; x = data
+; send a nibble to the command register
+;
+lcd_send_nibble_cmd:
+	; write data without enable bit
+	stx LCD_IO_PORT
+
+	; write data with enable bit
+	txa
+	ora #LCD_PIN_ENABLE
+	sta LCD_IO_PORT
+	jsr sleep
+
+	; write data without enable bit
+	stx LCD_IO_PORT
+	rts
+
+
+;
+; send a nibble to the display buffer
+; x = data
+;
 lcd_send_nibble:
 	; write data without enable bit
-	stx IO_PORT1
+	txa
+	ora #LCD_PIN_RS
+	sta LCD_IO_PORT
 
 	; write data with enable bit
 	txa
-	ora #%00100000
-	sta IO_PORT1
-	jsr sleep
-
-	; write data without enable bit
-	stx IO_PORT1
-	rts
-
-
-; x = data
-lcd_send_nibble_we:
-	; write data without enable bit
-	txa
-	ora #%00010000
-	sta IO_PORT1
-
-	; write data with enable bit
-	txa
-	ora #%00110000
-	sta IO_PORT1
+	ora #(LCD_PIN_ENABLE | LCD_PIN_RS)
+	sta LCD_IO_PORT
 	jsr sleep
 
 	; write data without enable bit
 	txa
-	ora #%00010000
-	sta IO_PORT1
+	ora #LCD_PIN_RS
+	sta LCD_IO_PORT
 	rts
 
 
+;
+; send a byte to the display buffer
 ; x = data
-lcd_sent_byte_we:
+;
+lcd_send_byte:
 	; write high nibble
 	phx
-	;stx $0000   ; temporary storage of data byte
 	txa
 	ror
 	ror
@@ -206,14 +254,13 @@ lcd_sent_byte_we:
 	ror
 	and #$0f
 	tax
-	jsr lcd_send_nibble_we
+	jsr lcd_send_nibble
 
 	; write low nibble
 	pla
-	;lda $0000   ; temporary storage of data byte
 	and #$0f
 	tax
-	jsr lcd_send_nibble_we
+	jsr lcd_send_nibble
 	rts
 ; -----------------------------------------------------------------------------
 
@@ -228,7 +275,7 @@ nmi_main:
 	phy
 
 	ldx #'X'
-	jsr lcd_sent_byte_we
+	jsr lcd_send_byte
 
 	ply
 	plx

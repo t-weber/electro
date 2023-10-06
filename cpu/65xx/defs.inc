@@ -53,3 +53,16 @@ IO_PORTS_CTRL = $c00c
 IO_INT_FLAGS  = $c00d
 IO_INT_ENABLE = $c00e
 ; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; LCD, see: https://www.arduino.cc/documents/datasheets/LCDscreen.PDF
+; -----------------------------------------------------------------------------
+; output to port 1 pins: enable, register select, data 7-4
+LCD_IO_PINS    = %00111111
+LCD_IO_PORT    = IO_PORT1
+LCD_IO_PORT_WR = IO_PORT1_WR
+
+LCD_PIN_ENABLE = %00100000
+LCD_PIN_RS     = %00010000
+; -----------------------------------------------------------------------------
