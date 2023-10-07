@@ -5,6 +5,9 @@
 ; @license see 'LICENSE' file
 ;
 
+.ifndef __MACHINE_DEFS__
+__MACHINE_DEFS__ = 1
+
 ; -----------------------------------------------------------------------------
 ; memory layout
 ;
@@ -27,6 +30,12 @@ STACK_PAGE    = $0100
 MOD_START     = $8000
 IO_START      = $c000
 ROM_START     = $e000
+
+; pseudo-registers in zero-page
+REG_SRC_LO    = $0000
+REG_SRC_HI    = $0001
+REG_DST_LO    = $0002
+REG_DST_HI    = $0003
 ; -----------------------------------------------------------------------------
 
 
@@ -59,10 +68,41 @@ IO_INT_ENABLE = $c00e
 ; LCD, see: https://www.arduino.cc/documents/datasheets/LCDscreen.PDF
 ; -----------------------------------------------------------------------------
 ; output to port 1 pins: enable, register select, data 7-4
-LCD_IO_PINS    = %00111111
-LCD_IO_PORT    = IO_PORT1
-LCD_IO_PORT_WR = IO_PORT1_WR
+LCD_IO_PINS         = %00111111
+LCD_IO_PORT         = IO_PORT1
+LCD_IO_PORT_WR      = IO_PORT1_WR
 
-LCD_PIN_ENABLE = %00100000
-LCD_PIN_RS     = %00010000
+LCD_PIN_ENABLE      = %00100000
+LCD_PIN_RS          = %00010000
+
+LCD_CARET_DIR_INC   = %00000010
+LCD_CARET_DIR_SHIFT = %00000001
+
+LCD_DISP_ON         = %00000100
+LCD_DISP_CARET_LINE = %00000010
+LCD_DISP_CARET_BOX  = %00000001
+
+LCD_SHIFT_ALL       = %00001000
+LCD_SHIFT_RIGHT     = %00000100
+
+LCD_FUNC_8BITS      = %00000001  ; in upper nibble
+LCD_FUNC_2LINES     = %00001000
+LCD_FUNC_FONT       = %00000100
+
+LCD_SLEEP_BASE      = 1          ; has to be >= 1 ms
 ; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; status leds
+; -----------------------------------------------------------------------------
+LED_IO_PINS         = %11000000
+LED_IO_PORT         = IO_PORT1
+LED_IO_PORT_WR      = IO_PORT1_WR
+
+LED_PIN_RED         = %10000000
+LED_PIN_GREEN       = %01000000
+; -----------------------------------------------------------------------------
+
+
+.endif
