@@ -17,7 +17,7 @@ __LCD_DEFS__ = 1
 ; @see https://www.arduino.cc/documents/datasheets/LCDscreen.PDF
 ; -----------------------------------------------------------------------------
 lcd_init:
-	lda #LCD_IO_PINS
+	lda #LCD_IO_PINS_WR
 	sta LCD_IO_PORT_WR
 
 	; ---------------------------------------------------------------------
@@ -46,6 +46,8 @@ lcd_init:
 	jsr lcd_clear
 	jsr lcd_return
 	jsr lcd_caret_dir
+
+	ldx #$00
 	jsr lcd_address
 
 	rts
@@ -108,21 +110,31 @@ lcd_display:
 	jsr lcd_send_nibble_cmd
 
 	; low nibble
-	ldx #(%00001111 | LCD_DISP_ON | LCD_DISP_CARET_LINE | LCD_DISP_CARET_BOX)
+	ldx #(%00001111 | LCD_DISP_ON | LCD_DISP_CARET_LINE)
 	jsr lcd_send_nibble_cmd
 	rts
 
 
 ;
 ; set address for display buffer
+; a = address (line 2 starts at LCD_LINE_LEN)
 ;
 lcd_address:
 	; high nibble
-	ldx #%00001000
+	pha
+	ror
+	ror
+	ror
+	ror
+	and #%00000111
+	ora #%00001000
+	tax
 	jsr lcd_send_nibble_cmd
 
 	; low nibble
-	ldx #%00000000
+	pla
+	and #$0f
+	tax
 	jsr lcd_send_nibble_cmd
 	rts
 
@@ -237,7 +249,6 @@ lcd_print:
 		; load char
 		lda (REG_SRC_LO), y
 		; end at terminating zero
-		cmp #$00
 		beq lcd_print_loop_end
 
 		; print char

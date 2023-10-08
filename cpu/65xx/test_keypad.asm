@@ -6,6 +6,7 @@
 ;
 
 .include "defs.inc"
+.include "keypad.asm"
 
 
 
@@ -28,26 +29,7 @@ main:
 	lda #$00
 	sta IO_PORT1
 
-	; input from port 2
-	lda #$00
-	sta IO_PORT2_WR
-
-	; disable all interrupts
-	lda #%01111111
-	sta IO_INT_ENABLE
-
-	; only enable cb1 interrupts
-	lda #%10010000
-	sta IO_INT_ENABLE
-
-	; generate interrupt on pos. edge
-	lda #%00010000
-	sta IO_PORTS_CTRL
-
-	cli
-
-	; clear irq
-	lda IO_PORT2
+	jsr keypad_init
 
 	main_end:
 		wai
@@ -79,7 +61,7 @@ isr_main:
 
 	cb1_isr:
 		; input from port 2 and output to port 1
-		lda IO_PORT2
+		lda KEYPAD_IO_PORT
 		sta IO_PORT1
 
 		bra end_isr

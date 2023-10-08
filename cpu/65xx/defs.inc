@@ -8,6 +8,7 @@
 .ifndef __MACHINE_DEFS__
 __MACHINE_DEFS__ = 1
 
+
 ; -----------------------------------------------------------------------------
 ; memory layout
 ;
@@ -68,7 +69,7 @@ IO_INT_ENABLE = $c00e
 ; LCD, see: https://www.arduino.cc/documents/datasheets/LCDscreen.PDF
 ; -----------------------------------------------------------------------------
 ; output to port 1 pins: enable, register select, data 7-4
-LCD_IO_PINS         = %00111111
+LCD_IO_PINS_WR      = %00111111
 LCD_IO_PORT         = IO_PORT1
 LCD_IO_PORT_WR      = IO_PORT1_WR
 
@@ -90,18 +91,29 @@ LCD_FUNC_2LINES     = %00001000
 LCD_FUNC_FONT       = %00000100
 
 LCD_SLEEP_BASE      = 1          ; has to be >= 1 ms
+
+LCD_LINE_LEN        = 40         ; characters per line (even if not all are visible)
 ; -----------------------------------------------------------------------------
 
 
 ; -----------------------------------------------------------------------------
 ; status leds
 ; -----------------------------------------------------------------------------
-LED_IO_PINS         = %11000000
+LED_IO_PINS_WR      = %11000000
 LED_IO_PORT         = IO_PORT1
 LED_IO_PORT_WR      = IO_PORT1_WR
 
 LED_PIN_RED         = %10000000
 LED_PIN_GREEN       = %01000000
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; keypad parallel interface
+; -----------------------------------------------------------------------------
+KEYPAD_IO_PINS_WR   = %00000000
+KEYPAD_IO_PORT      = IO_PORT2
+KEYPAD_IO_PORT_WR   = IO_PORT2_WR
 ; -----------------------------------------------------------------------------
 
 

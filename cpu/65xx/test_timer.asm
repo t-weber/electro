@@ -6,6 +6,7 @@
 ;
 
 .include "defs.inc"
+.include "timer.asm"
 
 
 ; -----------------------------------------------------------------------------
@@ -35,33 +36,8 @@ main:
 	lda counter
 	sta IO_PORT1
 
-	; disable all interrupts
-	lda #%01111111
-	sta IO_INT_ENABLE
-
-	; only enable continuous timer interrupts
-	lda #%11000000
-	sta IO_INT_ENABLE
-
-	; set continuous timer interrupts
-	lda #%01000000
-	sta IO_AUX_CTRL
-
-	; timer delay
-	lda #$ff
-	sta IO_TIMER1_LATCH_LOW
-	sta IO_TIMER1_CTR_LOW
-	lda #$ff
-	sta IO_TIMER1_LATCH_HIGH
-	sta IO_TIMER1_CTR_HIGH
-
-	lda #$00
-	sta counter
-
-	cli
-
-	; clear irq
-	lda IO_TIMER1_CTR_LOW
+	ldx #$ff
+	jsr timer_init
 
 	main_end:
 		wai
