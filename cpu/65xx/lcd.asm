@@ -110,7 +110,7 @@ lcd_display:
 	jsr lcd_send_nibble_cmd
 
 	; low nibble
-	ldx #(%00001111 | LCD_DISP_ON | LCD_DISP_CARET_LINE)
+	ldx #(%00001000 | LCD_DISP_ON | LCD_DISP_CARET_LINE)
 	jsr lcd_send_nibble_cmd
 	rts
 

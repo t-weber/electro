@@ -16,9 +16,9 @@ __SLEEP_DEFS__ = 1
 ; a = sleep time
 ;
 sleep_1:
-	sleep1_loop_1:
+	sleep1_loop_a:
 		dec
-		bne sleep1_loop_1
+		bne sleep1_loop_a
 
 	rts
 
@@ -31,14 +31,39 @@ sleep_2:
 sleep:
 	phx
 
-	sleep2_loop_1:
+	sleep2_loop_a:
 		ldx #$ff
-		sleep2_loop_2:
+		sleep2_loop_x:
 			dex
-			bne sleep2_loop_2
+			bne sleep2_loop_x
 		dec
-		bne sleep2_loop_1
+		bne sleep2_loop_a
 
+	plx
+	rts
+
+
+;
+; busy waiting using three loops
+; a = sleep time
+;
+sleep_3:
+	phx
+	phy
+
+	sleep3_loop_a:
+		ldx #$ff
+		sleep3_loop_x:
+			ldy #$ff
+			sleep3_loop_y:
+				dey
+				bne sleep3_loop_y
+			dex
+			bne sleep3_loop_x
+		dec
+		bne sleep3_loop_a
+
+	ply
 	plx
 	rts
 

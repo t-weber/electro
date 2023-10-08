@@ -10,10 +10,11 @@
 .include "lcd.asm"
 
 
-strconst1: .asciiz "Testing "
-strconst2: .asciiz "ABCD "
-strconst3: .asciiz "1234 "
-strvar = $3400  ; a random memory location
+strconst1: .asciiz "Testing"
+strconst2: .asciiz "Loop #"
+strvar     = $3400  ; random memory locations
+strcounter = $3500  ;
+counter    = $3600  ;
 
 
 ; -----------------------------------------------------------------------------
@@ -30,10 +31,12 @@ main:
 	txs
 
 	jsr lcd_init
+	stz counter
 
 	; ---------------------------------------------------------------------
 	; write text
 	main_loop:
+		; -------------------------------------------------------------
 		; display a string constant
 		jsr lcd_clear
 		jsr lcd_return
@@ -46,12 +49,10 @@ main:
 
 		lda #$ff
 		jsr sleep
-		jsr sleep
-		jsr sleep
+		; -------------------------------------------------------------
 
 		; -------------------------------------------------------------
-		; copy a strint constant to a variable and display it
-
+		; copy a string constant to a variable and display it
 		lda #(.lobyte(strconst2))
 		sta REG_SRC_LO
 		lda #(.hibyte(strconst2))
@@ -73,15 +74,22 @@ main:
 
 		lda #$ff
 		jsr sleep
-		jsr sleep
-		jsr sleep
+		; -------------------------------------------------------------
 
 		; -------------------------------------------------------------
 		; concatenate another string to the variable and display it
+		lda #(.lobyte(strcounter))
+		sta REG_DST_LO
+		lda #(.hibyte(strcounter))
+		sta REG_DST_HI
+		lda counter
+		ldy #$00
+		jsr u8tostr_hex
+		inc counter
 
-		lda #(.lobyte(strconst3))
+		lda #(.lobyte(strcounter))
 		sta REG_SRC_LO
-		lda #(.hibyte(strconst3))
+		lda #(.hibyte(strcounter))
 		sta REG_SRC_HI
 		lda #(.lobyte(strvar))
 		sta REG_DST_LO
@@ -100,8 +108,7 @@ main:
 
 		lda #$ff
 		jsr sleep
-		jsr sleep
-		jsr sleep
+		; -------------------------------------------------------------
 
 		bra main_loop
 	; ---------------------------------------------------------------------

@@ -36,6 +36,9 @@ main:
 	lda counter
 	sta IO_PORT1
 
+	lda #$00
+	sta counter
+
 	ldx #$ff
 	jsr timer_init
 

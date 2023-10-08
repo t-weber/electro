@@ -39,9 +39,6 @@ timer_init:
 	sta IO_TIMER1_LATCH_HIGH
 	sta IO_TIMER1_CTR_HIGH
 
-	lda #$00
-	sta counter
-
 	cli
 
 	; clear irq
