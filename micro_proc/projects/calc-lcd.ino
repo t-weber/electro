@@ -127,8 +127,8 @@ static void key_pressed(uint16_t keystate)
 
 	for(uint8_t key = 0; key < KEYPAD_NUM_KEYS - 1; ++key)
 	{
-		if (keystate & (1 << key))
-		strncat_char(input_str, keychar[key], sizeof(input_str));
+		if(keystate & (1 << key))
+			strncat_char(input_str, keychar[key], sizeof(input_str));
 	}
 
 

@@ -44,7 +44,7 @@ void keypad_isr(KeypadInfo* keypad)
 		uint16_t keystate = 0;
 		for(uint8_t key=0; key<keypad->num_keys; ++key)
 		{
-			/* create a rising (or falling) edge*/
+			/* create a rising (or falling) edge */
 			keypad->set_pin(keypad->pin_clock, keypad->pin_unset);
 			keypad->delay(KEYPAD_PULSE_DELAY);
 			keypad->set_pin(keypad->pin_clock, keypad->pin_set);
