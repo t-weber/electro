@@ -126,7 +126,8 @@ LED_PIN_GREEN       = %01000000
 
 
 ; -----------------------------------------------------------------------------
-; keys parallel and keyboard serial interface
+; keys parallel and keypad serial interface,
+; see: https://www.engineersgarage.com/arduino-ttp229-touch-keypad-interfacing/
 ; -----------------------------------------------------------------------------
 KEYPAD_IO_PIN_CLK   = %00010000
 KEYPAD_IO_PIN_DAT   = %00100000
@@ -141,6 +142,11 @@ KEYS_IO_PINS_WR     = KEYPAD_IO_PINS_WR  ; on the same pin header
 KEYS_IO_MASK        = %00001111
 KEYS_IO_PORT        = IO_PORT2
 KEYS_IO_PORT_WR     = IO_PORT2_WR
+
+KEYS_PIN_1          = %00010000
+KEYS_PIN_2          = %00100000
+KEYS_PIN_3          = %01000000
+KEYS_PIN_4          = %10000000
 ; -----------------------------------------------------------------------------
 
 

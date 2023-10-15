@@ -6,7 +6,6 @@
 ;
 
 .include "defs.inc"
-;.include "keys.asm"
 .include "keypad.asm"
 .include "lcd.asm"
 .include "string.asm"
@@ -31,7 +30,6 @@ main:
 	txs
 
 	jsr lcd_init
-	;jsr keys_init
 	jsr keypad_init
 
 	main_end:
@@ -51,7 +49,6 @@ nmi_main:
 
 
 isr_main:
-	;sei
 	pha
 	phx
 	phy
@@ -62,16 +59,21 @@ isr_main:
 	rol ; c == bit6, timer 1
 	rol ; c == bit5, timer 2
 	rol ; c == bit4, cb1 -> keys irq
-	bcs cb1_isr
-	rol ; c == bit5, cb2 -> keyboard irq
-	bcs cb2_isr
+	bcs keys_isr
+	rol ; c == bit5, cb2 -> keypad irq
+	bcs keypad_isr
 	bra end_isr
 
 	; individual keys pressed
-	cb1_isr:
+	keys_isr:
 		; read data pins
 		lda KEYS_IO_PORT
 		and #KEYS_IO_MASK
+		rol  ; move the keys out
+		rol  ; of the keypad range
+		rol
+		rol
+		and #%11110000
 		pha  ; save input key
 
 		; convert input number to char
@@ -93,7 +95,7 @@ isr_main:
 		bra end_isr
 
 	; keys on keypad pressed
-	cb2_isr:
+	keypad_isr:
 		lda #KEYPAD_INIT_DELAY
 		jsr sleep_1
 
@@ -148,9 +150,7 @@ isr_main:
 		bra end_isr
 
 	end_isr:
-	;cli
-	;lda KEYPAD_IO_PORT     ; clear keypad irq flag
-	lda #(IO_INT_FLAG_CB2)  ; clear ind. keypad irq flag
+	lda #IO_INT_FLAG_CB2    ; clear ind. keypad irq flag
 	sta IO_INT_FLAGS
 	ply
 	plx

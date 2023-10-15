@@ -13,6 +13,7 @@ __KEYPAD_DEFS__ = 1
 
 ;
 ; initialise serial interface for the keypad
+; and parallel interface for the keys
 ;
 keypad_init:
 	sei
@@ -25,19 +26,21 @@ keypad_init:
 	lda #%01111111
 	sta IO_INT_ENABLE
 
-	; only enable cb2 interrupts
-	lda #(IO_INT_FLAG_IRQSET | IO_INT_FLAG_CB2)
+	; enable keypad (cb2) and keys (cb1) interrupts
+	lda #(IO_INT_FLAG_IRQSET | IO_INT_FLAG_CB2 | IO_INT_FLAG_CB1)
 	sta IO_INT_ENABLE
 
 	; generate interrupt on pos. edge
 	;lda #IO_PORTS_CB2_POSEDGE
-	lda #IO_PORTS_CB2_POSEDGE_IND
+	lda #(IO_PORTS_CB2_POSEDGE_IND | IO_PORTS_CB1_POSEDGE)
 	sta IO_PORTS_CTRL
 
 	cli
-
-	; clear irq
-	lda KEYPAD_IO_PORT
+	; clear irqs
+	;lda #IO_INT_FLAG_CB2  ; clear ind. keypad irq flag
+	;sta IO_INT_FLAGS
+	;lda KEYPAD_IO_PORT   ; clear std. keypad irq flag
+	lda KEYS_IO_PORT      ; clear keys irq flag
 
 	rts
 

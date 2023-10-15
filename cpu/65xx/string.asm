@@ -100,105 +100,22 @@ strcat:
 ; REG_DST + y = address of destination string
 ;
 u4tostr_hex:
-	cmp #$00
-	beq u4tostr_hex_0
-	cmp #$01
-	beq u4tostr_hex_1
-	cmp #$02
-	beq u4tostr_hex_2
-	cmp #$03
-	beq u4tostr_hex_3
-	cmp #$04
-	beq u4tostr_hex_4
-	cmp #$05
-	beq u4tostr_hex_5
-	cmp #$06
-	beq u4tostr_hex_6
-	cmp #$07
-	beq u4tostr_hex_7
-	cmp #$08
-	beq u4tostr_hex_8
-	cmp #$09
-	beq u4tostr_hex_9
-	cmp #$0a
-	beq u4tostr_hex_a
-	cmp #$0b
-	beq u4tostr_hex_b
-	cmp #$0c
-	beq u4tostr_hex_c
-	cmp #$0d
-	beq u4tostr_hex_d
-	cmp #$0e
-	beq u4tostr_hex_e
-	cmp #$0f
-	beq u4tostr_hex_f
-	bra u4tostr_hex_end
+	;and #$0f
+	cmp #$0a             ; a in [0, 9] or [a, f] ?
+	bcs u4tostr_hex_a_to_f
 
-	u4tostr_hex_0:
-		lda #'0'
-		sta (REG_DST_LO), y
+	u4tostr_hex_0_to_9:  ; a = '0'..'9'
+		adc #'0'
 		bra u4tostr_hex_end
-	u4tostr_hex_1:
-		lda #'1'
-		sta (REG_DST_LO), y
-		bra u4tostr_hex_end
-	u4tostr_hex_2:
-		lda #'2'
-		sta (REG_DST_LO), y
-		bra u4tostr_hex_end
-	u4tostr_hex_3:
-		lda #'3'
-		sta (REG_DST_LO), y
-		bra u4tostr_hex_end
-	u4tostr_hex_4:
-		lda #'4'
-		sta (REG_DST_LO), y
-		bra u4tostr_hex_end
-	u4tostr_hex_5:
-		lda #'5'
-		sta (REG_DST_LO), y
-		bra u4tostr_hex_end
-	u4tostr_hex_6:
-		lda #'6'
-		sta (REG_DST_LO), y
-		bra u4tostr_hex_end
-	u4tostr_hex_7:
-		lda #'7'
-		sta (REG_DST_LO), y
-		bra u4tostr_hex_end
-	u4tostr_hex_8:
-		lda #'8'
-		sta (REG_DST_LO), y
-		bra u4tostr_hex_end
-	u4tostr_hex_9:
-		lda #'9'
-		sta (REG_DST_LO), y
-		bra u4tostr_hex_end
-	u4tostr_hex_a:
-		lda #'A'
-		sta (REG_DST_LO), y
-		bra u4tostr_hex_end
-	u4tostr_hex_b:
-		lda #'B'
-		sta (REG_DST_LO), y
-		bra u4tostr_hex_end
-	u4tostr_hex_c:
-		lda #'C'
-		sta (REG_DST_LO), y
-		bra u4tostr_hex_end
-	u4tostr_hex_d:
-		lda #'D'
-		sta (REG_DST_LO), y
-		bra u4tostr_hex_end
-	u4tostr_hex_e:
-		lda #'E'
-		sta (REG_DST_LO), y
-		bra u4tostr_hex_end
-	u4tostr_hex_f:
-		lda #'F'
-		sta (REG_DST_LO), y
-		bra u4tostr_hex_end
+
+	u4tostr_hex_a_to_f:  ; a = 'a'..'f'
+		sbc #$0a
+		clc          ; otherwise it's a+1
+		adc #'A'
+		;bra u4tostr_hex_end
+
 	u4tostr_hex_end:
+		sta (REG_DST_LO), y
 
 	rts
 
