@@ -58,6 +58,7 @@ IO_TIMER2_CTR_HIGH       = $c009
 IO_SHIFT                 = $c00a
 
 IO_AUX_CTRL              = $c00b
+IO_AUX_TIMER1_CONT       = %01000000
 
 IO_INT_FLAGS             = $c00d
 IO_INT_ENABLE            = $c00e
@@ -116,12 +117,23 @@ LCD_LINE_LEN        = 40         ; characters per line (even if not all are visi
 ; -----------------------------------------------------------------------------
 ; status leds
 ; -----------------------------------------------------------------------------
-LED_IO_PINS_WR      = %11000000
-LED_IO_PORT         = IO_PORT1
-LED_IO_PORT_WR      = IO_PORT1_WR
-
 LED_PIN_RED         = %10000000
 LED_PIN_GREEN       = %01000000
+
+LED_IO_PINS_WR      = LED_PIN_RED | LED_PIN_GREEN
+LED_IO_PORT         = IO_PORT1
+LED_IO_PORT_WR      = IO_PORT1_WR
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; passive piezo buzzer
+; -----------------------------------------------------------------------------
+PIEZO_PIN           = %01000000
+
+PIEZO_IO_PINS_WR    = PIEZO_PIN
+PIEZO_IO_PORT       = IO_PORT2
+PIEZO_IO_PORT_WR    = IO_PORT2_WR
 ; -----------------------------------------------------------------------------
 
 
@@ -143,10 +155,10 @@ KEYS_IO_MASK        = %00001111
 KEYS_IO_PORT        = IO_PORT2
 KEYS_IO_PORT_WR     = IO_PORT2_WR
 
-KEYS_PIN_1          = %00010000
-KEYS_PIN_2          = %00100000
-KEYS_PIN_3          = %01000000
-KEYS_PIN_4          = %10000000
+KEYS_PIN_1          = %00000001
+KEYS_PIN_2          = %00000010
+KEYS_PIN_3          = %00000100
+KEYS_PIN_4          = %00001000
 ; -----------------------------------------------------------------------------
 
 

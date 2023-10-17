@@ -6,6 +6,7 @@
 ;
 
 .include "defs.inc"
+.include "init.asm"
 .include "keypad.asm"
 .include "lcd.asm"
 .include "string.asm"
@@ -29,7 +30,9 @@ main:
 	ldx #$ff
 	txs
 
+	jsr ports_reset
 	jsr lcd_init
+	jsr keys_init
 	jsr keypad_init
 
 	main_end:
@@ -56,6 +59,7 @@ isr_main:
 	clc
 	lda IO_INT_FLAGS
 	rol ; c == bit7, any irq
+	bcc end_isr
 	rol ; c == bit6, timer 1
 	rol ; c == bit5, timer 2
 	rol ; c == bit4, cb1 -> keys irq

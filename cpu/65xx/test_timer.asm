@@ -6,6 +6,7 @@
 ;
 
 .include "defs.inc"
+.include "init.asm"
 .include "timer.asm"
 
 
@@ -30,6 +31,8 @@ main:
 	ldx #$ff
 	txs
 
+	jsr ports_reset
+
 	; output to port 1
 	lda #$ff
 	sta IO_PORT1_WR
@@ -40,7 +43,7 @@ main:
 	sta counter
 
 	ldx #$ff
-	jsr timer_init
+	jsr timer_cont_init
 
 	main_end:
 		wai
