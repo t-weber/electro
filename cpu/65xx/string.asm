@@ -184,4 +184,85 @@ u16tostr_hex:
 
 
 
+;
+; convert an unsigned 32-bit integer to a string
+; REG_SRC = address of 32-bit integer
+; REG_DST = address of destination string
+;
+u32tostr_hex:
+	phy
+
+	; byte 1
+	ldy #$03
+	lda (REG_SRC_LO), y
+	ldy #$00
+	jsr u8tostr_hex
+
+	; byte 2
+	ldy #$02
+	lda (REG_SRC_LO), y
+	ldy #$02
+	jsr u8tostr_hex
+
+	; byte 3
+	ldy #$01
+	lda (REG_SRC_LO), y
+	ldy #$04
+	jsr u8tostr_hex
+
+	; byte 3
+	ldy #$00
+	lda (REG_SRC_LO), y
+	ldy #$06
+	jsr u8tostr_hex
+
+	; zero at end
+	ldy #$08
+	lda #$00
+	sta (REG_DST_LO), y
+
+	ply
+	rts
+
+
+
+;
+; convert an unsigned N-byte integer to a string
+; REG_SRC = address of 32-bit integer
+; REG_DST = address of destination string
+; x = number of bytes in integer
+;
+uNtostr_hex:
+	phy
+
+	stx REG_IDX_1  ; byte index into integer
+	dec REG_IDX_1  ;
+	stz REG_IDX_2  ; string index
+
+	uNtostr_hex_loop:
+		ldy REG_IDX_1
+		lda (REG_SRC_LO), y
+		ldy REG_IDX_2
+		jsr u8tostr_hex
+
+		dec REG_IDX_1
+		inc REG_IDX_2
+		inc REG_IDX_2
+
+		lda REG_IDX_1
+		cmp #$ff       ; has the index wrapped around?
+		beq uNtostr_hex_end
+		bra uNtostr_hex_loop
+
+	uNtostr_hex_end:
+		; zero at end
+		ldy REG_IDX_2
+		lda #$00
+		sta (REG_DST_LO), y
+
+	ply
+	rts
+
+
+
 .endif

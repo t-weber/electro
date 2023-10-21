@@ -8,12 +8,17 @@
 .include "defs.inc"
 .include "init.asm"
 .include "timer.asm"
+.include "string.asm"
+.include "lcd.asm"
+
 
 
 ; -----------------------------------------------------------------------------
 ; variables
 ; -----------------------------------------------------------------------------
-counter = $1000
+NUM_COUNTER_BYTES = 4
+counter           = $1000  ; counter having length NUM_COUNTER_BYTES
+strcounter        = $1010  ; counter string
 ; -----------------------------------------------------------------------------
 
 
@@ -31,23 +36,47 @@ main:
 	ldx #$ff
 	txs
 
+	.repeat NUM_COUNTER_BYTES, n
+		stz counter + n
+	.endrep
+
 	jsr ports_reset
+	jsr lcd_init
 
-	; output to port 1
-	lda #$ff
-	sta IO_PORT1_WR
-	lda counter
-	sta IO_PORT1
-
-	lda #$00
-	sta counter
-
-	ldx #$ff
+	ldx #$27  ; ca. 10 ms
+	ldy #$10  ;
 	jsr timer_cont_init
 
-	main_end:
-		wai
-		bra main_end
+	main_loop:
+		;wai
+
+		jsr lcd_clear
+		jsr lcd_return
+
+		; convert counter to string
+		lda #(.lobyte(strcounter))
+		sta REG_DST_LO
+		lda #(.hibyte(strcounter))
+		sta REG_DST_HI
+		lda #(.lobyte(counter))
+		sta REG_SRC_LO
+		lda #(.hibyte(counter))
+		sta REG_SRC_HI
+		ldy #$00
+		ldx #NUM_COUNTER_BYTES
+		jsr uNtostr_hex
+
+		; print counter
+		lda #(.lobyte(strcounter))
+		sta REG_SRC_LO
+		lda #(.hibyte(strcounter))
+		sta REG_SRC_HI
+		jsr lcd_print
+
+		lda #$04
+		jsr sleep_3
+
+		bra main_loop
 	rts
 ; -----------------------------------------------------------------------------
 
@@ -67,18 +96,20 @@ isr_main:
 	clc
 	lda IO_INT_FLAGS
 	rol ; c == bit7, any irq
+	bcc end_isr
 	rol ; c == bit6, timer
 	bcs timer_isr
 	bra end_isr
 
 	timer_isr:
-		inc counter
-		lda counter
-		sta IO_PORT1
+		.repeat NUM_COUNTER_BYTES, n
+			inc counter + n
+			bne timer_isr_counter_end
+		.endrep
 
+	timer_isr_counter_end:
 		; clear irq
 		lda IO_TIMER1_CTR_LOW
-		bra end_isr
 
 	end_isr:
 	pla

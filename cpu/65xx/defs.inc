@@ -33,10 +33,14 @@ IO_START      = $c000
 ROM_START     = $e000
 
 ; pseudo-registers in zero-page
-REG_SRC_LO    = $0000
-REG_SRC_HI    = $0001
-REG_DST_LO    = $0002
-REG_DST_HI    = $0003
+REG_SRC_LO    = $00
+REG_SRC_HI    = $01
+REG_DST_LO    = $02
+REG_DST_HI    = $03
+REG_IDX_1     = $04
+REG_IDX_2     = $05
+REG_IDX_3     = $06
+REG_IDX_4     = $07
 ; -----------------------------------------------------------------------------
 
 

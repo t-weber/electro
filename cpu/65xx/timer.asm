@@ -13,7 +13,8 @@ __TIMER_DEFS__ = 1
 
 ;
 ; initialise continuous timer
-; x = timer value
+; x = timer high byte value
+; y = timer low byte value
 ;
 timer_cont_init:
 	sei
@@ -30,10 +31,11 @@ timer_cont_init:
 	sta IO_AUX_CTRL
 
 	; timer delay
-	txa
-	;lda #$ff
+	tya
+	lda #$ff
 	sta IO_TIMER1_LATCH_LOW
 	sta IO_TIMER1_CTR_LOW
+	txa
 	;lda #$ff
 	sta IO_TIMER1_LATCH_HIGH
 	sta IO_TIMER1_CTR_HIGH
