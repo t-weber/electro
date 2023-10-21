@@ -32,7 +32,7 @@ timer_cont_init:
 
 	; timer delay
 	tya
-	lda #$ff
+	;lda #$ff
 	sta IO_TIMER1_LATCH_LOW
 	sta IO_TIMER1_CTR_LOW
 	txa
