@@ -6,7 +6,6 @@
 ;
 
 .include "defs.inc"
-.include "init.asm"
 .include "keypad.asm"
 .include "lcd.asm"
 .include "string.asm"
@@ -36,6 +35,9 @@ main:
 	jsr keys_init
 	jsr keypad_init
 
+	jsr lcd_clear
+	jsr lcd_return
+
 	main_end:
 		wai
 		bra main_end
@@ -56,20 +58,23 @@ isr_main:
 	pha
 	phx
 	phy
+	sei
 
 	clc
 	lda IO_INT_FLAGS
 	rol ; c == bit7, any irq
-	bcc end_isr
+	bcc end_isr_tmp
 	rol ; c == bit6, timer 1
+	bcs end_isr_tmp
 	rol ; c == bit5, timer 2
+	bcs end_isr_tmp
 	rol ; c == bit4, cb1 -> keys irq
 	bcs keys_isr
 	rol ; c == bit5, cb2 -> keypad irq
 	bcs keypad_isr
-	bra end_isr
+	bra end_isr_tmp
 
-	; individual keys pressed
+	; individual key pressed
 	keys_isr:
 		; read data pins
 		lda KEYS_IO_PORT
@@ -99,8 +104,13 @@ isr_main:
 
 		bra end_isr
 
-	; keys on keypad pressed
+	end_isr_tmp:
+		bra end_isr
+
+	; key on keypad pressed
 	keypad_isr:
+		jsr keypad_disable_irq
+
 		lda #KEYPAD_INIT_DELAY
 		jsr sleep_1
 
@@ -150,11 +160,17 @@ isr_main:
 			bra cb2_isr_input_loop
 		cb2_isr_input_loop_end:
 
+		lda IO_INT_FLAGS
+		ora #IO_INT_FLAG_CB2  ; clear ind. keypad irq flag
+		sta IO_INT_FLAGS
+
+		jsr keypad_enable_irq
+
 		bra end_isr
 
 	end_isr:
-	lda #IO_INT_FLAG_CB2    ; clear ind. keypad irq flag
-	sta IO_INT_FLAGS
+	cli
+
 	ply
 	plx
 	pla

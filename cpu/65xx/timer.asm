@@ -77,6 +77,7 @@ timer_single_init:
 timer_single_sleep:
 	sei
 	pha
+	php
 
 	; start timer
 	tya
@@ -90,6 +91,7 @@ timer_single_sleep:
 		; in-line interrupt service routine
 		lda IO_INT_FLAGS
 		rol ; c == bit7, any irq
+		bcc timer_single_sleep_wait
 		rol ; c == bit6, timer 1
 		rol ; c == bit5, timer 2
 		bcs timer_single_sleep_wait_end
@@ -99,6 +101,7 @@ timer_single_sleep:
 		; clear interrupt flag
 		lda IO_TIMER2_CTR_LOW
 
+	plp
 	pla
 	cli
 	rts

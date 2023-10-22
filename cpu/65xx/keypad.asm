@@ -11,6 +11,7 @@ __KEYPAD_DEFS__ = 1
 .include "defs.inc"
 
 
+
 ;
 ; initialise parallel interface for the keys
 ;
@@ -18,8 +19,8 @@ keys_init:
 	sei
 
 	; input from keys
-	lda #KEYPAD_IO_PINS_WR
-	sta KEYPAD_IO_PORT_WR
+	lda #KEYS_IO_PINS_WR
+	sta KEYS_IO_PORT_WR
 
 	; enable keys (cb1) interrupt
 	lda IO_INT_ENABLE
@@ -44,6 +45,10 @@ keys_init:
 keypad_init:
 	sei
 
+	; input from keypad
+	lda #KEYPAD_IO_PINS_WR
+	sta KEYPAD_IO_PORT_WR
+
 	; enable keypad (cb2)
 	lda IO_INT_ENABLE
 	ora #(IO_INT_FLAG_IRQSET | IO_INT_FLAG_CB2)
@@ -55,11 +60,42 @@ keypad_init:
 	sta IO_PORTS_CTRL
 
 	cli
-	; clear irqs
-	;lda #IO_INT_FLAG_CB2  ; clear ind. keypad irq flag
-	;sta IO_INT_FLAGS
-	;lda KEYPAD_IO_PORT    ; clear std. keypad irq flag
+	; clear irq
+	lda IO_INT_FLAGS
+	ora #IO_INT_FLAG_CB2  ; clear ind. keypad irq flag
+	sta IO_INT_FLAGS
 
+	rts
+
+
+
+;
+; enable keypad irq
+;
+keypad_enable_irq:
+	pha
+
+	; enable keypad (cb2)
+	lda IO_INT_ENABLE
+	ora #(IO_INT_FLAG_IRQSET | IO_INT_FLAG_CB2)
+	sta IO_INT_ENABLE
+
+	pla
+	rts
+
+
+
+;
+; disable keypad irq
+;
+keypad_disable_irq:
+	pha
+
+	; disable keypad (cb2)
+	lda #IO_INT_FLAG_CB2
+	sta IO_INT_ENABLE
+
+	pla
 	rts
 
 

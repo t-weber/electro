@@ -59,8 +59,9 @@ sleep_1:
 ;
 sleep_2:
 sleep:
-.ifdef USE_TIMER_BASED_WAITING
 	phx
+
+.ifdef USE_TIMER_BASED_WAITING
 	phy
 
 	tax
@@ -68,11 +69,8 @@ sleep:
 	jsr timer_single_sleep
 
 	ply
-	plx
 
 .else
-	phx
-
 	sleep2_loop_a:
 		ldx #$ff
 		sleep2_loop_x:
@@ -81,10 +79,11 @@ sleep:
 		dec
 		bne sleep2_loop_a
 
-	plx
 .endif
 
+	plx
 	rts
+
 
 
 ;
