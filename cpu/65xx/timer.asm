@@ -32,11 +32,9 @@ timer_cont_init:
 
 	; timer delay
 	tya
-	;lda #$ff
 	sta IO_TIMER1_LATCH_LOW
 	sta IO_TIMER1_CTR_LOW
 	txa
-	;lda #$ff
 	sta IO_TIMER1_LATCH_HIGH
 	sta IO_TIMER1_CTR_HIGH
 
@@ -65,18 +63,46 @@ timer_single_init:
 	and #%11011111
 	sta IO_AUX_CTRL
 
-	; set some default timer delay, ca. 1 ms
-	;lda #$e8
-	;sta IO_TIMER2_CTR_LOW
-	;lda #$03
-	;sta IO_TIMER2_CTR_HIGH
-
 	cli
-
-	; clear irq
-	;lda IO_TIMER2_CTR_LOW
-
 	rts
+
+
+
+;
+; set a single timer and wait for its interrupt
+; x = timer high byte value
+; y = timer low byte value
+; ca. 1 ms -> x = #$03, y = #$e8
+;
+timer_single_sleep:
+	sei
+	pha
+
+	; start timer
+	tya
+	sta IO_TIMER2_CTR_LOW
+	txa
+	sta IO_TIMER2_CTR_HIGH
+
+	timer_single_sleep_wait:
+		wai  ; wait for timer end interrupt
+
+		; in-line interrupt service routine
+		lda IO_INT_FLAGS
+		rol ; c == bit7, any irq
+		rol ; c == bit6, timer 1
+		rol ; c == bit5, timer 2
+		bcs timer_single_sleep_wait_end
+		bra timer_single_sleep_wait
+
+	timer_single_sleep_wait_end:
+		; clear interrupt flag
+		lda IO_TIMER2_CTR_LOW
+
+	pla
+	cli
+	rts
+
 
 
 .endif

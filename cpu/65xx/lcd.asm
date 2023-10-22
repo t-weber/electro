@@ -9,6 +9,7 @@
 __LCD_DEFS__ = 1
 
 .include "defs.inc"
+.include "init.asm"
 .include "sleep.asm"
 
 

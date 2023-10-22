@@ -31,6 +31,7 @@ main:
 	txs
 
 	jsr ports_reset
+	jsr sleep_init
 	jsr lcd_init
 	jsr keys_init
 	jsr keypad_init
@@ -149,8 +150,6 @@ isr_main:
 			bra cb2_isr_input_loop
 		cb2_isr_input_loop_end:
 
-		;lda #$ff
-		;jsr sleep
 		bra end_isr
 
 	end_isr:

@@ -10,15 +10,45 @@ __SLEEP_DEFS__ = 1
 
 .include "defs.inc"
 
+.ifdef USE_TIMER_BASED_WAITING
+	.include "timer.asm"
+.endif
+
+
+
+;
+; initialise timer-based waiting
+;
+sleep_init:
+.ifdef USE_TIMER_BASED_WAITING
+	jsr timer_single_init
+.endif
+	rts
+
+
 
 ;
 ; busy waiting using one loop
 ; a = sleep time
 ;
 sleep_1:
+.ifdef USE_TIMER_BASED_WAITING
+	phx
+	phy
+
+	ldx #$00
+	tay
+	jsr timer_single_sleep
+
+	ply
+	plx
+
+.else
 	sleep1_loop_a:
 		dec
 		bne sleep1_loop_a
+
+.endif
 
 	rts
 
@@ -29,6 +59,18 @@ sleep_1:
 ;
 sleep_2:
 sleep:
+.ifdef USE_TIMER_BASED_WAITING
+	phx
+	phy
+
+	tax
+	ldy #$ff
+	jsr timer_single_sleep
+
+	ply
+	plx
+
+.else
 	phx
 
 	sleep2_loop_a:
@@ -40,6 +82,8 @@ sleep:
 		bne sleep2_loop_a
 
 	plx
+.endif
+
 	rts
 
 
@@ -52,6 +96,12 @@ sleep_3:
 	phy
 
 	sleep3_loop_a:
+.ifdef USE_TIMER_BASED_WAITING
+		ldx #$ff
+		ldy #$ff
+		jsr timer_single_sleep
+
+.else
 		ldx #$ff
 		sleep3_loop_x:
 			ldy #$ff
@@ -60,6 +110,8 @@ sleep_3:
 				bne sleep3_loop_y
 			dex
 			bne sleep3_loop_x
+
+.endif
 		dec
 		bne sleep3_loop_a
 

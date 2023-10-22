@@ -8,6 +8,7 @@
 .include "defs.inc"
 .include "init.asm"
 .include "timer.asm"
+.include "sleep.asm"
 .include "string.asm"
 .include "lcd.asm"
 
@@ -41,6 +42,7 @@ main:
 	.endrep
 
 	jsr ports_reset
+	jsr sleep_init
 	jsr lcd_init
 
 	ldx #$27  ; ca. 10 ms

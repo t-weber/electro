@@ -30,6 +30,8 @@ main:
 	ldx #$ff
 	txs
 
+	jsr ports_reset
+	jsr sleep_init
 	jsr lcd_init
 	stz counter
 
@@ -110,6 +112,8 @@ main:
 		jsr sleep
 		; -------------------------------------------------------------
 
+		lda #$ff
+		jsr sleep
 		bra main_loop
 	; ---------------------------------------------------------------------
 

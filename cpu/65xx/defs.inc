@@ -10,6 +10,14 @@ __MACHINE_DEFS__ = 1
 
 
 ; -----------------------------------------------------------------------------
+; defines
+; -----------------------------------------------------------------------------
+; timer-based or busy waiting
+;USE_TIMER_BASED_WAITING = 1
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
 ; memory layout
 ;
 ;   ------------  <- 0x0000
@@ -112,7 +120,11 @@ LCD_FUNC_8BITS      = %00000001  ; in upper nibble
 LCD_FUNC_2LINES     = %00001000
 LCD_FUNC_FONT       = %00000100
 
+.ifdef USE_TIMER_BASED_WAITING
+LCD_SLEEP_BASE      = 5          ; has to be >= 1 ms
+.else
 LCD_SLEEP_BASE      = 1          ; has to be >= 1 ms
+.endif
 
 LCD_LINE_LEN        = 40         ; characters per line (even if not all are visible)
 ; -----------------------------------------------------------------------------
@@ -151,8 +163,14 @@ KEYPAD_IO_PINS_WR   = KEYPAD_IO_PIN_CLK
 KEYPAD_IO_MASK      = KEYPAD_IO_PIN_CLK | KEYPAD_IO_PIN_DAT
 KEYPAD_IO_PORT      = IO_PORT2
 KEYPAD_IO_PORT_WR   = IO_PORT2_WR
+
+.ifdef USE_TIMER_BASED_WAITING
+KEYPAD_INIT_DELAY   = 10                 ; has to be >= 10 mus
+KEYPAD_PULSE_DELAY  = 5                  ; has to be >= 1 ms
+.else
 KEYPAD_INIT_DELAY   = 1                  ; has to be >= 10 mus
 KEYPAD_PULSE_DELAY  = 1                  ; has to be >= 1 ms
+.endif
 
 KEYS_IO_PINS_WR     = KEYPAD_IO_PINS_WR  ; on the same pin header
 KEYS_IO_MASK        = %00001111

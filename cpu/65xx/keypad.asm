@@ -58,7 +58,7 @@ keypad_init:
 	; clear irqs
 	;lda #IO_INT_FLAG_CB2  ; clear ind. keypad irq flag
 	;sta IO_INT_FLAGS
-	;lda KEYPAD_IO_PORT   ; clear std. keypad irq flag
+	;lda KEYPAD_IO_PORT    ; clear std. keypad irq flag
 
 	rts
 
