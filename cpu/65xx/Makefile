@@ -9,7 +9,8 @@
 
 all: \
 	test_io.rom test_mem.rom test_timer.rom \
-	test_keypad.rom test_lcd.rom test_piezo.rom
+	test_keypad.rom test_lcd.rom test_piezo.rom \
+	test_piezo2.rom
 
 clean:
 	rm -vf *.o *.rom

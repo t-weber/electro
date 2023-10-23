@@ -55,25 +55,25 @@ REG_IDX_4     = $07
 ; -----------------------------------------------------------------------------
 ; I/O, see: https://en.wikipedia.org/wiki/WDC_65C22
 ; -----------------------------------------------------------------------------
-IO_PORT1                 = $c001
-IO_PORT2                 = $c000
-IO_PORT1_WR              = $c003
-IO_PORT2_WR              = $c002
+IO_PORT1                 = IO_START + $01
+IO_PORT2                 = IO_START + $00
+IO_PORT1_WR              = IO_START + $03
+IO_PORT2_WR              = IO_START + $02
 
-IO_TIMER1_CTR_LOW        = $c004
-IO_TIMER1_CTR_HIGH       = $c005
-IO_TIMER1_LATCH_LOW      = $c006
-IO_TIMER1_LATCH_HIGH     = $c007
-IO_TIMER2_CTR_LOW        = $c008
-IO_TIMER2_CTR_HIGH       = $c009
+IO_TIMER1_CTR_LOW        = IO_START + $04
+IO_TIMER1_CTR_HIGH       = IO_START + $05
+IO_TIMER1_LATCH_LOW      = IO_START + $06
+IO_TIMER1_LATCH_HIGH     = IO_START + $07
+IO_TIMER2_CTR_LOW        = IO_START + $08
+IO_TIMER2_CTR_HIGH       = IO_START + $09
 
-IO_SHIFT                 = $c00a
+IO_SHIFT                 = IO_START + $0a
 
-IO_AUX_CTRL              = $c00b
+IO_AUX_CTRL              = IO_START + $0b
 IO_AUX_TIMER1_CONT       = %01000000
 
-IO_INT_FLAGS             = $c00d
-IO_INT_ENABLE            = $c00e
+IO_INT_FLAGS             = IO_START + $0d
+IO_INT_ENABLE            = IO_START + $0e
 IO_INT_FLAG_IRQSET       = %10000000
 IO_INT_FLAG_TIMER1       = %01000000
 IO_INT_FLAG_TIMER2       = %00100000
@@ -83,7 +83,7 @@ IO_INT_FLAG_SHIFT        = %00000100
 IO_INT_FLAG_CA1          = %00000010
 IO_INT_FLAG_CA2          = %00000001
 
-IO_PORTS_CTRL            = $c00c
+IO_PORTS_CTRL            = IO_START + $0c
 IO_PORTS_CB2_POSEDGE     = %01000000
 IO_PORTS_CB2_POSEDGE_IND = %01100000
 IO_PORTS_CB2_NEGEDGE_IND = %00100000
