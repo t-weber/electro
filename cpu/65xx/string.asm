@@ -109,9 +109,7 @@ u4tostr_hex:
 		bra u4tostr_hex_end
 
 	u4tostr_hex_a_to_f:  ; a = 'a'..'f'
-		sbc #$0a
-		clc          ; otherwise it's a+1
-		adc #'A'
+		adc #('A' - $0a - 1)  ; -1 comes from the carry flag
 		;bra u4tostr_hex_end
 
 	u4tostr_hex_end:
