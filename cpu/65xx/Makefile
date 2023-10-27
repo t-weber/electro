@@ -20,7 +20,7 @@ clean:
 	ld65 -C mem.cfg -o $@ $<
 
 %.o: %.asm defs.inc
-	ca65 --cpu 65c02 -o $@ $<
+	ca65 --cpu 65c02 --feature underline_in_numbers -o $@ $<
 
 %.asm: %.c65
 	cc65 --cpu 65c02 -t none -o $@ $<

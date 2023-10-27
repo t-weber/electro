@@ -36,6 +36,7 @@ USE_TIMER_BASED_WAITING = 1
 ; -----------------------------------------------------------------------------
 ZERO_PAGE     = $0000
 STACK_PAGE    = $0100
+USERMEM_START = $0200
 MOD_START     = $8000
 IO_START      = $c000
 ROM_START     = $e000
@@ -70,28 +71,28 @@ IO_TIMER2_CTR_HIGH       = IO_START + $09
 IO_SHIFT                 = IO_START + $0a
 
 IO_AUX_CTRL              = IO_START + $0b
-IO_AUX_TIMER1_CONT       = %01000000
+IO_AUX_TIMER1_CONT       = %0100_0000
 
 IO_INT_FLAGS             = IO_START + $0d
 IO_INT_ENABLE            = IO_START + $0e
-IO_INT_FLAG_IRQSET       = %10000000
-IO_INT_FLAG_TIMER1       = %01000000
-IO_INT_FLAG_TIMER2       = %00100000
-IO_INT_FLAG_CB1          = %00010000
-IO_INT_FLAG_CB2          = %00001000
-IO_INT_FLAG_SHIFT        = %00000100
-IO_INT_FLAG_CA1          = %00000010
-IO_INT_FLAG_CA2          = %00000001
+IO_INT_FLAG_IRQSET       = %1000_0000
+IO_INT_FLAG_TIMER1       = %0100_0000
+IO_INT_FLAG_TIMER2       = %0010_0000
+IO_INT_FLAG_CB1          = %0001_0000
+IO_INT_FLAG_CB2          = %0000_1000
+IO_INT_FLAG_SHIFT        = %0000_0100
+IO_INT_FLAG_CA1          = %0000_0010
+IO_INT_FLAG_CA2          = %0000_0001
 
 IO_PORTS_CTRL            = IO_START + $0c
-IO_PORTS_CB2_POSEDGE     = %01000000
-IO_PORTS_CB2_POSEDGE_IND = %01100000
-IO_PORTS_CB2_NEGEDGE_IND = %00100000
-IO_PORTS_CB1_POSEDGE     = %00010000
-IO_PORTS_CA2_POSEDGE     = %00000100
-IO_PORTS_CA2_POSEDGE_IND = %00000110
-IO_PORTS_CA2_NEGEDGE_IND = %00000010
-IO_PORTS_CA1_POSEDGE     = %00000001
+IO_PORTS_CB2_POSEDGE     = %0100_0000
+IO_PORTS_CB2_POSEDGE_IND = %0110_0000
+IO_PORTS_CB2_NEGEDGE_IND = %0010_0000
+IO_PORTS_CB1_POSEDGE     = %0001_0000
+IO_PORTS_CA2_POSEDGE     = %0000_0100
+IO_PORTS_CA2_POSEDGE_IND = %0000_0110
+IO_PORTS_CA2_NEGEDGE_IND = %0000_0010
+IO_PORTS_CA1_POSEDGE     = %0000_0001
 ; -----------------------------------------------------------------------------
 
 
@@ -99,26 +100,26 @@ IO_PORTS_CA1_POSEDGE     = %00000001
 ; LCD, see: https://www.arduino.cc/documents/datasheets/LCDscreen.PDF
 ; -----------------------------------------------------------------------------
 ; output to port 1 pins: enable, register select, data 7-4
-LCD_IO_PINS_WR      = %00111111
+LCD_IO_PINS_WR      = %0011_1111
 LCD_IO_PORT         = IO_PORT1
 LCD_IO_PORT_WR      = IO_PORT1_WR
 
-LCD_PIN_ENABLE      = %00100000
-LCD_PIN_RS          = %00010000
+LCD_PIN_ENABLE      = %0010_0000
+LCD_PIN_RS          = %0001_0000
 
-LCD_CARET_DIR_INC   = %00000010
-LCD_CARET_DIR_SHIFT = %00000001
+LCD_CARET_DIR_INC   = %0000_0010
+LCD_CARET_DIR_SHIFT = %0000_0001
 
-LCD_DISP_ON         = %00000100
-LCD_DISP_CARET_LINE = %00000010
-LCD_DISP_CARET_BOX  = %00000001
+LCD_DISP_ON         = %0000_0100
+LCD_DISP_CARET_LINE = %0000_0010
+LCD_DISP_CARET_BOX  = %0000_0001
 
-LCD_SHIFT_ALL       = %00001000
-LCD_SHIFT_RIGHT     = %00000100
+LCD_SHIFT_ALL       = %0000_1000
+LCD_SHIFT_RIGHT     = %0000_0100
 
-LCD_FUNC_8BITS      = %00000001  ; in upper nibble
-LCD_FUNC_2LINES     = %00001000
-LCD_FUNC_FONT       = %00000100
+LCD_FUNC_8BITS      = %0000_0001 ; in upper nibble
+LCD_FUNC_2LINES     = %0000_1000
+LCD_FUNC_FONT       = %0000_0100
 
 .ifdef USE_TIMER_BASED_WAITING
 LCD_SLEEP_BASE      = 5          ; has to be >= 1 ms
@@ -126,6 +127,7 @@ LCD_SLEEP_BASE      = 5          ; has to be >= 1 ms
 LCD_SLEEP_BASE      = 1          ; has to be >= 1 ms
 .endif
 
+LCD_CHAR_LEN        = 16         ; characters per line (visible)
 LCD_LINE_LEN        = 40         ; characters per line (even if not all are visible)
 ; -----------------------------------------------------------------------------
 
@@ -133,8 +135,8 @@ LCD_LINE_LEN        = 40         ; characters per line (even if not all are visi
 ; -----------------------------------------------------------------------------
 ; status leds
 ; -----------------------------------------------------------------------------
-LED_PIN_RED         = %10000000
-LED_PIN_GREEN       = %01000000
+LED_PIN_RED         = %1000_0000
+LED_PIN_GREEN       = %0100_0000
 
 LED_IO_PINS_WR      = LED_PIN_RED | LED_PIN_GREEN
 LED_IO_PORT         = IO_PORT1
@@ -145,7 +147,7 @@ LED_IO_PORT_WR      = IO_PORT1_WR
 ; -----------------------------------------------------------------------------
 ; passive piezo buzzer
 ; -----------------------------------------------------------------------------
-PIEZO_PIN           = %01000000
+PIEZO_PIN           = %0100_0000
 
 PIEZO_IO_PINS_WR    = PIEZO_PIN
 PIEZO_IO_PORT       = IO_PORT2
@@ -157,8 +159,8 @@ PIEZO_IO_PORT_WR    = IO_PORT2_WR
 ; keys parallel and keypad serial interface,
 ; see: https://www.engineersgarage.com/arduino-ttp229-touch-keypad-interfacing/
 ; -----------------------------------------------------------------------------
-KEYPAD_IO_PIN_CLK   = %00010000
-KEYPAD_IO_PIN_DAT   = %00100000
+KEYPAD_IO_PIN_CLK   = %0001_0000
+KEYPAD_IO_PIN_DAT   = %0010_0000
 KEYPAD_IO_PINS_WR   = KEYPAD_IO_PIN_CLK
 KEYPAD_IO_MASK      = KEYPAD_IO_PIN_CLK | KEYPAD_IO_PIN_DAT
 KEYPAD_IO_PORT      = IO_PORT2
@@ -173,14 +175,14 @@ KEYPAD_PULSE_DELAY  = 1                  ; has to be >= 1 ms
 .endif
 
 KEYS_IO_PINS_WR     = KEYPAD_IO_PINS_WR  ; on the same pin header
-KEYS_IO_MASK        = %00001111
+KEYS_IO_MASK        = %0000_1111
 KEYS_IO_PORT        = IO_PORT2
 KEYS_IO_PORT_WR     = IO_PORT2_WR
 
-KEYS_PIN_1          = %00000001
-KEYS_PIN_2          = %00000010
-KEYS_PIN_3          = %00000100
-KEYS_PIN_4          = %00001000
+KEYS_PIN_1          = %0000_0001
+KEYS_PIN_2          = %0000_0010
+KEYS_PIN_3          = %0000_0100
+KEYS_PIN_4          = %0000_1000
 ; -----------------------------------------------------------------------------
 
 
