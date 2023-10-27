@@ -226,7 +226,7 @@ u32tostr_hex:
 
 ;
 ; convert an unsigned N-byte integer to a string
-; REG_SRC = address of 32-bit integer
+; REG_SRC = address of N-byte integer
 ; REG_DST = address of destination string
 ; x = number of bytes in integer
 ;
@@ -253,6 +253,46 @@ uNtostr_hex:
 		bra uNtostr_hex_loop
 
 	uNtostr_hex_end:
+		; zero at end
+		ldy REG_IDX_2
+		lda #$00
+		sta (REG_DST_LO), y
+
+	ply
+	rts
+
+
+
+;
+; convert an unsigned N-byte integer to a string
+; big endian version (not reversed)
+; REG_SRC = address of N-byte integer
+; REG_DST = address of destination string
+; x = number of bytes in integer
+;
+uNtostr_hex_be:
+	phy
+
+	stz REG_IDX_1  ; byte index into integer
+	stz REG_IDX_2  ; string index
+	stx REG_IDX_3  ; number of bytes
+
+	uNtostr_hex_be_loop:
+		ldy REG_IDX_1
+		lda (REG_SRC_LO), y
+		ldy REG_IDX_2
+		jsr u8tostr_hex
+
+		inc REG_IDX_1
+		inc REG_IDX_2
+		inc REG_IDX_2
+
+		lda REG_IDX_1
+		cmp REG_IDX_3
+		beq uNtostr_hex_be_end
+		bra uNtostr_hex_be_loop
+
+	uNtostr_hex_be_end:
 		; zero at end
 		ldy REG_IDX_2
 		lda #$00

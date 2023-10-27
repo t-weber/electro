@@ -29,7 +29,7 @@ strcolon: .asciiz ": "
 
 
 ;
-; delay times for 1 Mhz clock:
+; delay times for 1 MHz clock:
 ; string(round(Int, 1 / freq / 2 * 1e6), base = 16)
 ;
 ; melody: https://en.wikipedia.org/wiki/Symphony_No._9_(Beethoven)#IV._Finale
