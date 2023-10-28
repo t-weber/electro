@@ -70,6 +70,22 @@ keypad_init:
 
 
 ;
+; enable keys irq
+;
+keys_enable_irq:
+	pha
+
+	; enable keys (cb1) interrupt
+	lda IO_INT_ENABLE
+	ora #(IO_INT_FLAG_IRQSET | IO_INT_FLAG_CB1)
+	sta IO_INT_ENABLE
+
+	pla
+	rts
+
+
+
+;
 ; enable keypad irq
 ;
 keypad_enable_irq:
@@ -78,6 +94,21 @@ keypad_enable_irq:
 	; enable keypad (cb2)
 	lda IO_INT_ENABLE
 	ora #(IO_INT_FLAG_IRQSET | IO_INT_FLAG_CB2)
+	sta IO_INT_ENABLE
+
+	pla
+	rts
+
+
+
+;
+; disable keys irq
+;
+keys_disable_irq:
+	pha
+
+	; disable keys (cb1)
+	ora #IO_INT_FLAG_CB1
 	sta IO_INT_ENABLE
 
 	pla

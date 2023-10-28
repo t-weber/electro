@@ -5,11 +5,16 @@
 ; @license see 'LICENSE' file
 ;
 
+;ENABLE_STATUS_LCD = 1
+ENABLE_STATUS_LED = 1
+
 .include "defs.inc"
 .include "init.asm"
 .include "timer.asm"
 .include "string.asm"
+.ifdef ENABLE_STATUS_LCD
 .include "lcd.asm"
+.endif
 
 
 notes_delay_hi = $1000
@@ -19,13 +24,15 @@ pause_delay_lo = $1003
 base_length    = $1004
 notes_length   = $1005
 
+.ifdef ENABLE_STATUS_LCD
 msg_note       = $1010
 msg_note_hi    = $1020
 msg_note_lo    = $1030
 msg            = $1040
 
-strnote: .asciiz "Note "
+strnote:  .asciiz "Note "
 strcolon: .asciiz ": "
+.endif
 
 
 ;
@@ -55,8 +62,10 @@ base_lengths = $7f
 
 
 play_note:
-;	lda #LED_PIN_GREEN
-;	sta LED_IO_PORT
+.ifdef ENABLE_STATUS_LED
+	lda #LED_PIN_GREEN
+	sta LED_IO_PORT
+.endif
 
 	play_note_loop_outer:
 		lda #base_lengths
@@ -83,41 +92,18 @@ play_note:
 		dec notes_length
 		bne play_note_loop_outer
 
-;	lda #LED_PIN_RED
-;	sta LED_IO_PORT
+.ifdef ENABLE_STATUS_LED
+	lda #LED_PIN_RED
+	sta LED_IO_PORT
+.endif
 	rts
 
 
 
-main:
-	sei
-	clc
-	cld
-	clv
-
-	; stack pointer relative to STACK_PAGE -> 0x01ff
-	ldx #$ff
-	txs
-
-	jsr ports_reset
-
-	; set up piezo
-	lda #PIEZO_IO_PINS_WR
-	sta PIEZO_IO_PORT_WR
-
-	; set up leds
-	lda #LED_IO_PINS_WR
-	sta LED_IO_PORT_WR
-
-	; set up timer
-	jsr timer_single_init
-
-	; set up lcd
-	jsr lcd_init
-
-	lda #$00
+play_notes:
+	lda #$0f
 	sta pause_delay_hi
-	lda #$ff
+	lda #$00
 	sta pause_delay_lo
 
 	; play notes array
@@ -138,6 +124,7 @@ main:
 		sta notes_length
 		; --------------------------------------------------------------------------------
 
+.ifdef ENABLE_STATUS_LCD
 		; --------------------------------------------------------------------------------
 		; status message
 		; --------------------------------------------------------------------------------
@@ -234,6 +221,7 @@ main:
 		sta REG_SRC_HI
 		jsr lcd_print
 		; --------------------------------------------------------------------------------
+.endif
 
 		jsr play_note
 
@@ -253,6 +241,51 @@ main:
 
 	stp
 	rts
+
+
+
+piezo_main:
+	sei
+	clc
+	cld
+	clv
+
+	; stack pointer relative to STACK_PAGE -> 0x01ff
+	ldx #$ff
+	txs
+
+	jsr ports_reset
+
+	; set up piezo
+	lda #PIEZO_IO_PINS_WR
+	sta PIEZO_IO_PORT_WR
+
+.ifdef ENABLE_STATUS_LED
+	; set up leds
+	lda #LED_IO_PINS_WR
+	sta LED_IO_PORT_WR
+.endif
+
+	; set up timer
+	jsr timer_single_init
+
+.ifdef ENABLE_STATUS_LCD
+	; set up lcd
+	jsr lcd_init
+.endif
+
+	; run the program
+	jsr play_notes
+
+	rts
+
+
+
+.ifndef COMPILE_AS_MODULE
+
+main:
+	jsr piezo_main
+	stp
 
 
 
@@ -277,3 +310,5 @@ isr_main:
 	.addr main
 	.addr isr_main
 ; -----------------------------------------------------------------------------
+
+.endif

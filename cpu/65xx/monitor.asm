@@ -12,6 +12,7 @@
 .include "sleep.asm"
 
 SHOW_SPLASH_SCREEN = 1
+;INCLUDE_RUN_TEST   = 1
 
 
 ; constants
@@ -547,7 +548,7 @@ input_data:
 nmi_main:
 	; re-start monitor
 	jmp main
-	rti
+	;rti
 
 
 
@@ -644,6 +645,25 @@ isr_main:
 	plx
 	pla
 	rti
+; -----------------------------------------------------------------------------
+
+
+
+; -----------------------------------------------------------------------------
+; test for 'run' command
+; -----------------------------------------------------------------------------
+.ifdef INCLUDE_RUN_TEST
+COMPILE_AS_MODULE = 1
+.include "test_piezo2.asm"
+
+.asciiz "TESTPROG"   ; marker to find entry point more easily
+.repeat 8, n
+	nop          ; add a bit of margin for manoeuvre for jump
+.endrep
+
+run_test_prog:
+	jsr piezo_main
+.endif
 ; -----------------------------------------------------------------------------
 
 
