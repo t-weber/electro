@@ -663,6 +663,7 @@ COMPILE_AS_MODULE = 1
 
 run_test_prog:
 	jsr piezo_main
+	stp
 .endif
 ; -----------------------------------------------------------------------------
 
