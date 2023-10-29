@@ -1,7 +1,7 @@
 ;
 ; system monitor
 ; @author Tobias Weber
-; @date 27-oct-2023
+; @date 29-oct-2023
 ; @license see 'LICENSE' file
 ;
 
@@ -12,7 +12,7 @@
 .include "sleep.asm"
 
 SHOW_SPLASH_SCREEN = 1
-;INCLUDE_RUN_TEST   = 1
+INCLUDE_RUN_TEST   = 1
 
 
 ; constants
@@ -81,7 +81,6 @@ main:
 	jsr lcd_return
 
 .ifdef SHOW_SPLASH_SCREEN
-	; show splash screen
 	jsr splash_screen
 .endif
 
@@ -213,6 +212,32 @@ update_output:
 	lda #(.hibyte(data_str))
 	sta REG_SRC_HI
 	jsr lcd_print
+
+	; set caret to current input position
+	lda sub_mode
+	cmp #submode_addr
+	beq update_output_submode_addr
+	bra update_output_submode_data
+
+	update_output_submode_addr:
+		clc
+		lda addr_nibble
+		and #%0000_0011
+		adc #11
+		jsr lcd_address
+		bra update_output_submode_end
+
+	update_output_submode_data:
+		clc
+		lda data_nibble
+		and #%0000_0001
+		adc data_byte
+		adc data_byte
+		adc #LCD_LINE_LEN
+		jsr lcd_address
+		;bra update_output_submode_end
+
+	update_output_submode_end:
 	; ---------------------------------------------------------------------
 
 	rts
@@ -548,6 +573,7 @@ input_data:
 nmi_main:
 	; re-start monitor
 	jmp main
+
 	;rti
 
 
@@ -614,7 +640,7 @@ isr_main:
 			beq cb2_isr_no_key_pressed
 
 			txa
-			cmp #$10  ; treat key '16' as '0'
+			cmp #$10                   ; treat key '16' as '0'
 			bne cb2_isr_input_not_0
 			lda #$00
 			cb2_isr_input_not_0:
@@ -623,10 +649,10 @@ isr_main:
 			bra cb2_isr_input_loop_end ; no multi-key presses
 
 			cb2_isr_no_key_pressed:
-			inx       ; next key
-			cpx #$11  ; last key?
-			beq cb2_isr_input_loop_end
-			bra cb2_isr_input_loop
+			inx                        ; next key
+			cpx #$11                   ; last key?
+			bne cb2_isr_input_loop
+			;bra cb2_isr_input_loop_end
 		cb2_isr_input_loop_end:
 
 		lda IO_INT_FLAGS
@@ -634,16 +660,15 @@ isr_main:
 		sta IO_INT_FLAGS
 
 		jsr keypad_enable_irq
-
 		;bra end_isr
 	; ---------------------------------------------------------------------
 
 	end_isr:
 	cli
-
 	ply
 	plx
 	pla
+
 	rti
 ; -----------------------------------------------------------------------------
 

@@ -70,11 +70,11 @@ strcat:
 	ldx #$00  ; index into source string
 	strcat_loop:
 		; load char
-		phy  ; save y
-		txa  ; x -> a -> y
-		tay  ;
+		phy                   ; save y
+		txa                   ; x -> a -> y
+		tay                   ;
 		lda (REG_SRC_LO), y
-		ply  ; restore y
+		ply                   ; restore y
 		sta (REG_DST_LO), y
 
 		; end at terminating zero
@@ -101,14 +101,14 @@ strcat:
 ;
 u4tostr_hex:
 	;and #$0f
-	cmp #$0a             ; a in [0, 9] or [a, f] ?
+	cmp #$0a                      ; a in [0, 9] or [a, f] ?
 	bcs u4tostr_hex_a_to_f
 
-	u4tostr_hex_0_to_9:  ; a = '0'..'9'
+	u4tostr_hex_0_to_9:           ; a = '0'..'9'
 		adc #'0'
 		bra u4tostr_hex_end
 
-	u4tostr_hex_a_to_f:  ; a = 'a'..'f'
+	u4tostr_hex_a_to_f:           ; a = 'a'..'f'
 		adc #('A' - $0a - 1)  ; -1 comes from the carry flag
 		;bra u4tostr_hex_end
 
@@ -233,9 +233,9 @@ u32tostr_hex:
 uNtostr_hex:
 	phy
 
-	stx REG_IDX_1  ; byte index into integer
-	dec REG_IDX_1  ;
-	stz REG_IDX_2  ; string index
+	stx REG_IDX_1                 ; byte index into integer
+	dec REG_IDX_1                 ;
+	stz REG_IDX_2                 ; string index
 
 	uNtostr_hex_loop:
 		ldy REG_IDX_1
@@ -248,9 +248,9 @@ uNtostr_hex:
 		inc REG_IDX_2
 
 		lda REG_IDX_1
-		cmp #$ff       ; has the index wrapped around?
-		beq uNtostr_hex_end
-		bra uNtostr_hex_loop
+		cmp #$ff              ; has the index wrapped around?
+		bne uNtostr_hex_loop
+		;bra uNtostr_hex_end
 
 	uNtostr_hex_end:
 		; zero at end
@@ -289,8 +289,8 @@ uNtostr_hex_be:
 
 		lda REG_IDX_1
 		cmp REG_IDX_3
-		beq uNtostr_hex_be_end
-		bra uNtostr_hex_be_loop
+		bne uNtostr_hex_be_loop
+		;bra uNtostr_hex_be_end
 
 	uNtostr_hex_be_end:
 		; zero at end

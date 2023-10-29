@@ -25,20 +25,20 @@ lcd_init:
 	; init
 	lda #(20 * LCD_SLEEP_BASE)
 	jsr sleep
-	ldx #%00000011
+	ldx #%0000_0011
 	jsr lcd_send_nibble_cmd
 
 	lda #(5 * LCD_SLEEP_BASE)
 	jsr sleep
-	ldx #%00000011
+	ldx #%0000_0011
 	jsr lcd_send_nibble_cmd
 
 	lda #(LCD_SLEEP_BASE)
 	jsr sleep
-	ldx #%00000011
+	ldx #%0000_0011
 	jsr lcd_send_nibble_cmd
 
-	ldx #%00000010
+	ldx #%0000_0010
 	jsr lcd_send_nibble_cmd
 	; ---------------------------------------------------------------------
 
@@ -59,11 +59,11 @@ lcd_init:
 ;
 lcd_clear:
 	; high nibble
-	ldx #%00000000
+	ldx #%0000_0000
 	jsr lcd_send_nibble_cmd
 
 	; low nibble
-	ldx #%00000001
+	ldx #%0000_0001
 	jsr lcd_send_nibble_cmd
 
 	lda #(2 * LCD_SLEEP_BASE)
@@ -76,11 +76,11 @@ lcd_clear:
 ;
 lcd_return:
 	; high nibble
-	ldx #%00000000
+	ldx #%0000_0000
 	jsr lcd_send_nibble_cmd
 
 	; low nibble
-	ldx #%00000010
+	ldx #%0000_0010
 	jsr lcd_send_nibble_cmd
 
 	lda #(2 * LCD_SLEEP_BASE)
@@ -93,25 +93,25 @@ lcd_return:
 ;
 lcd_caret_dir:
 	; high nibble
-	ldx #%00000000
+	ldx #%0000_0000
 	jsr lcd_send_nibble_cmd
 
 	; low nibble
-	ldx #(%00000100 | LCD_CARET_DIR_INC)
+	ldx #(%0000_0100 | LCD_CARET_DIR_INC)
 	jsr lcd_send_nibble_cmd
 	rts
 
 
 ;
-; set display
+; set display properties
 ;
 lcd_display:
 	; high nibble
-	ldx #%00000000
+	ldx #%0000_0000
 	jsr lcd_send_nibble_cmd
 
 	; low nibble
-	ldx #(%00001000 | LCD_DISP_ON | LCD_DISP_CARET_LINE)
+	ldx #(%0000_1000 | LCD_DISP_ON | LCD_DISP_CARET_LINE)
 	jsr lcd_send_nibble_cmd
 	rts
 
@@ -123,12 +123,12 @@ lcd_display:
 lcd_address:
 	; high nibble
 	pha
-	ror
-	ror
-	ror
-	ror
-	and #%00000111
-	ora #%00001000
+	lsr
+	lsr
+	lsr
+	lsr
+	and #$0f
+	ora #%0000_1000
 	tax
 	jsr lcd_send_nibble_cmd
 
@@ -145,7 +145,7 @@ lcd_address:
 ;
 lcd_function:
 	; high nibble
-	ldx #%00000010
+	ldx #%0000_0010
 	jsr lcd_send_nibble_cmd
 
 	; low nibble
@@ -159,7 +159,7 @@ lcd_function:
 ;
 lcd_shift:
 	; high nibble
-	ldx #%00000001
+	ldx #%0000_0001
 	jsr lcd_send_nibble_cmd
 
 	; low nibble
@@ -220,10 +220,10 @@ lcd_send_byte:
 	; write high nibble
 	phx
 	txa
-	ror
-	ror
-	ror
-	ror
+	lsr
+	lsr
+	lsr
+	lsr
 	and #$0f
 	tax
 	jsr lcd_send_nibble
