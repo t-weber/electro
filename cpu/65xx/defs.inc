@@ -114,7 +114,7 @@ LCD_DISP_ON         = %0000_0100
 LCD_DISP_CARET_LINE = %0000_0010
 LCD_DISP_CARET_BOX  = %0000_0001
 
-LCD_SHIFT_ALL       = %0000_1000
+LCD_SHIFT_ALL       = %0000_1000 ; shift all or just caret
 LCD_SHIFT_RIGHT     = %0000_0100
 
 LCD_FUNC_8BITS      = %0000_0001 ; in upper nibble
@@ -127,8 +127,9 @@ LCD_SLEEP_BASE      = 5          ; has to be >= 1 ms
 LCD_SLEEP_BASE      = 1          ; has to be >= 1 ms
 .endif
 
-LCD_CHAR_LEN        = 16         ; characters per line (visible)
-LCD_LINE_LEN        = 40         ; characters per line (even if not all are visible)
+LCD_CHAR_LEN        = 16         ; visible characters per line
+LCD_LINE1           = $00        ; line 1 start address
+LCD_LINE2           = $40        ; line 2 start address
 ; -----------------------------------------------------------------------------
 
 

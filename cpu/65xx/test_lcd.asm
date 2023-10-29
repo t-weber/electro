@@ -65,7 +65,7 @@ main:
 		sta REG_DST_HI
 		jsr strcpy
 
-		lda #LCD_LINE_LEN
+		lda #LCD_LINE2
 		jsr lcd_address
 
 		lda #(.lobyte(strvar))
@@ -99,7 +99,7 @@ main:
 		sta REG_DST_HI
 		jsr strcat
 
-		lda #LCD_LINE_LEN
+		lda #LCD_LINE2
 		jsr lcd_address
 
 		lda #(.lobyte(strvar))

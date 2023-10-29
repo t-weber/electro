@@ -42,11 +42,12 @@ lcd_init:
 	jsr lcd_send_nibble_cmd
 	; ---------------------------------------------------------------------
 
+	; setup
 	jsr lcd_function
 	jsr lcd_display
+	jsr lcd_caret_dir
 	jsr lcd_clear
 	jsr lcd_return
-	jsr lcd_caret_dir
 
 	ldx #$00
 	jsr lcd_address
@@ -66,8 +67,10 @@ lcd_clear:
 	ldx #%0000_0001
 	jsr lcd_send_nibble_cmd
 
+	; wait
 	lda #(2 * LCD_SLEEP_BASE)
 	jsr sleep
+
 	rts
 
 
@@ -83,8 +86,10 @@ lcd_return:
 	ldx #%0000_0010
 	jsr lcd_send_nibble_cmd
 
+	; wait
 	lda #(2 * LCD_SLEEP_BASE)
 	jsr sleep
+
 	rts
 
 
@@ -99,6 +104,7 @@ lcd_caret_dir:
 	; low nibble
 	ldx #(%0000_0100 | LCD_CARET_DIR_INC)
 	jsr lcd_send_nibble_cmd
+
 	rts
 
 
@@ -113,6 +119,7 @@ lcd_display:
 	; low nibble
 	ldx #(%0000_1000 | LCD_DISP_ON | LCD_DISP_CARET_LINE)
 	jsr lcd_send_nibble_cmd
+
 	rts
 
 
@@ -137,6 +144,7 @@ lcd_address:
 	and #$0f
 	tax
 	jsr lcd_send_nibble_cmd
+
 	rts
 
 
@@ -149,22 +157,39 @@ lcd_function:
 	jsr lcd_send_nibble_cmd
 
 	; low nibble
-	ldx #(LCD_FUNC_2LINES)
+	ldx #LCD_FUNC_2LINES
 	jsr lcd_send_nibble_cmd
+
 	rts
 
 
 ;
-; shift display
+; shift caret right
 ;
-lcd_shift:
+lcd_shift_caret_right:
 	; high nibble
 	ldx #%0000_0001
 	jsr lcd_send_nibble_cmd
 
 	; low nibble
-	ldx #(LCD_SHIFT_RIGHT)
+	ldx #LCD_SHIFT_RIGHT
 	jsr lcd_send_nibble_cmd
+
+	rts
+
+
+;
+; shift caret left
+;
+lcd_shift_caret_left:
+	; high nibble
+	ldx #%0000_0001
+	jsr lcd_send_nibble_cmd
+
+	; low nibble
+	ldx #$00
+	jsr lcd_send_nibble_cmd
+
 	rts
 
 
@@ -185,6 +210,9 @@ lcd_send_nibble_cmd:
 
 	; write data without enable bit
 	stx LCD_IO_PORT
+	lda #(LCD_SLEEP_BASE)
+	jsr sleep
+
 	rts
 
 
@@ -209,6 +237,9 @@ lcd_send_nibble:
 	txa
 	ora #LCD_PIN_RS
 	sta LCD_IO_PORT
+	lda #(LCD_SLEEP_BASE)
+	jsr sleep
+
 	rts
 
 
@@ -233,6 +264,7 @@ lcd_send_byte:
 	and #$0f
 	tax
 	jsr lcd_send_nibble
+
 	rts
 
 

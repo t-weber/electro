@@ -124,7 +124,7 @@ splash_screen:
 	jsr lcd_print
 
 	; next line on lcd
-	lda #LCD_LINE_LEN
+	lda #LCD_LINE2
 	jsr lcd_address
 
 	; print the author string
@@ -203,7 +203,7 @@ update_output:
 	jsr lcd_print
 
 	; next line on lcd
-	lda #LCD_LINE_LEN
+	lda #LCD_LINE2
 	jsr lcd_address
 
 	; print the data string
@@ -233,7 +233,7 @@ update_output:
 		and #%0000_0001
 		adc data_byte
 		adc data_byte
-		adc #LCD_LINE_LEN
+		adc #LCD_LINE2
 		jsr lcd_address
 		;bra update_output_submode_end
 
