@@ -2,7 +2,7 @@
 -- LC display via serial 2- or 4-wire bus (using a fixed init sequence)
 -- @author Tobias Weber <tobias.weber@tum.de>
 -- @date dec-2020, nov-2023
--- @license see 'LICENSE.EUPL' file
+-- @license see 'LICENSE' file
 --
 -- references for lcd:
 --   - https://www.lcd-module.de/fileadmin/pdf/doma/dogm204.pdf
