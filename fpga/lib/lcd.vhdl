@@ -68,13 +68,6 @@ architecture lcd_impl of lcd is
 		ReadInitSeq,
 		Wait_UpdateDisplay, Pre_UpdateDisplay, UpdateDisplay);
 	signal lcd_state, next_lcd_state : t_lcd_state;
-	
-	signal lcd_reset, next_lcd_reset : std_logic;
-	signal mem_addr, next_mem_addr : std_logic_vector(lcd_num_addrbits-1 downto 0);
-	
-	signal bus_enable, next_bus_enable : std_logic;
-	signal bus_addr, next_bus_addr : std_logic_vector(bus_num_addrbits-1 downto 0);
-	signal bus_data, next_bus_data : std_logic_vector(bus_num_databits-1 downto 0);
 	signal bus_last_busy, bus_cycle : std_logic;
 
 	-- delays
@@ -144,16 +137,8 @@ architecture lcd_impl of lcd is
 
 begin
 
-	-- outputs
-	out_lcd_reset <= lcd_reset;
-	out_bus_enable <= bus_enable;
-	out_bus_addr <= bus_addr;
-	out_bus_data <= bus_data;
-	out_mem_addr <= mem_addr;
-
-
 	-- rising edge of serial bus busy signal
-	bus_cycle <= (in_bus_busy) and (not bus_last_busy);
+	bus_cycle <= in_bus_busy and (not bus_last_busy);
 
 
 	--
@@ -172,13 +157,6 @@ begin
 			init_cycle <= 0;
 			write_cycle <= -3;
 
-			-- output registers
-			lcd_reset <= '1';
-			mem_addr <= (others=>'0');
-
-			bus_enable <= '0';
-			bus_addr <= (others=>'0');
-			bus_data <= (others=>'0');
 			bus_last_busy <= '0';
 
 		-- clock
@@ -199,13 +177,6 @@ begin
 			init_cycle <= next_init_cycle;
 			write_cycle <= next_write_cycle;
 
-			-- output registers
-			lcd_reset <= next_lcd_reset;
-			mem_addr <= next_mem_addr;
-
-			bus_enable <= next_bus_enable;
-			bus_addr <= next_bus_addr;
-			bus_data <= next_bus_data;
 			bus_last_busy <= in_bus_busy;
 		end if;
 	end process;
@@ -217,24 +188,23 @@ begin
 	proc_comb : process(
 		in_update, wait_counter, wait_counter_max,
 		lcd_state, bus_cycle, init_cycle, write_cycle, 
-		lcd_reset, mem_addr, in_mem_word,
-		bus_enable, bus_addr, bus_data, in_bus_busy, in_bus_error)
+		in_mem_word, in_bus_busy, in_bus_error)
 	begin
 		-- defaults
 		next_lcd_state <= lcd_state;
-		next_lcd_reset <= lcd_reset;
-
-		next_mem_addr <= mem_addr;
-
-		next_bus_enable <= bus_enable;
-		next_bus_addr <= bus_addr;
-		next_bus_data <= bus_data;
 	
 		next_init_cycle <= init_cycle;
 		next_write_cycle <= write_cycle;
 		
 		wait_counter_max <= 0;
-		
+
+		out_lcd_reset <= '1';
+		out_mem_addr <= (others => '0');
+
+		out_bus_enable <= '0';
+		out_bus_addr <= bus_writeaddr;
+		out_bus_data <= (others => '0');
+
 
 		-- fsm
 		case lcd_state is
@@ -247,7 +217,7 @@ begin
 
 
 			when Reset =>
-				next_lcd_reset <= '0';
+				out_lcd_reset <= '0';
 
 				wait_counter_max <= const_wait_reset;
 				if wait_counter = wait_counter_max then
@@ -256,8 +226,6 @@ begin
 
 
 			when Resetted => 
-				next_lcd_reset <= '1';
-
 				wait_counter_max <= const_wait_resetted;
 				if wait_counter = wait_counter_max then
 					next_lcd_state <= ReadInitSeq;
@@ -265,35 +233,33 @@ begin
 
 
 			when ReadInitSeq =>
+				-- next command
 				if bus_cycle='1' then
 					next_init_cycle <= init_cycle + 1;
-				else
-					case init_cycle is
-						-- sequence finished
-						when init_arr'length =>
-							next_bus_enable <= '0';
+				end if;
+
+				case init_cycle is
+					-- sequence finished
+					when init_arr'length =>
+						if in_bus_busy='0' then
+							next_lcd_state <= Wait_UpdateDisplay;
+							next_init_cycle <= 0;
+						end if;
+
+					-- read init sequence
+					when others =>
+						-- error occured -> retransmit everything
+						if in_bus_error='1' then
 							if in_bus_busy='0' then
-								next_lcd_state <= Wait_UpdateDisplay;
+								next_lcd_state <= ReadInitSeq;
 								next_init_cycle <= 0;
 							end if;
-
-						-- read init sequence
-						when others =>
-							-- error occured -> retransmit everything
-							if in_bus_error='1' then
-								next_bus_enable <= '0';
-								if in_bus_busy='0' then
-									next_lcd_state <= ReadInitSeq;
-									next_init_cycle <= 0;
-								end if;
-							-- write sequence commands to lcd
-							else
-								next_bus_addr <= bus_writeaddr;
-								next_bus_data <= init_arr(init_cycle);
-								next_bus_enable <= '1';
-							end if;
-					end case;
-				end if;
+						-- write sequence commands to lcd
+						else
+							out_bus_data <= init_arr(init_cycle);
+							out_bus_enable <= '1';
+						end if;
+				end case;
 
 
 			when Wait_UpdateDisplay =>
@@ -313,56 +279,50 @@ begin
 				-- next character
 				if bus_cycle='1' then
 					next_write_cycle <= write_cycle + 1;
+				end if;
 
 				-- write command or character
-				else
-					case write_cycle is
-						-- control byte for return
-						when -3 =>
-							next_bus_addr <= bus_writeaddr;
-							next_bus_data <= ctrl_command;
-							next_bus_enable <= '1';
+				case write_cycle is
+					-- control byte for return
+					when -3 =>
+						out_bus_data <= ctrl_command;
+						out_bus_enable <= '1';
 
-						-- return: set display address to 0
-						when -2 =>
-							next_bus_addr <= bus_writeaddr;
-							next_bus_data <= "10000000";
-							next_bus_enable <= '1';
+					-- return: set display address to 0
+					when -2 =>
+						out_bus_data <= "10000000";
+						out_bus_enable <= '1';
 
-						-- control byte for data
-						when -1 =>
-							next_bus_addr <= bus_writeaddr;
-							next_bus_data <= ctrl_data;
-							next_bus_enable <= '1';
+					-- control byte for data
+					when -1 =>
+						out_bus_data <= ctrl_data;
+						out_bus_enable <= '1';
 
-						-- sequence finished
-						when static_lcd_size =>
-							next_bus_enable <= '0';
+					-- sequence finished
+					when static_lcd_size =>
+						if in_bus_busy='0' then
+							next_lcd_state <= Wait_UpdateDisplay;
+							next_write_cycle <= -3;
+						end if;
+
+					-- read characters from display buffer
+					when others =>
+						-- error occured -> retransmit everything
+						if in_bus_error='1' then
 							if in_bus_busy='0' then
-								next_lcd_state <= Wait_UpdateDisplay;
+								next_lcd_state <= UpdateDisplay;
 								next_write_cycle <= -3;
 							end if;
-
-						-- read characters from display buffer
-						when others =>
-							-- error occured -> retransmit everything
-							if in_bus_error='1' then
-								next_bus_enable <= '0';
-								if in_bus_busy='0' then
-									next_lcd_state <= UpdateDisplay;
-									next_write_cycle <= -3;
-								end if;
 								
-							-- write characters to lcd
-							else
-								next_mem_addr <=
-									int_to_logvec(write_cycle + mem_start_addr, lcd_num_addrbits);
-								next_bus_addr <= bus_writeaddr;
-								next_bus_data <= in_mem_word;
-								next_bus_enable <= '1';
-							end if;
-					end case;
-				end if;
+						-- write characters to lcd
+						else
+							out_mem_addr <= int_to_logvec(
+								write_cycle + mem_start_addr, lcd_num_addrbits);
+							out_bus_data <= in_mem_word;
+							out_bus_enable <= '1';
+						end if;
+				end case;
+
 
 			when others =>
 				next_lcd_state <= Wait_Reset;
