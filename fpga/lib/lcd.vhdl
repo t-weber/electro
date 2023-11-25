@@ -36,11 +36,9 @@ entity lcd is
 	);
 
 	port(
-		-- main clock
-		in_clk : in std_logic;
+		-- main clock and reset
+		in_clk, in_reset : in std_logic;
 
-		-- reset
-		in_reset : in std_logic;
 		-- reset for LCD
 		out_lcd_reset : out std_logic;
 		
@@ -54,8 +52,8 @@ entity lcd is
 		out_bus_data : out std_logic_vector(bus_num_databits-1 downto 0);
 
 		-- display buffer
-		out_mem_addr : out std_logic_vector(lcd_num_addrbits-1 downto 0);
-		in_mem_word : in std_logic_vector(lcd_num_databits-1 downto 0)
+		in_mem_word : in std_logic_vector(lcd_num_databits-1 downto 0);
+		out_mem_addr : out std_logic_vector(lcd_num_addrbits-1 downto 0)
 	);
 end entity;
 
@@ -146,7 +144,7 @@ begin
 	--
 	proc_ff : process(in_clk, in_reset) begin
 		-- reset
-		if in_reset = '0' then
+		if in_reset = '1' then
 			-- state register
 			lcd_state <= Wait_Reset;
 			
