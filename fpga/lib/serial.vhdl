@@ -16,6 +16,10 @@ entity serial is
 		constant MAIN_HZ : natural := 50_000_000;
 		constant SERIAL_HZ : natural := 10_000;
 
+		-- inactive signals
+		constant SERIAL_CLK_INACTIVE : std_logic := '1';
+		constant SERIAL_DATA_INACTIVE : std_logic := '1';
+
 		-- word length
 		constant BITS : natural := 8;
 		constant LOWBIT_FIRST : std_logic := '1'
@@ -26,7 +30,7 @@ entity serial is
 		in_clk, in_reset : in std_logic;
 
 		-- serial output data
-		out_clk, out_busy : out std_logic;
+		out_clk, out_next_word : out std_logic;
 		out_serial : out std_logic;
 
 		-- parallel input data
@@ -44,7 +48,7 @@ architecture serial_impl of serial is
 	signal parallel_data, next_parallel_data : std_logic_vector(BITS-1 downto 0);
 
 	-- serial clock
-	signal serial_clk : std_logic := '1';
+	signal serial_clk : std_logic := SERIAL_CLK_INACTIVE;
 
 	-- bit counter
 	signal bit_ctr, next_bit_ctr : natural range 0 to BITS-1 := 0;
@@ -60,7 +64,7 @@ begin
 		-- reset
 		if in_reset = '1' then
 			clk_ctr := 0;
-			serial_clk <= '1';
+			serial_clk <= SERIAL_CLK_INACTIVE;
 
 		-- clock
 		elsif rising_edge(in_clk) then
@@ -75,7 +79,7 @@ begin
 
 
 	-- output serial clock
-	out_clk <= serial_clk when serial_state = Transmit else '1';
+	out_clk <= serial_clk when serial_state = Transmit else SERIAL_CLK_INACTIVE;
 
 
 	--
@@ -94,15 +98,16 @@ begin
 			parallel_data <= (others => '0');
 
 		-- clock
+		--elsif falling_edge(serial_clk) then
 		elsif rising_edge(serial_clk) then
 			-- state register
 			serial_state <= next_serial_state;
 
-			-- counter register
-			bit_ctr <= next_bit_ctr;
-
 			-- parallel data register
 			parallel_data <= next_parallel_data;
+
+			-- counter register
+			bit_ctr <= next_bit_ctr;
 		end if;
 	end process;
 
@@ -115,8 +120,8 @@ begin
 		next_serial_state <= serial_state;
 		next_bit_ctr <= bit_ctr;
 
-		out_busy <= '1';
-		out_serial <= '0';
+		out_next_word <= '0';
+		out_serial <= SERIAL_DATA_INACTIVE;
 
 		-- state machine
 		case serial_state is
@@ -136,19 +141,20 @@ begin
 					out_serial <= parallel_data(BITS - bit_ctr - 1);
 				end if;
 
-				-- end of byte?
+				-- end of word?
 				if bit_ctr = BITS - 1 then
-					out_busy <= '0';
+					out_next_word <= '1';
 					next_bit_ctr <= 0;
-
-					if in_enable = '0' then
-						next_serial_state <= Ready;
-					else
-						next_parallel_data <= in_parallel;
-					end if;
 				else
-					-- next bit of the byte
+					-- next bit of the word
 					next_bit_ctr <= bit_ctr + 1;
+				end if;
+
+				-- enable signal still active?
+				if in_enable = '0' then
+					next_serial_state <= Ready;
+				else
+					next_parallel_data <= in_parallel;
 				end if;
 
 			-- default state
