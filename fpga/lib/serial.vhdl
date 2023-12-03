@@ -153,6 +153,7 @@ begin
 		case serial_state is
 			-- wait for enable signal
 			when Ready =>
+				next_bit_ctr <= 0;
 				if in_enable = '1' then
 					next_serial_state <= Transmit;
 				end if;

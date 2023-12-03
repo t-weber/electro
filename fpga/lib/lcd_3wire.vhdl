@@ -44,7 +44,7 @@ entity lcd_3wire is
 		in_update : in std_logic;
 
 		-- serial bus interface
-		in_bus_ready, in_bus_error : in std_logic;
+		in_bus_ready : in std_logic;
 		out_bus_enable : out std_logic;
 		out_bus_data : out std_logic_vector(bus_num_databits-1 downto 0);
 
@@ -60,20 +60,17 @@ architecture lcd_3wire_impl of lcd_3wire is
 	-- states
 	type t_lcd_state is (
 		Wait_Reset, Reset, Resetted,
-		ReadInitSeq,
+		ReadInitSeq, Wait_Init,
 		Wait_UpdateDisplay, Pre_UpdateDisplay, UpdateDisplay);
 	signal lcd_state, next_lcd_state : t_lcd_state := Wait_reset;
 	signal bus_last_ready, bus_cycle : std_logic := '0';
 
 	-- delays
-	--constant const_wait_prereset : natural := main_clk/1000*50;        -- 50 ms
-	--constant const_wait_reset : natural := main_clk/1000_000*500;      -- 500 us
-	--constant const_wait_resetted : natural := main_clk/1000*1;         -- 1 ms
-	--constant const_wait_UpdateDisplay : natural := main_clk/1000*200;  -- 200 ms
-	constant const_wait_prereset : natural := 0;        -- 50 ms
-	constant const_wait_reset : natural := 0;      -- 500 us
-	constant const_wait_resetted : natural := 0;         -- 1 ms
-	constant const_wait_UpdateDisplay : natural := 0;  -- 200 ms
+	constant const_wait_prereset : natural := main_clk/1000*50;        -- 50 ms
+	constant const_wait_reset : natural := main_clk/1000_000*500;      -- 500 us
+	constant const_wait_resetted : natural := main_clk/1000*1;         -- 1 ms
+	constant const_wait_init : natural := main_clk/1000*1;             -- 1 ms
+	constant const_wait_UpdateDisplay : natural := main_clk/1000*200;  -- 200 ms
 
 	-- the maximum of the above delays
 	constant const_wait_max : natural := const_wait_UpdateDisplay;
@@ -90,8 +87,8 @@ architecture lcd_3wire_impl of lcd_3wire is
 
 	-- lcd init commands
 	-- see p. 5 in https://www.lcd-module.de/fileadmin/pdf/doma/dogm204.pdf
-	constant init_arr_len : natural := 21*3;
-	type t_init_arr is array(0 to init_arr_len - 1) of std_logic_vector(lcd_num_databits-1 downto 0);
+	constant init_num_commands : natural := 21;
+	type t_init_arr is array(0 to init_num_commands*3 - 1) of std_logic_vector(lcd_num_databits-1 downto 0);
 	constant init_arr : t_init_arr := (
 		ctrl_command, "00000011", "00001011",  -- 8 bit, 4 lines, normal font size, re=1, is=1
 		ctrl_command, "00000000", "00000010",  -- no sleep
@@ -131,7 +128,8 @@ architecture lcd_3wire_impl of lcd_3wire is
 	);
 
 	-- cycle counters
-	signal init_cycle, next_init_cycle : natural range 0 to init_arr'length := 0;
+	signal init_cycle, next_init_cycle : natural range 0 to init_num_commands := 0;
+	signal cmd_byte_cycle, next_cmd_byte_cycle : natural range 0 to 4 := 0;
 	signal write_cycle, next_write_cycle : integer range -3 to lcd_size := -3;
 
 begin
@@ -155,6 +153,7 @@ begin
 			-- counter registers
 			init_cycle <= 0;
 			write_cycle <= -3;
+			cmd_byte_cycle <= 0;
 
 			bus_last_ready <= '0';
 
@@ -175,6 +174,7 @@ begin
 			-- counter registers
 			init_cycle <= next_init_cycle;
 			write_cycle <= next_write_cycle;
+			cmd_byte_cycle <= next_cmd_byte_cycle;
 
 			bus_last_ready <= in_bus_ready;
 		end if;
@@ -191,7 +191,8 @@ begin
 	
 		next_init_cycle <= init_cycle;
 		next_write_cycle <= write_cycle;
-		
+		next_cmd_byte_cycle <= cmd_byte_cycle;
+
 		wait_counter_max <= 0;
 
 		out_lcd_reset <= '1';
@@ -229,33 +230,39 @@ begin
 
 			when ReadInitSeq =>
 				-- next command
-				if bus_cycle='1' then
-					next_init_cycle <= init_cycle + 1;
+				if bus_cycle = '1' then
+					next_cmd_byte_cycle <= cmd_byte_cycle + 1;
 				end if;
 
-				case init_cycle is
-					-- sequence finished
-					when init_arr_len =>
-					--when init_arr'length =>
-						if in_bus_ready='1' then
+				-- end of current command?
+				if cmd_byte_cycle = 3 then
+					next_lcd_state <= Wait_Init;
+					next_init_cycle <= init_cycle + 1;
+					next_cmd_byte_cycle <= 0;
+
+				-- transmit commands
+				else
+					-- end of all commands?
+					if init_cycle = init_num_commands then
+						-- sequence finished
+						if in_bus_ready = '1' then
 							next_lcd_state <= Wait_UpdateDisplay;
 							next_init_cycle <= 0;
 						end if;
+					else
+						-- put command on bus
+						out_bus_data <= init_arr(init_cycle*3 + cmd_byte_cycle);
+						out_bus_enable <= '1';
+					end if;
+				end if;
 
-					-- read init sequence
-					when others =>
-						-- error occured -> retransmit everything
-						if in_bus_error='1' then
-							if in_bus_ready='1' then
-								next_lcd_state <= ReadInitSeq;
-								next_init_cycle <= 0;
-							end if;
-						-- write sequence commands to lcd
-						else
-							out_bus_data <= init_arr(init_cycle);
-							out_bus_enable <= '1';
-						end if;
-				end case;
+
+			when Wait_Init =>
+				wait_counter_max <= const_wait_init;
+				if wait_counter = wait_counter_max then
+					-- continue with init sequence
+					next_lcd_state <= ReadInitSeq;
+				end if;
 
 
 			when Wait_UpdateDisplay =>
@@ -303,20 +310,11 @@ begin
 
 					-- read characters from display buffer
 					when others =>
-						-- error occured -> retransmit everything
-						if in_bus_error='1' then
-							if in_bus_ready='1' then
-								next_lcd_state <= UpdateDisplay;
-								next_write_cycle <= -3;
-							end if;
-								
 						-- write characters to lcd
-						else
-							out_mem_addr <= int_to_logvec(
-								write_cycle + mem_start_addr, lcd_num_addrbits);
-							out_bus_data <= in_mem_word;
-							out_bus_enable <= '1';
-						end if;
+						out_mem_addr <= int_to_logvec(
+							write_cycle + mem_start_addr, lcd_num_addrbits);
+						out_bus_data <= in_mem_word;
+						out_bus_enable <= '1';
 				end case;
 
 

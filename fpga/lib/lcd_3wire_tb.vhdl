@@ -45,14 +45,14 @@ begin
 	serial_ent : entity work.serial
 		generic map(BITS => BITS, MAIN_HZ => MAIN_HZ, SERIAL_HZ => SERIAL_HZ)
 		port map(in_clk => clk, in_reset => rst,
-			in_enable => '1', in_parallel => bus_data,
+			in_enable => bus_enable, in_parallel => bus_data,
 			out_clk => serial_clk, out_serial => serial_data,
 			out_next_word => nextbyte);
 
 	lcd_ent : entity work.lcd_3wire
 		generic map(main_clk => MAIN_HZ, bus_num_databits => BITS)
 		port map(in_clk => clk, in_reset => rst, in_update => '1',
-			in_bus_ready => nextbyte, in_bus_error => '0',
+			in_bus_ready => nextbyte,
 			out_bus_enable => bus_enable, out_bus_data => bus_data,
 			in_mem_word => "00000000");
 
