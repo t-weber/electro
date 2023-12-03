@@ -44,7 +44,7 @@ end entity;
 architecture serial_impl of serial is
 	-- states and next state logic
 	type t_serial_state is ( Ready, Transmit );
-	signal serial_state, next_serial_state : t_serial_state;
+	signal serial_state, next_serial_state : t_serial_state := Ready;
 	signal parallel_data, next_parallel_data : std_logic_vector(BITS-1 downto 0);
 
 	-- serial clock
@@ -83,9 +83,9 @@ begin
 
 
 	--
-	-- state flip-flops
+	-- state flip-flops for serial clock
 	--
-	proc_ff : process(serial_clk, in_reset) begin
+	serial_ff : process(serial_clk, in_reset) begin
 		-- reset
 		if in_reset = '1' then
 			-- state register
@@ -94,17 +94,11 @@ begin
 			-- counter register
 			bit_ctr <= 0;
 
-			-- parallel data register
-			parallel_data <= (others => '0');
-
 		-- clock
 		--elsif falling_edge(serial_clk) then
 		elsif rising_edge(serial_clk) then
 			-- state register
 			serial_state <= next_serial_state;
-
-			-- parallel data register
-			parallel_data <= next_parallel_data;
 
 			-- counter register
 			bit_ctr <= next_bit_ctr;
@@ -113,9 +107,41 @@ begin
 
 
 	--
+	-- state flip-flops for main clock
+	--
+	main_ff : process(in_clk, in_reset) begin
+		-- reset
+		if in_reset = '1' then
+			-- parallel data register
+			parallel_data <= (others => '0');
+
+		-- clock
+		--elsif falling_edge(in_clk) then
+		elsif rising_edge(in_clk) then
+			-- parallel data register
+			parallel_data <= next_parallel_data;
+		end if;
+	end process;
+
+
+	--
+	-- buffer input parallel data
+	--
+	proc_input : process(all)
+	begin
+		next_parallel_data <= parallel_data;
+
+		if in_enable = '1' then
+			next_parallel_data <= in_parallel;
+		end if;
+	end process;
+
+
+	--
 	-- state combinatorics
 	--
-	proc_comb : process(all) begin
+	proc_comb : process(all)
+	begin
 		-- defaults
 		next_serial_state <= serial_state;
 		next_bit_ctr <= bit_ctr;
@@ -128,7 +154,6 @@ begin
 			-- wait for enable signal
 			when Ready =>
 				if in_enable = '1' then
-					next_parallel_data <= in_parallel;
 					next_serial_state <= Transmit;
 				end if;
 
@@ -150,11 +175,9 @@ begin
 					next_bit_ctr <= bit_ctr + 1;
 				end if;
 
-				-- enable signal still active?
+				-- enable signal not active anymore?
 				if in_enable = '0' then
 					next_serial_state <= Ready;
-				else
-					next_parallel_data <= in_parallel;
 				end if;
 
 			-- default state
