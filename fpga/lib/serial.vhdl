@@ -30,8 +30,8 @@ entity serial is
 		in_clk, in_reset : in std_logic;
 
 		-- serial output data
-		out_clk, out_next_word : out std_logic;
-		out_serial : out std_logic;
+		out_clk, out_ready : out std_logic;
+		out_serial, out_next_word : out std_logic;
 
 		-- parallel input data
 		in_parallel : in std_logic_vector(BITS-1 downto 0);
@@ -147,12 +147,14 @@ begin
 		next_bit_ctr <= bit_ctr;
 
 		out_next_word <= '0';
+		out_ready <= '0';
 		out_serial <= SERIAL_DATA_INACTIVE;
 
 		-- state machine
 		case serial_state is
 			-- wait for enable signal
 			when Ready =>
+				out_ready <= '1';
 				next_bit_ctr <= 0;
 				if in_enable = '1' then
 					next_serial_state <= Transmit;

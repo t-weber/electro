@@ -32,6 +32,7 @@ architecture lcd_3wire_tb_arch of lcd_3wire_tb is
 	signal serial_data : std_logic := '0';
 	signal serial_clk : std_logic := '0';
 	signal nextbyte : std_logic := '0';
+	signal ready : std_logic := '0';
 
 	signal bus_enable : std_logic;
 	signal bus_data : std_logic_vector(BITS-1 downto 0);
@@ -47,12 +48,12 @@ begin
 		port map(in_clk => clk, in_reset => rst,
 			in_enable => bus_enable, in_parallel => bus_data,
 			out_clk => serial_clk, out_serial => serial_data,
-			out_next_word => nextbyte);
+			out_next_word => nextbyte, out_ready => ready);
 
 	lcd_ent : entity work.lcd_3wire
 		generic map(main_clk => MAIN_HZ, bus_num_databits => BITS)
 		port map(in_clk => clk, in_reset => rst, in_update => '1',
-			in_bus_ready => nextbyte,
+			in_bus_next => nextbyte, in_bus_ready => ready,
 			out_bus_enable => bus_enable, out_bus_data => bus_data,
 			in_mem_word => "00000000");
 
@@ -62,6 +63,7 @@ begin
 		if PRINT_CLK='1' then
 			report lf &
 				"clk = " & std_logic'image(clk) &
+				", ready: " & std_logic'image(ready) &
 				", nextbyte: " & std_logic'image(nextbyte) &
 				", serial_clk: " & std_logic'image(serial_clk) &
 				", serial_data: " & std_logic'image(serial_data) &

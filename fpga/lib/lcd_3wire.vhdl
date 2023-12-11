@@ -44,7 +44,7 @@ entity lcd_3wire is
 		in_update : in std_logic;
 
 		-- serial bus interface
-		in_bus_ready : in std_logic;
+		in_bus_ready, in_bus_next : in std_logic;
 		out_bus_enable : out std_logic;
 		out_bus_data : out std_logic_vector(bus_num_databits-1 downto 0);
 
@@ -61,9 +61,12 @@ architecture lcd_3wire_impl of lcd_3wire is
 	type t_lcd_state is (
 		Wait_Reset, Reset, Resetted,
 		ReadInitSeq, Wait_Init,
-		Wait_UpdateDisplay, Pre_UpdateDisplay, UpdateDisplay);
+		Wait_UpdateDisplay, Pre_UpdateDisplay,
+		UpdateDisplay_Setup1, UpdateDisplay_Setup2,
+		UpdateDisplay_Setup3, UpdateDisplay_Setup4,
+		UpdateDisplay);
 	signal lcd_state, next_lcd_state : t_lcd_state := Wait_reset;
-	signal bus_last_ready, bus_cycle : std_logic := '0';
+	signal byte_cycle_last, next_byte_cycle : std_logic := '0';
 
 	-- delays
 	constant const_wait_prereset : natural := main_clk/1000*50;        -- 50 ms
@@ -90,52 +93,52 @@ architecture lcd_3wire_impl of lcd_3wire is
 	constant init_num_commands : natural := 21;
 	type t_init_arr is array(0 to init_num_commands*3 - 1) of std_logic_vector(lcd_num_databits-1 downto 0);
 	constant init_arr : t_init_arr := (
-		ctrl_command, "00000011", "00001011",  -- 8 bit, 4 lines, normal font size, re=1, is=1
-		ctrl_command, "00000000", "00000010",  -- no sleep
-		ctrl_command, "00000000", "00000110",  -- shift direction (mirror view)
-		ctrl_command, "00000000", "00001001",  -- short font width, no caret inversion, 4 lines
-		ctrl_command, "00000001", "00000000",  -- scroll (or shift) off for lines 3-0
-		ctrl_command, "00001100", "00000000",  -- scroll amount
-		ctrl_command, "00000111", "00000010",  -- select rom
+		ctrl_command, "00001011", "00000011",  -- 8 bit, 4 lines, normal font size, re=1, is=1
+		ctrl_command, "00000010", "00000000",  -- no sleep
+		ctrl_command, "00000110", "00000000",  -- shift direction (mirror view)
+		ctrl_command, "00001001", "00000000",  -- short font width, no caret inversion, 4 lines
+		ctrl_command, "00000000", "00000001",  -- scroll (or shift) off for lines 3-0
+		ctrl_command, "00000000", "00001100",  -- scroll amount
+		ctrl_command, "00000010", "00000111",  -- select rom
 		ctrl_data,    "00000000", "00000000",  -- first rom
-		--ctrl_data, "00000000", "00000100" ,  -- second rom
-		--ctrl_data, "00000000", "00001000",   -- third rom
-		ctrl_command, "00000111", "00000110",  -- select temperature control
-		ctrl_data, "00000000", "00000010",     -- temperature
+		--ctrl_data, "00000100", "00000000",   -- second rom
+		--ctrl_data, "00001000", "00000000",   -- third rom
+		ctrl_command, "00000110", "00000111",  -- select temperature control
+		ctrl_data, "00000010", "00000000",     -- temperature
 
-		ctrl_command, "00000011", "00001010",  -- 8 bit, 4 lines, normal font size, re=1, is=0
-		ctrl_command, "00000001", "00000010",  -- 2 double-height bits, voltage divider bias bit 1, shift off (scroll on)
+		ctrl_command, "00001010", "00000011",  -- 8 bit, 4 lines, normal font size, re=1, is=0
+		ctrl_command, "00000010", "00000001",  -- 2 double-height bits, voltage divider bias bit 1, shift off (scroll on)
 
-		ctrl_command, "00000011", "00001001",  -- 8 bit, 4 lines, no blinking, no reversing, re=0, is=1
-		ctrl_command, "00000001", "00001011",  -- voltage divider bias bit 0, oscillator bits 2-0
-		ctrl_command, "00000101", "00000111",  -- no icon, voltage regulator, contrast bits 5 and 4
-		ctrl_command, "00000111", "00000000",  -- contrast bits 3-0
-		ctrl_command, "00000110", "00001110",  -- voltage divider, amplifier bits 2-0
+		ctrl_command, "00001001", "00000011",  -- 8 bit, 4 lines, no blinking, no reversing, re=0, is=1
+		ctrl_command, "00001011", "00000001",  -- voltage divider bias bit 0, oscillator bits 2-0
+		ctrl_command, "00000111", "00000101",  -- no icon, voltage regulator, contrast bits 5 and 4
+		ctrl_command, "00000000", "00000111",  -- contrast bits 3-0
+		ctrl_command, "00001110", "00000110",  -- voltage divider, amplifier bits 2-0
 		
-		ctrl_command, "00000011", "00001000",  -- 8 bit, 4 lines, no blinking, no reversing, re=0, is=0
-		ctrl_command, "00000000", "00000110",  -- caret moving right, no display shifting
-		ctrl_command, "00000000", "00001100",  -- turn on display, no caret, no blinking
-		--ctrl_command, "00000100", "00000000",  -- character ram address
-		--ctrl_data, "00000001", "00001111",   -- define character 0 line 0
-		--ctrl_data, "00000001", "00001011",   -- define character 0 line 1
+		ctrl_command, "00001000", "00000011",  -- 8 bit, 4 lines, no blinking, no reversing, re=0, is=0
+		ctrl_command, "00000110", "00000000",  -- caret moving right, no display shifting
+		ctrl_command, "00001100", "00000000",  -- turn on display, no caret, no blinking
+		--ctrl_command, "00000000", "00000100" -- character ram address
+		--ctrl_data, "00001111", "00000001",   -- define character 0 line 0
+		--ctrl_data, "00001011", "00000001",   -- define character 0 line 1
 		--ctrl_data, "00000001", "00000001",   -- define character 0 line 2
 		--ctrl_data, "00000001", "00000001",   -- define character 0 line 3
 		--ctrl_data, "00000001", "00000001",   -- define character 0 line 4
 		--ctrl_data, "00000001", "00000001",   -- define character 0 line 5
 		--ctrl_data, "00000001", "00000001",   -- define character 0 line 6
 		--ctrl_data, "00000000", "00000000",   -- define character 0 line 7
-		ctrl_command, "00000000", "00000001"   -- clear
+		ctrl_command, "00000001", "00000000"   -- clear
 	);
 
 	-- cycle counters
 	signal init_cycle, next_init_cycle : natural range 0 to init_num_commands := 0;
 	signal cmd_byte_cycle, next_cmd_byte_cycle : natural range 0 to 4 := 0;
-	signal write_cycle, next_write_cycle : integer range -3 to lcd_size := -3;
+	signal write_cycle, next_write_cycle : integer range 0 to lcd_size := 0;
 
 begin
 
-	-- rising edge of serial bus ready signal
-	bus_cycle <= in_bus_ready and not (bus_last_ready);
+	-- rising edge of serial bus next byte signal
+	next_byte_cycle <= in_bus_next and (not byte_cycle_last);
 
 
 	--
@@ -152,10 +155,10 @@ begin
 
 			-- counter registers
 			init_cycle <= 0;
-			write_cycle <= -3;
+			write_cycle <= 0;
 			cmd_byte_cycle <= 0;
 
-			bus_last_ready <= '0';
+			byte_cycle_last <= '0';
 
 		-- clock
 		elsif rising_edge(in_clk) then
@@ -176,7 +179,7 @@ begin
 			write_cycle <= next_write_cycle;
 			cmd_byte_cycle <= next_cmd_byte_cycle;
 
-			bus_last_ready <= in_bus_ready;
+			byte_cycle_last <= in_bus_next;
 		end if;
 	end process;
 
@@ -229,8 +232,8 @@ begin
 
 
 			when ReadInitSeq =>
-				-- next command
-				if bus_cycle = '1' then
+				-- next command byte
+				if next_byte_cycle = '1' then
 					next_cmd_byte_cycle <= cmd_byte_cycle + 1;
 				end if;
 
@@ -274,49 +277,70 @@ begin
 				
 			when Pre_UpdateDisplay =>
 				if in_update = '1' then
-					next_lcd_state <= UpdateDisplay;
+					next_lcd_state <= UpdateDisplay_Setup1;
 				end if;
 
 
-			when UpdateDisplay =>	
-				-- next character
-				if bus_cycle='1' then
+			when UpdateDisplay_Setup1 =>
+				-- control byte for return
+				out_bus_data <= ctrl_command;
+				out_bus_enable <= '1';
+				next_lcd_state <= UpdateDisplay_Setup2;
+
+
+			when UpdateDisplay_Setup2 =>
+				-- return: set display address to 0 (nibble 1)
+				out_bus_data <= "00000010";
+				out_bus_enable <= '1';
+				next_lcd_state <= UpdateDisplay_Setup3;
+
+
+			when UpdateDisplay_Setup3 =>
+				-- return: set display address to 0 (nibble 2)
+				out_bus_data <= "00000000";
+				out_bus_enable <= '1';
+				next_lcd_state <= UpdateDisplay_Setup4;
+
+
+			when UpdateDisplay_Setup4 =>
+				-- control byte for data
+				out_bus_data <= ctrl_data;
+				out_bus_enable <= '1';
+				next_lcd_state <= UpdateDisplay;
+
+
+			when UpdateDisplay =>
+				-- next data nibble
+				if next_byte_cycle = '1' then
+					next_cmd_byte_cycle <= cmd_byte_cycle + 1;
+				end if;
+
+				-- end of current data byte?
+				if cmd_byte_cycle = 2 then
+					-- next character
 					next_write_cycle <= write_cycle + 1;
-				end if;
+					next_cmd_byte_cycle <= 0;
 
-				-- write command or character
-				case write_cycle is
-					-- control byte for return
-					when -3 =>
-						out_bus_data <= ctrl_command;
-						out_bus_enable <= '1';
-
-					-- return: set display address to 0
-					when -2 =>
-						out_bus_data <= "10000000";
-						out_bus_enable <= '1';
-
-					-- control byte for data
-					when -1 =>
-						out_bus_data <= ctrl_data;
-						out_bus_enable <= '1';
-
-					-- sequence finished
-					when static_lcd_size =>
-						if in_bus_ready='1' then
+				-- write characters
+				else
+					-- end of character data?
+					if write_cycle = static_lcd_size then
+						-- sequence finished
+						if in_bus_ready = '1' then
 							next_lcd_state <= Wait_UpdateDisplay;
-							next_write_cycle <= -3;
+							next_write_cycle <= 0;
 						end if;
-
-					-- read characters from display buffer
-					when others =>
-						-- write characters to lcd
+					else
 						out_mem_addr <= int_to_logvec(
 							write_cycle + mem_start_addr, lcd_num_addrbits);
-						out_bus_data <= in_mem_word;
+						out_bus_data <=
+							in_mem_word(cmd_byte_cycle*4 + 0) &
+							in_mem_word(cmd_byte_cycle*4 + 1) &
+							in_mem_word(cmd_byte_cycle*4 + 2) &
+							in_mem_word(cmd_byte_cycle*4 + 3) & "0000";
 						out_bus_enable <= '1';
-				end case;
-
+					end if;
+				end if;
 
 			when others =>
 				next_lcd_state <= Wait_Reset;
