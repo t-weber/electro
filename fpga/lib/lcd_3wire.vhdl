@@ -61,22 +61,24 @@ architecture lcd_3wire_impl of lcd_3wire is
 	type t_lcd_state is (
 		Wait_Reset, Reset, Resetted,
 		ReadInitSeq, Wait_Init,
-		Wait_UpdateDisplay, Pre_UpdateDisplay,
+		Wait_PreUpdateDisplay, Pre_UpdateDisplay,
 		UpdateDisplay_Setup1, UpdateDisplay_Setup2,
 		UpdateDisplay_Setup3, UpdateDisplay_Setup4,
-		UpdateDisplay);
+		UpdateDisplay_Setup5,
+		UpdateDisplay, Wait_UpdateDisplay);
 	signal lcd_state, next_lcd_state : t_lcd_state := Wait_reset;
 	signal byte_cycle_last, next_byte_cycle : std_logic := '0';
 
 	-- delays
-	constant const_wait_prereset : natural := main_clk/1000*50;        -- 50 ms
-	constant const_wait_reset : natural := main_clk/1000_000*500;      -- 500 us
-	constant const_wait_resetted : natural := main_clk/1000*1;         -- 1 ms
-	constant const_wait_init : natural := main_clk/1000*1;             -- 1 ms
-	constant const_wait_UpdateDisplay : natural := main_clk/1000*200;  -- 200 ms
+	constant const_wait_prereset : natural := main_clk/1000*50;           -- 50 ms
+	constant const_wait_reset : natural := main_clk/1000_000*500;         -- 500 us
+	constant const_wait_resetted : natural := main_clk/1000*1;            -- 1 ms
+	constant const_wait_init : natural := main_clk/1000*1;                -- 1 ms
+	constant const_wait_PreUpdateDisplay : natural := main_clk/1000*200;  -- 200 ms
+	constant const_wait_UpdateDisplay : natural := main_clk/1000_000*500; -- 500 us
 
 	-- the maximum of the above delays
-	constant const_wait_max : natural := const_wait_UpdateDisplay;
+	constant const_wait_max : natural := const_wait_PreUpdateDisplay;
 
 	-- busy wait counters
 	signal wait_counter, wait_counter_max : natural range 0 to const_wait_max := 0;
@@ -128,6 +130,9 @@ architecture lcd_3wire_impl of lcd_3wire is
 		--ctrl_data, "00000001", "00000001",   -- define character 0 line 6
 		--ctrl_data, "00000000", "00000000",   -- define character 0 line 7
 		ctrl_command, "00000001", "00000000"   -- clear
+
+		--ctrl_data, "00000010", "00000011",   -- test data -> 0x32 = '2'
+		--ctrl_data, "00000011", "00000011"    -- test data -> 0x33 = '3'
 	);
 
 	-- cycle counters
@@ -187,7 +192,9 @@ begin
 	--
 	-- state combinatorics
 	--
-	proc_comb : process(all)
+	proc_comb : process(in_bus_ready, in_mem_word, in_update,
+		lcd_state, wait_counter, wait_counter_max,
+		cmd_byte_cycle, write_cycle, init_cycle, next_byte_cycle)
 	begin
 		-- defaults
 		next_lcd_state <= lcd_state;
@@ -249,7 +256,7 @@ begin
 					if init_cycle = init_num_commands then
 						-- sequence finished
 						if in_bus_ready = '1' then
-							next_lcd_state <= Wait_UpdateDisplay;
+							next_lcd_state <= Wait_PreUpdateDisplay;
 							next_init_cycle <= 0;
 						end if;
 					else
@@ -268,8 +275,8 @@ begin
 				end if;
 
 
-			when Wait_UpdateDisplay =>
-				wait_counter_max <= const_wait_UpdateDisplay;
+			when Wait_PreUpdateDisplay =>
+				wait_counter_max <= const_wait_PreUpdateDisplay;
 				if wait_counter = wait_counter_max then
 					next_lcd_state <= Pre_UpdateDisplay;
 				end if;
@@ -303,10 +310,22 @@ begin
 
 
 			when UpdateDisplay_Setup4 =>
+				-- wait for command
+				wait_counter_max <= const_wait_init;
+				if wait_counter = wait_counter_max then
+					-- continue with display update
+					next_lcd_state <= UpdateDisplay_Setup5;
+				end if;
+
+
+			when UpdateDisplay_Setup5 =>
 				-- control byte for data
 				out_bus_data <= ctrl_data;
 				out_bus_enable <= '1';
 				next_lcd_state <= UpdateDisplay;
+
+				next_write_cycle <= 0;
+				next_cmd_byte_cycle <= 0;
 
 
 			when UpdateDisplay =>
@@ -318,6 +337,7 @@ begin
 				-- end of current data byte?
 				if cmd_byte_cycle = 2 then
 					-- next character
+					next_lcd_state <= Wait_UpdateDisplay;
 					next_write_cycle <= write_cycle + 1;
 					next_cmd_byte_cycle <= 0;
 
@@ -327,20 +347,31 @@ begin
 					if write_cycle = static_lcd_size then
 						-- sequence finished
 						if in_bus_ready = '1' then
-							next_lcd_state <= Wait_UpdateDisplay;
+							next_lcd_state <= Wait_PreUpdateDisplay;
 							next_write_cycle <= 0;
+							next_cmd_byte_cycle <= 0;
 						end if;
 					else
 						out_mem_addr <= int_to_logvec(
 							write_cycle + mem_start_addr, lcd_num_addrbits);
-						out_bus_data <=
-							in_mem_word(cmd_byte_cycle*4 + 0) &
-							in_mem_word(cmd_byte_cycle*4 + 1) &
+						out_bus_data <= "0000" &
+							in_mem_word(cmd_byte_cycle*4 + 3) &
 							in_mem_word(cmd_byte_cycle*4 + 2) &
-							in_mem_word(cmd_byte_cycle*4 + 3) & "0000";
+							in_mem_word(cmd_byte_cycle*4 + 1) &
+							in_mem_word(cmd_byte_cycle*4 + 0);
+						--out_bus_data <= "00000010";
 						out_bus_enable <= '1';
 					end if;
 				end if;
+
+
+			when Wait_UpdateDisplay =>
+				wait_counter_max <= const_wait_UpdateDisplay;
+				if wait_counter = wait_counter_max then
+					-- continue with display update
+					next_lcd_state <= UpdateDisplay;
+				end if;
+
 
 			when others =>
 				next_lcd_state <= Wait_Reset;

@@ -127,7 +127,7 @@ begin
 	--
 	-- buffer input parallel data
 	--
-	proc_input : process(all)
+	proc_input : process(in_enable, in_parallel, parallel_data)
 	begin
 		next_parallel_data <= parallel_data;
 
@@ -140,7 +140,7 @@ begin
 	--
 	-- state combinatorics
 	--
-	proc_comb : process(all)
+	proc_comb : process(in_enable, serial_state, bit_ctr, parallel_data)
 	begin
 		-- defaults
 		next_serial_state <= serial_state;
