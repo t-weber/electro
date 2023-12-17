@@ -281,7 +281,7 @@ begin
 					next_lcd_state <= Pre_UpdateDisplay;
 				end if;
 
-				
+
 			when Pre_UpdateDisplay =>
 				if in_update = '1' then
 					next_lcd_state <= UpdateDisplay_Setup1;
@@ -292,21 +292,30 @@ begin
 				-- control byte for return
 				out_bus_data <= ctrl_command;
 				out_bus_enable <= '1';
-				next_lcd_state <= UpdateDisplay_Setup2;
+
+				if next_byte_cycle = '1' then
+					next_lcd_state <= UpdateDisplay_Setup2;
+				end if;
 
 
 			when UpdateDisplay_Setup2 =>
 				-- return: set display address to 0 (nibble 1)
 				out_bus_data <= "00000010";
 				out_bus_enable <= '1';
-				next_lcd_state <= UpdateDisplay_Setup3;
+
+				if next_byte_cycle = '1' then
+					next_lcd_state <= UpdateDisplay_Setup3;
+				end if;
 
 
 			when UpdateDisplay_Setup3 =>
 				-- return: set display address to 0 (nibble 2)
 				out_bus_data <= "00000000";
 				out_bus_enable <= '1';
-				next_lcd_state <= UpdateDisplay_Setup4;
+
+				if next_byte_cycle = '1' then
+					next_lcd_state <= UpdateDisplay_Setup4;
+				end if;
 
 
 			when UpdateDisplay_Setup4 =>
@@ -322,10 +331,12 @@ begin
 				-- control byte for data
 				out_bus_data <= ctrl_data;
 				out_bus_enable <= '1';
-				next_lcd_state <= UpdateDisplay;
 
-				next_write_cycle <= 0;
-				next_cmd_byte_cycle <= 0;
+				if next_byte_cycle = '1' then
+					next_lcd_state <= UpdateDisplay;
+					next_write_cycle <= 0;
+					next_cmd_byte_cycle <= 0;
+				end if;
 
 
 			when UpdateDisplay =>
@@ -337,7 +348,8 @@ begin
 				-- end of current data byte?
 				if cmd_byte_cycle = 2 then
 					-- next character
-					next_lcd_state <= Wait_UpdateDisplay;
+					--next_lcd_state <= Wait_UpdateDisplay;
+					next_lcd_state <= UpdateDisplay;
 					next_write_cycle <= write_cycle + 1;
 					next_cmd_byte_cycle <= 0;
 
