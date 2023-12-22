@@ -65,7 +65,8 @@ architecture lcd_3wire_impl of lcd_3wire is
 		UpdateDisplay_Setup1, UpdateDisplay_Setup2,
 		UpdateDisplay_Setup3, UpdateDisplay_Setup4,
 		UpdateDisplay_Setup5,
-		UpdateDisplay, Wait_UpdateDisplay);
+		--Wait_UpdateDisplay,
+		UpdateDisplay);
 	signal lcd_state, next_lcd_state : t_lcd_state := Wait_reset;
 	signal byte_cycle_last, next_byte_cycle : std_logic := '0';
 
@@ -73,9 +74,9 @@ architecture lcd_3wire_impl of lcd_3wire is
 	constant const_wait_prereset : natural := main_clk/1000*50;           -- 50 ms
 	constant const_wait_reset : natural := main_clk/1000_000*500;         -- 500 us
 	constant const_wait_resetted : natural := main_clk/1000*1;            -- 1 ms
-	constant const_wait_init : natural := main_clk/1000*1;                -- 1 ms
-	constant const_wait_PreUpdateDisplay : natural := main_clk/1000*200;  -- 200 ms
-	constant const_wait_UpdateDisplay : natural := main_clk/1000_000*500; -- 500 us
+	constant const_wait_init : natural := main_clk/1000_000*100;          -- 100 us
+	constant const_wait_PreUpdateDisplay : natural := main_clk/1000*100;  -- 100 ms
+	--constant const_wait_UpdateDisplay : natural := main_clk/1000_000*500; -- 500 us
 
 	-- the maximum of the above delays
 	constant const_wait_max : natural := const_wait_PreUpdateDisplay;
@@ -349,7 +350,6 @@ begin
 				if cmd_byte_cycle = 2 then
 					-- next character
 					--next_lcd_state <= Wait_UpdateDisplay;
-					next_lcd_state <= UpdateDisplay;
 					next_write_cycle <= write_cycle + 1;
 					next_cmd_byte_cycle <= 0;
 
@@ -377,12 +377,12 @@ begin
 				end if;
 
 
-			when Wait_UpdateDisplay =>
-				wait_counter_max <= const_wait_UpdateDisplay;
-				if wait_counter = wait_counter_max then
-					-- continue with display update
-					next_lcd_state <= UpdateDisplay;
-				end if;
+			--when Wait_UpdateDisplay =>
+			--	wait_counter_max <= const_wait_UpdateDisplay;
+			--	if wait_counter = wait_counter_max then
+			--		-- continue with display update
+			--		next_lcd_state <= UpdateDisplay;
+			--	end if;
 
 
 			when others =>
