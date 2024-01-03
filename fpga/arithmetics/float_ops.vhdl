@@ -22,6 +22,9 @@ entity float_ops is
 		-- clock and reset
 		in_clk, in_rst : in std_logic;
 
+		-- chip/output enable
+		in_enable : in std_logic;
+
 		-- start signal
 		in_start : in std_logic;
 
@@ -68,7 +71,7 @@ begin
 
 
 -- output result
-out_result <= sign & exp & mant(MANT_BITS-1 downto 0);
+out_result <= sign & exp & mant(MANT_BITS-1 downto 0) when in_enable='1' else (others=>'Z');
 out_ready <= '1' when state = Ready else '0';
 
 

@@ -44,7 +44,7 @@ begin
 	float_ent : entity work.float_ops
 		generic map(BITS => BITS, EXP_BITS => EXP_BITS, MANT_BITS => MANT_BITS)
 		port map(in_clk => clk, in_rst => rst,
-			in_op => op,
+			in_enable => '1', in_op => op,
 			in_start => '1', out_ready => ready,
 			in_a => a, in_b => b, out_result => result);
 

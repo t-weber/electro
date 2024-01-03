@@ -32,7 +32,7 @@ module float_ops_tb;
 	// instantiate modules
 	float_ops #(.BITS(BITS), .EXP_BITS(EXP_BITS))
 		mult(.in_clk(clk), .in_rst(rst),
-			.in_op(op),
+			.in_enable(1'b1), .in_op(op),
 			.in_a(a), .in_b(b), .in_start(1'b1),
 			.out_ready(ready), .out_result(result));
 

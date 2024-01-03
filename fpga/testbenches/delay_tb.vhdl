@@ -4,7 +4,7 @@
 -- @date 27-nov-2023
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 delay_test.vhdl  &&  ghdl -e --std=08 delay_tb delay_tb_arch
+-- ghdl -a --std=08 delay_tb.vhdl  &&  ghdl -e --std=08 delay_tb delay_tb_arch
 -- ghdl -r --std=08 delay_tb delay_tb_arch --vcd=delay_tb.vcd --stop-time=700ns
 -- gtkwave delay_tb.vcd
 --

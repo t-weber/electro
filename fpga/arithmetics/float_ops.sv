@@ -16,6 +16,9 @@ module float_ops
 	// clock and reset
 	input wire in_clk, in_rst,
 
+	// chip/output enable
+	input wire in_enable,
+
 	// start signal
 	input wire in_start,
 
@@ -83,7 +86,7 @@ assign actual_mant = mant[MANT_BITS-1 : 0];
 
 
 // output result
-assign out_result = { sign, exp, actual_mant };
+assign out_result = (in_enable==1 ? { sign, exp, actual_mant } : { BITS{1'bz} });
 assign out_ready = (state==Ready ? 1'b1 : 1'b0);
 
 
