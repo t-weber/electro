@@ -4,7 +4,7 @@
 -- @date 1-May-2023
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 conv.vhdl  &&  ghdl -a --std=08 adder.vhdl  &&ghdl -a --std=08 multiplier.vhdl  &&  ghdl -a --std=08 multiplier_tb.vhdl  &&  ghdl -e --std=08 multiplier_tb multiplier_tb_arch
+-- ghdl -a --std=08 ../lib/conv.vhdl  &&  ghdl -a --std=08 ../arithmetics/adder.vhdl  &&ghdl -a --std=08 ../arithmetics/multiplier.vhdl  &&  ghdl -a --std=08 multiplier_tb.vhdl  &&  ghdl -e --std=08 multiplier_tb multiplier_tb_arch
 -- ghdl -r --std=08 multiplier_tb multiplier_tb_arch --vcd=multiplier_tb.vcd --stop-time=1000ns
 -- gtkwave multiplier_tb.vcd
 --

@@ -4,7 +4,7 @@
 -- @date 15-apr-2023
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 conv.vhdl  &&  ghdl -a --std=08 counter.vhdl  &&  ghdl -a --std=08 sevenseg.vhdl  &&  ghdl -a --std=08 counter_tb.vhdl  &&  ghdl -e --std=08 counter_tb counter_tb_arch
+-- ghdl -a --std=08 ../lib/conv.vhdl  &&  ghdl -a --std=08 counter.vhdl  &&  ghdl -a --std=08 ../lib/sevenseg.vhdl  &&  ghdl -a --std=08 counter_tb.vhdl  &&  ghdl -e --std=08 counter_tb counter_tb_arch
 -- ghdl -r --std=08 counter_tb counter_tb_arch --vcd=counter_tb.vcd --stop-time=250ns
 -- gtkwave counter_tb.vcd
 --

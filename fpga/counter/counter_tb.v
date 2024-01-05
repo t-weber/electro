@@ -4,7 +4,7 @@
 // @date 16-apr-2023
 // @license see 'LICENSE' file
 //
-// iverilog -o counter_tb counter.v sevenseg.v counter_tb.v
+// iverilog -o counter_tb counter.v ../lib/sevenseg.v counter_tb.v
 // ./counter_tb
 // gtkwave counter_tb.vcd
 //

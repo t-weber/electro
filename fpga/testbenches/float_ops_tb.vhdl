@@ -4,7 +4,7 @@
 -- @date 17-June-2023
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 conv.vhdl  && ghdl -a --std=08 float_ops.vhdl  &&  ghdl -a --std=08 float_ops_tb.vhdl  &&  ghdl -e --std=08 float_ops_tb float_ops_tb_arch
+-- ghdl -a --std=08 ../lib/conv.vhdl  && ghdl -a --std=08 ../arithmetics/float_ops.vhdl  &&  ghdl -a --std=08 float_ops_tb.vhdl  &&  ghdl -e --std=08 float_ops_tb float_ops_tb_arch
 -- ghdl -r --std=08 float_ops_tb float_ops_tb_arch --vcd=float_ops_tb.vcd --stop-time=1000ns
 -- gtkwave float_ops_tb.vcd
 --

@@ -4,7 +4,7 @@
 // @date 1-May-2023
 // @license see 'LICENSE' file
 //
-// iverilog -g2012 -o multipier_tb multiplier.sv adder.sv multiplier_tb.sv
+// iverilog -g2012 -o multipier_tb ../arithmetics/multiplier.sv ../arithmetics/adder.sv multiplier_tb.sv
 // ./multiplier_tb
 //
 
