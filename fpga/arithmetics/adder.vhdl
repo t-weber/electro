@@ -71,8 +71,10 @@ begin
 	gen_adders : for adder_idx in 1 to BITS-1 generate
 		adder_n : entity work.adder
 			generic map(FULL_ADDER => '1')
-			port map(in_a => in_a(adder_idx), in_b => in_b(adder_idx),
-				in_carry => carry(adder_idx-1),
-				out_sum => out_sum(adder_idx), out_carry => carry(adder_idx));
+			port map(in_a => in_a(adder_idx),
+				in_b => in_b(adder_idx),
+				in_carry => carry(adder_idx - 1),
+				out_sum => out_sum(adder_idx),
+				out_carry => carry(adder_idx));
 	end generate;
 end architecture;

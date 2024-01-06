@@ -23,11 +23,13 @@ module adder_tb;
 
 	// run simulation
 	initial begin
-		a <= 8'd123;
-		b <= 8'd234;
+		a <= 8'd123;          // +123
+		b <= 8'd234;          // +234
+		//b <= ~8'd234 + 8'd1;  // -234
 
 		#10;
 		$display("%d + %d = %d", a, b, sum);
+		//$display("%d + %d = -%d", a, b, ~sum + 8'd1);
 	end
 
 endmodule

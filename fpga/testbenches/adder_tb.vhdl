@@ -37,13 +37,16 @@ begin
 
 	-- log process
 	logger : process(clk) begin
-		a <= int_to_logvec(123, BITS);
-		b <= int_to_logvec(234, BITS);
+		a <= int_to_logvec(123, BITS);  -- +123
+		b <= int_to_logvec(234, BITS);  -- +234
+		--b <= int_to_logvec(to_int(not int_to_logvec(234, BITS)) + 1, BITS);  -- -234
 
 		report "clk = " & std_logic'image(clk) &
 			", " & integer'image(to_int(a)) &
 			" + " & integer'image(to_int(b)) &
 			" = " & integer'image(to_int(sum));
+			--" = -" & integer'image(to_int(not sum) + 1);
+
 	end process;
 
 

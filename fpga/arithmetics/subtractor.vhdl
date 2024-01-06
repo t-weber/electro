@@ -75,7 +75,7 @@ begin
 			generic map(FULL_SUBTRACTOR => '1')
 			port map(in_a => in_a(subtractor_idx),
 				in_b => in_b(subtractor_idx),
-				in_borrow => borrow(subtractor_idx-1),
+				in_borrow => borrow(subtractor_idx - 1),
 				out_diff => out_diff(subtractor_idx),
 				out_borrow => borrow(subtractor_idx));
 	end generate;

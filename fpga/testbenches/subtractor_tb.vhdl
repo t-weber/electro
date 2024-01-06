@@ -40,10 +40,17 @@ begin
 		a <= int_to_logvec(234, BITS);
 		b <= int_to_logvec(123, BITS);
 
-		report "clk = " & std_logic'image(clk) &
-			", " & integer'image(to_int(a)) &
-			" - " & integer'image(to_int(b)) &
-			" = " & integer'image(to_int(diff));
+		if a >= b then
+			report "clk = " & std_logic'image(clk) &
+				", " & integer'image(to_int(a)) &
+				" - " & integer'image(to_int(b)) &
+				" = " & integer'image(to_int(diff));
+		else
+			report "clk = " & std_logic'image(clk) &
+				", " & integer'image(to_int(a)) &
+				" - " & integer'image(to_int(b)) &
+				" = -" & integer'image(to_int(not diff)+1);
+		end if;
 	end process;
 
 

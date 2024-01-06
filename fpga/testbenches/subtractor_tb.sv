@@ -27,7 +27,12 @@ module subtractor_tb;
 		b <= 8'd123;
 
 		#10;
-		$display("%d - %d = %d", a, b, diff);
+		if(a >= b) begin
+			$display("%d - %d = %d", a, b, diff);
+		end
+		else begin
+			$display("%d - %d = -%d", a, b, ~diff + 8'd1);
+		end
 	end
 
 endmodule
