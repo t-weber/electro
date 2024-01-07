@@ -42,6 +42,8 @@ module multiplier_tb;
 		a <= 8'd123;
 		b <= 8'd234;
 
+		#10;
+
 		for(iter = 0; iter < 64; ++iter) begin
 			clk <= !clk;
 			rst <= 0;

@@ -33,8 +33,8 @@ typedef enum
 {
 	Reset,      // start multiplication
 	CheckShift, // check if the current bit in a is 1 
-	Shift,      // if so, shift b to the current bit index
-	Add,        // add the shifted value to the product
+	Add,        // if so, shift b to the current bit index
+                    // and add the shifted value to the product
 	NextBit,    // next bit
 	Finished    // multiplication finished
 } t_state;
@@ -43,10 +43,12 @@ t_state state = Reset, state_next = Reset;
 
 
 logic [OUT_BITS-1 : 0] prod, prod_next;           // current product value
-logic [OUT_BITS-1 : 0] b_shifted, b_shifted_next; // shifted b_value
+logic [OUT_BITS-1 : 0] b_shifted;                 // shifted b_value
 logic [OUT_BITS-1 : 0] b_sum;                     // prod * b_shifted
 int unsigned bitidx, bitidx_next;                 // in_a bit index (TODO: range 0 to IN_BITS-1)
 
+
+// use adder module
 // add shifted b value to current product value
 ripplecarryadder #(.BITS(OUT_BITS)) sum(
 	.in_a(prod), .in_b(b_shifted), .out_sum(b_sum));
@@ -70,7 +72,6 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 		state <= state_next;
 		prod <= prod_next;
 		bitidx <= bitidx_next;
-		b_shifted <= b_shifted_next;
 	end
 end
 
@@ -81,7 +82,8 @@ always_comb begin
 	state_next = state;
 	prod_next = prod;
 	bitidx_next = bitidx;
-	b_shifted_next = b_shifted;
+
+	b_shifted = (in_b <<< bitidx);
 
 	case(state)
 		Reset:
@@ -94,15 +96,9 @@ always_comb begin
 		CheckShift:
 			begin
 				if(in_a[bitidx])
-					state_next = Shift;
+					state_next = Add;
 				else
 					state_next = NextBit;
-			end
-
-		Shift:
-			begin
-				b_shifted_next = (in_b <<< bitidx);
-				state_next = Add;
 			end
 
 		Add:
@@ -110,8 +106,9 @@ always_comb begin
 				// use internal adder
 				//prod_next = prod + b_shifted;
 
-				// use adder module
+				// alternatively use adder module
 				prod_next = b_sum;
+
 				state_next = NextBit;
 			end
 
