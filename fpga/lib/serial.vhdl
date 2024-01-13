@@ -53,6 +53,9 @@ architecture serial_impl of serial is
 	-- bit counter
 	signal bit_ctr, next_bit_ctr : natural range 0 to BITS-1 := 0;
 
+	-- serial output buffer
+	signal out_serial_buf : std_logic := SERIAL_DATA_INACTIVE;
+
 begin
 	--
 	-- generate serial clock
@@ -138,9 +141,20 @@ begin
 
 
 	--
+	-- generate output with the chosen bit ordering
+	--
+	gen_outp_1 : if LOWBIT_FIRST = '1' generate
+		out_serial_buf <= parallel_data(bit_ctr);
+	end generate;
+	gen_outp_0 : if LOWBIT_FIRST = '0' generate
+		out_serial_buf <= parallel_data(BITS - bit_ctr - 1);
+	end generate;
+
+
+	--
 	-- state combinatorics
 	--
-	proc_comb : process(in_enable, serial_state, bit_ctr, parallel_data)
+	proc_comb : process(in_enable, serial_state, bit_ctr, parallel_data, out_serial_buf)
 	begin
 		-- defaults
 		next_serial_state <= serial_state;
@@ -163,11 +177,7 @@ begin
 			-- serialise parallel data
 			when Transmit =>
 				-- output current bit
-				if LOWBIT_FIRST='1' then
-					out_serial <= parallel_data(bit_ctr);
-				else
-					out_serial <= parallel_data(BITS - bit_ctr - 1);
-				end if;
+					out_serial <= out_serial_buf;
 
 				-- end of word?
 				if bit_ctr = BITS - 1 then
