@@ -177,7 +177,7 @@ begin
 			-- serialise parallel data
 			when Transmit =>
 				-- output current bit
-					out_serial <= out_serial_buf;
+				out_serial <= out_serial_buf;
 
 				-- end of word?
 				if bit_ctr = BITS - 1 then
