@@ -5,7 +5,7 @@
  * @license see 'LICENSE' file
  */
 
-// g++ -Wall -Wextra -Weffc++ -std=c++20 -lboost_program_options -o genrom genrom.cpp vhdl.cpp sv.cpp
+// g++ -Wall -Wextra -Weffc++ -std=c++20 -o genrom genrom.cpp vhdl.cpp sv.cpp -lboost_program_options
 
 #include <iostream>
 #include <fstream>

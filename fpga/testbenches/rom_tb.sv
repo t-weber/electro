@@ -15,8 +15,8 @@ module rom_tb;
 	localparam ADDRBITS = 3;
 	localparam DATABITS = 8;
 
-	logic [ADDRBITS-1 : 0] addr;
-	logic [DATABITS-1 : 0] data;
+	logic [1][ADDRBITS-1 : 0] addr;
+	logic [1][DATABITS-1 : 0] data;
 
 
 	// instantiate rom
