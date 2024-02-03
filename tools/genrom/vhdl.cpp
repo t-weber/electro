@@ -17,9 +17,10 @@
 
 
 /**
- * generates a vhdl rom file
+ * generates a vhdl rom
  */
-std::string gen_rom_vhdl(std::istream& data, int max_line_len, int num_ports, bool fill_rom)
+std::string gen_rom_vhdl(std::istream& data, int max_line_len, int num_ports,
+	bool fill_rom, bool print_chars)
 {
 	// rom file
 	std::string rom_vhdl = R"raw(library ieee;
@@ -65,6 +66,42 @@ end architecture;)raw";
 	std::ostringstream ostr_data;
 	ostr_data << "\t\t";
 	bool first_data = true;
+	std::vector<char> chs;
+	bool has_printables = false;
+
+	// add a printable character to the comment
+	auto add_char = [&chs, &has_printables](int ch)
+	{
+		if(std::isprint(ch))
+		{
+			chs.push_back(static_cast<char>(ch));
+			has_printables = true;
+		}
+		else if(std::isspace(ch))
+		{
+			chs.push_back(' ');
+		}
+		else
+		{
+			chs.push_back('.');
+		}
+	};
+
+	// print characters in a comment
+	auto write_chars = [&chs, &has_printables, &ostr_data]()
+	{
+		if(has_printables)
+		{
+			ostr_data << " -- ";
+			for(char c : chs)
+				ostr_data << c;
+
+			has_printables = false;
+		}
+
+		chs.clear();
+	};
+
 	while(!!data)
 	{
 		int ch = data.get();
@@ -76,6 +113,9 @@ end architecture;)raw";
 
 		if(cur_line_len >= max_line_len)
 		{
+			if(print_chars)
+				write_chars();
+
 			ostr_data << "\n\t\t";
 			cur_line_len = 0;
 		}
@@ -85,8 +125,11 @@ end architecture;)raw";
 			<< std::hex << std::setfill('0') << std::setw(2)
 			<< static_cast<unsigned int>(ch)
 			<< "\"";
-		first_data = false;
 
+		if(print_chars)
+			add_char(ch);
+
+		first_data = false;
 		++rom_len;
 		++cur_line_len;
 	}
@@ -106,6 +149,9 @@ end architecture;)raw";
 
 			if(cur_line_len >= max_line_len)
 			{
+				if(print_chars)
+					write_chars();
+
 				ostr_data << "\n\t\t";
 				cur_line_len = 0;
 			}
@@ -115,11 +161,14 @@ end architecture;)raw";
 				<< std::hex << std::setfill('0') << std::setw(2)
 				<< fill_data
 				<< "\"";
-			first_data = false;
 
+			first_data = false;
 			++cur_line_len;
 		}
 	}
+
+	if(print_chars)
+		write_chars();
 
 	// fill in missing rom data fields
 	if(fill_rom)

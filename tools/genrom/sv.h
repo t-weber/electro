@@ -14,9 +14,9 @@
 
 
 /**
- * generates an SV rom file
+ * generates an SV rom
  */
 std::string gen_rom_sv(std::istream& data, int max_line_len = 16,
-	int num_ports = 2, bool fill_rom = true);
+	int num_ports = 2, bool fill_rom = true, bool print_chars = true);
 
 #endif
