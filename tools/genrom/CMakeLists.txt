@@ -18,10 +18,15 @@ add_compile_options(-Wall -Wextra -Weffc++)
 find_package(Boost REQUIRED COMPONENTS program_options)
 add_compile_options(${Boost_CXX_FLAGS})
 
+find_package(JPEG REQUIRED)
+find_package(PNG REQUIRED)
+
 
 include_directories(
 	${PROJECT_SOURCE_DIR}
 	${Boost_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS}/..
+	${JPEG_INCLUDE_DIRS}
+	${PNG_INCLUDE_DIRS}
 )
 
 
@@ -30,7 +35,12 @@ add_executable(genrom
 	vhdl.cpp vhdl.h
 	sv.cpp sv.h
 	hex.cpp hex.h
+	img.cpp img.h
 )
 
 
-target_link_libraries(genrom ${Boost_LIBRARIES})
+target_link_libraries(genrom
+	${Boost_LIBRARIES}
+	${JPEG_LIBRARIES}
+	${PNG_LIBRARIES}
+)

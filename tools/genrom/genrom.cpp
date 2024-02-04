@@ -7,20 +7,24 @@
 
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
 namespace args = boost::program_options;
 
+#include "defs.h"
 #include "vhdl.h"
 #include "sv.h"
 #include "hex.h"
+#include "img.h"
 
 
 int main(int argc, char** argv)
 {
 	try
 	{
-		std::string in_data, out_rom;
+		std::string in_filename, out_rom;
 		std::string rom_type = "vhdl";
 		int line_len = 16;
 		int num_ports = 2;
@@ -39,14 +43,14 @@ int main(int argc, char** argv)
 				("print characters, default: "
 					+ std::to_string(print_chars)).c_str())
 			("type,t", args::value<decltype(rom_type)>(&rom_type),
-				("output rom type (vhdl/sv), default: "
+				("output rom type (vhdl/sv/hex), default: "
 					+ rom_type).c_str())
 			("ports,p", args::value<decltype(num_ports)>(&num_ports),
 				("number of memory ports, default: "
 					+ std::to_string(num_ports)).c_str())
-			("input,i", args::value<decltype(in_data)>(&in_data),
+			("input,i", args::value<decltype(in_filename)>(&in_filename),
 				"input data file")
-			("output,o", args::value<decltype(in_data)>(&out_rom),
+			("output,o", args::value<decltype(out_rom)>(&out_rom),
 				"output rom file");
 
 		args::positional_options_description posarg_descr;
@@ -62,18 +66,65 @@ int main(int argc, char** argv)
 		args::store(parsedArgs, mapArgs);
 		args::notify(mapArgs);
 
-		if(in_data == "")
+		if(in_filename == "")
 		{
-			std::cout << arg_descr << std::endl;
+			std::cerr << arg_descr << std::endl;
 			return -1;
 		}
 
 		// input file
-		std::ifstream ifstr(in_data);
+		std::filesystem::path in_file(in_filename);
+		if(!std::filesystem::exists(in_file))
+		{
+			std::cerr << "Input file \"" << in_filename
+				<< "\" does not exist." << std::endl;
+			return -1;
+		}
+
+		std::ifstream ifstr(in_file);
 		if(!ifstr)
 		{
-			std::cerr << "Cannot open input " << in_data << "." << std::endl;
+			std::cerr << "Cannot open input file \""
+				<< in_filename << "\"." << std::endl;
 			return -1;
+		}
+
+		// read input file
+		t_words data;
+		std::string ext = boost::to_lower_copy(in_file.extension().string());
+
+		if(ext == ".png")
+		{
+			std::size_t w, h, ch;
+			std::tie(w, h, ch, data) = read_png(in_file);
+			std::cerr << "Read PNG image with size "
+				<< w << " x " << h << " x " << ch << "." << std::endl;
+
+			print_chars = false;
+		}
+		else if(ext == ".jpg" || ext == ".jpeg")
+		{
+			std::size_t w, h, ch;
+			std::tie(w, h, ch, data) = read_jpg(in_file);
+			std::cerr << "Read JPG image with size "
+				<< w << " x " << h << " x " << ch << "." << std::endl;
+
+			print_chars = false;
+		}
+		else  // read raw file
+		{
+			data.reserve(std::filesystem::file_size(in_file));
+
+			while(!!ifstr)
+			{
+				int ch = ifstr.get();
+				if(ch == std::istream::traits_type::eof())
+					break;
+
+				data.emplace_back(t_word(8, ch));
+			}
+
+			std::cerr << "Read " << data.size() << " bytes of raw data." << std::endl;
 		}
 
 		// output file
@@ -84,7 +135,8 @@ int main(int argc, char** argv)
 		{
 			if(!ofstr)
 			{
-				std::cerr << "Cannot open output " << out_rom << "." << std::endl;
+				std::cerr << "Cannot open output file \""
+					<< out_rom << "\"." << std::endl;
 				return -1;
 			}
 
@@ -92,7 +144,7 @@ int main(int argc, char** argv)
 		}
 
 		// set rom generator function
-		std::string (*gen_rom_fkt)(std::istream&, int, int, bool, bool)
+		std::string (*gen_rom_fkt)(const t_words&, int, int, bool, bool)
 			= &gen_rom_vhdl;
 		if(rom_type == "vhdl")
 			gen_rom_fkt = &gen_rom_vhdl;
@@ -102,7 +154,7 @@ int main(int argc, char** argv)
 			gen_rom_fkt = &gen_rom_hex;
 
 		// generate rom
-		(*postr) << (*gen_rom_fkt)(ifstr, line_len, num_ports,
+		(*postr) << (*gen_rom_fkt)(data, line_len, num_ports,
 			fill_rom, print_chars) << std::endl;
 	}
 	catch(const std::exception& ex)

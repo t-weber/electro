@@ -9,7 +9,6 @@
 
 #include <string>
 #include <iomanip>
-#include <iostream>
 #include <sstream>
 #include <cmath>
 
@@ -17,15 +16,20 @@
 
 
 /**
- * generates a hex dump
+ * generates a hex or binary dump
  */
-std::string gen_rom_hex(std::istream& data, int max_line_len,
+std::string gen_rom_hex(const t_words& data, int max_line_len,
 	[[__maybe_unused__]] int num_ports,
 	bool fill_rom, bool print_chars)
 {
 	// create data block
 	std::size_t rom_len = 0;
 	int cur_line_len = 0;
+
+	// get word size
+	typename t_word::size_type word_bits = 8;
+	if(data.size())
+		word_bits = data[0].size();
 
 	std::ostringstream ostr_data;
 	std::vector<char> chs;
@@ -65,12 +69,8 @@ std::string gen_rom_hex(std::istream& data, int max_line_len,
 		chs.clear();
 	};
 
-	while(!!data)
+	for(const t_word& dat : data)
 	{
-		int ch = data.get();
-		if(ch == std::istream::traits_type::eof())
-			break;
-
 		if(cur_line_len >= max_line_len)
 		{
 			if(print_chars)
@@ -80,26 +80,34 @@ std::string gen_rom_hex(std::istream& data, int max_line_len,
 			cur_line_len = 0;
 		}
 
-		ostr_data
-			<< std::hex << std::setfill('0') << std::setw(2)
-			<< static_cast<unsigned int>(ch)
-			<< " ";
+		if(word_bits % 4 == 0)
+		{
+			// print as hex
+			ostr_data
+				<< std::hex << std::setfill('0') << std::setw(word_bits/4)
+				<< dat.to_ulong()
+				<< " ";
+		}
+		else
+		{
+			// print as binary
+			ostr_data << dat << " ";
+		}
 
 		if(print_chars)
-			add_char(ch);
+			add_char(static_cast<int>(dat.to_ulong()));
 
 		++rom_len;
 		++cur_line_len;
 	}
 
-	std::size_t addr_bits = std::size_t(std::ceil(std::log2(double(rom_len))));
-
 	// fill-up data block to maximum size
-	if(fill_rom)
+	if(fill_rom && rom_len > 0)
 	{
+		std::size_t addr_bits = std::size_t(std::ceil(std::log2(double(rom_len))));
 		std::size_t max_rom_len = std::pow(2, addr_bits);
 
-		unsigned int fill_data = 0x00;
+		t_word fill_data(word_bits, 0x00);
 		for(; rom_len < max_rom_len; ++rom_len)
 		{
 			if(cur_line_len >= max_line_len)
@@ -111,10 +119,19 @@ std::string gen_rom_hex(std::istream& data, int max_line_len,
 				cur_line_len = 0;
 			}
 
-			ostr_data
-				<< std::hex << std::setfill('0') << std::setw(2)
-				<< fill_data
-				<< " ";
+			if(word_bits % 4 == 0)
+			{
+				// print as hex
+				ostr_data
+					<< std::hex << std::setfill('0') << std::setw(word_bits/4)
+					<< fill_data.to_ulong()
+					<< " ";
+			}
+			else
+			{
+				// print as binary
+				ostr_data << fill_data << " ";
+			}
 
 			++cur_line_len;
 		}
