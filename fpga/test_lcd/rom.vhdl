@@ -31,7 +31,7 @@ architecture rom_impl of rom is
 	subtype t_word is std_logic_vector(WORDBITS-1 downto 0);
 	type t_words is array(0 to NUM_WORDS-1) of t_word;
 
-	signal words : t_words :=
+	constant words : t_words :=
 	(
 		x"4c", x"69", x"6e", x"65", x"20", x"31", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", 
 		x"4c", x"69", x"6e", x"65", x"20", x"32", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", 

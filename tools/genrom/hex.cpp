@@ -19,7 +19,7 @@
  * generates a hex or binary dump
  */
 std::string gen_rom_hex(const t_words& data, int max_line_len,
-	[[__maybe_unused__]] int num_ports,
+	[[__maybe_unused__]] int num_ports, [[__maybe_unused__]] bool direct_ports,
 	bool fill_rom, bool print_chars)
 {
 	// create data block

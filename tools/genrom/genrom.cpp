@@ -28,6 +28,7 @@ int main(int argc, char** argv)
 		std::string rom_type = "vhdl";
 		int line_len = 16;
 		int num_ports = 2;
+		bool direct_ports = false;
 		bool fill_rom = true;
 		bool print_chars = true;
 
@@ -48,6 +49,9 @@ int main(int argc, char** argv)
 			("ports,p", args::value<decltype(num_ports)>(&num_ports),
 				("number of memory ports, default: "
 					+ std::to_string(num_ports)).c_str())
+			("directports,d", args::value<bool>(&direct_ports),
+				("generate direct ports, default: "
+					+ std::to_string(direct_ports)).c_str())
 			("input,i", args::value<decltype(in_filename)>(&in_filename),
 				"input data file")
 			("output,o", args::value<decltype(out_rom)>(&out_rom),
@@ -144,7 +148,7 @@ int main(int argc, char** argv)
 		}
 
 		// set rom generator function
-		std::string (*gen_rom_fkt)(const t_words&, int, int, bool, bool)
+		std::string (*gen_rom_fkt)(const t_words&, int, int, bool, bool, bool)
 			= &gen_rom_vhdl;
 		if(rom_type == "vhdl")
 			gen_rom_fkt = &gen_rom_vhdl;
@@ -155,7 +159,7 @@ int main(int argc, char** argv)
 
 		// generate rom
 		(*postr) << (*gen_rom_fkt)(data, line_len, num_ports,
-			fill_rom, print_chars) << std::endl;
+			direct_ports, fill_rom, print_chars) << std::endl;
 	}
 	catch(const std::exception& ex)
 	{
