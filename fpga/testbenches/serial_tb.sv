@@ -6,6 +6,7 @@
  *
  * iverilog -g2012 -o serial_tb ../lib/serial.sv serial_tb.sv
  * ./serial_tb
+ * gtkwave serial_tb.vcd --rcvar "do_initial_zoom_fit yes"
  */
 
 
@@ -29,7 +30,8 @@ module serial_tb;
 	serial #(
 		.BITS(BITS), .LOWBIT_FIRST(0),
 		.MAIN_CLK_HZ(MAIN_CLK),
-		.SERIAL_CLK_HZ(SERIAL_CLK)
+		.SERIAL_CLK_HZ(SERIAL_CLK),
+		.SERIAL_CLK_INACTIVE(1)
 	)
 		serial_mod(
 		.in_clk(clk), .in_rst(rst),
@@ -43,6 +45,9 @@ module serial_tb;
 	integer iter;
 
 	initial begin
+		$dumpfile("serial_tb.vcd");
+		$dumpvars(0, serial_tb);
+
 		clk <= 0;
 		enable <= 0;
 
@@ -50,12 +55,12 @@ module serial_tb;
 		rst <= 0;
 		#1;
 		clk = !clk;
-		
+
 		rst <= 1;
 		#1;
 		clk = !clk;
 		$display("t=%0t: RESET", $time);
-		
+
 		rst <= 0;
 		#1;
 		clk = !clk;
@@ -75,6 +80,8 @@ module serial_tb;
 		clk = !clk;
 		#1;
 		clk = !clk;
+
+		$dumpflush();
 	end
 
 
@@ -90,7 +97,8 @@ module serial_tb;
 
 
 	// output serial signal
-	always@(posedge serial_clk) begin
+	//always@(posedge serial_clk) begin
+	always@(negedge serial_clk) begin
 		$display("t=%0t: serial=%b, next=%b, ready=%b",
 			$time, serial, next, ready);
 	end

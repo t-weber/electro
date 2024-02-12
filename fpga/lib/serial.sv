@@ -45,7 +45,7 @@ t_serial_state next_serial_state = Ready;
 reg [BITS-1 : 0] parallel_data, next_parallel_data;
 
 // serial clock
-reg serial_clk = SERIAL_CLK_INACTIVE;
+reg serial_clk = 1;
 
 // bit counter
 reg [$clog2(BITS) : 0] bit_ctr = 0;
@@ -66,7 +66,7 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 	// reset
 	if(in_rst == 1) begin
 		clk_ctr <= 0;
-		serial_clk <= SERIAL_CLK_INACTIVE;
+		serial_clk <= 1;
 	end
 
 	// clock
@@ -82,7 +82,16 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 end
 
 // output serial clock
-assign out_clk = serial_state == Transmit ? serial_clk : SERIAL_CLK_INACTIVE;
+generate
+	if(SERIAL_CLK_INACTIVE == 1) begin
+		// inactive '1' and trigger on falling edge
+		assign out_clk = serial_state == Transmit ? serial_clk : 1;
+	end else begin
+		// inactive '0' and trigger on rising edge
+		assign out_clk = serial_state == Transmit ? ~serial_clk : 0;
+	end
+endgenerate
+
 assign out_ready = serial_state == Ready;
 
 

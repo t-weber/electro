@@ -6,7 +6,7 @@
 --
 -- ghdl -a --std=08 ../lib/conv.vhdl  &&  ghdl -a --std=08 ../lib/serial.vhdl  &&  ghdl -a --std=08 serial_tb.vhdl  &&  ghdl -e --std=08 serial_tb serial_tb_arch
 -- ghdl -r --std=08 serial_tb serial_tb_arch --vcd=serial_tb.vcd --stop-time=5000ns
--- gtkwave serial_tb.vcd
+-- gtkwave serial_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --
 
 library ieee;
@@ -47,7 +47,8 @@ begin
 
 	-- instantiate modules
 	serial_ent : entity work.serial
-		generic map(BITS => BITS, MAIN_HZ => MAIN_HZ, SERIAL_HZ => SERIAL_HZ)
+		generic map(BITS => BITS, SERIAL_CLK_INACTIVE => '1',
+			MAIN_HZ => MAIN_HZ, SERIAL_HZ => SERIAL_HZ)
 		port map(in_clk => clk, in_reset => rst,
 			in_enable => start, in_parallel => data,
 			out_clk => serial_clk, out_serial => serial_data,
@@ -104,7 +105,8 @@ begin
 
 	serial_proc : process(serial_clk)
 	begin
-		if rising_edge(serial_clk) then
+		--if rising_edge(serial_clk) then
+		if falling_edge(serial_clk) then
 			report "serial_data: " & std_logic'image(serial_data);
 		end if;
 	end process;

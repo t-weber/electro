@@ -48,7 +48,7 @@ architecture serial_impl of serial is
 	signal parallel_data, next_parallel_data : std_logic_vector(BITS-1 downto 0);
 
 	-- serial clock
-	signal serial_clk : std_logic := SERIAL_CLK_INACTIVE;
+	signal serial_clk : std_logic := '1';
 
 	-- bit counter
 	signal bit_ctr, next_bit_ctr : natural range 0 to BITS-1 := 0;
@@ -67,7 +67,7 @@ begin
 		-- reset
 		if in_reset = '1' then
 			clk_ctr := 0;
-			serial_clk <= SERIAL_CLK_INACTIVE;
+			serial_clk <= '1';
 
 		-- clock
 		elsif rising_edge(in_clk) then
@@ -82,7 +82,13 @@ begin
 
 
 	-- output serial clock
-	out_clk <= serial_clk when serial_state = Transmit else SERIAL_CLK_INACTIVE;
+	gen_outclk : if SERIAL_CLK_INACTIVE = '1' generate
+		-- inactive '1' and trigger on falling edge
+		out_clk <= serial_clk when serial_state = Transmit else '1';
+	else generate
+		-- inactive '0' and trigger on rising edge
+		out_clk <= not serial_clk when serial_state = Transmit else '0';
+	end generate;
 
 
 	--
@@ -93,7 +99,7 @@ begin
 		if in_reset = '1' then
 			-- state register
 			serial_state <= Ready;
-			
+
 			-- counter register
 			bit_ctr <= 0;
 
