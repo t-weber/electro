@@ -25,13 +25,13 @@ std::string gen_rom_sv(const t_words& data, int max_line_len, int num_ports,
 	std::string rom_sv = R"raw(module rom
 #(
 	parameter NUM_PORTS = %%NUM_PORTS%%,
-	parameter ADDRBITS  = %%ADDR_BITS%%,
-	parameter WORDBITS  = %%WORD_BITS%%,
+	parameter ADDR_BITS = %%ADDR_BITS%%,
+	parameter WORD_BITS = %%WORD_BITS%%,
 	parameter NUM_WORDS = %%NUM_WORDS%%
 )
 (%%PORTS_DEF%%);
 
-logic [NUM_WORDS][WORDBITS-1 : 0] words =
+logic [NUM_WORDS][WORD_BITS-1 : 0] words =
 {
 %%ROM_DATA%%
 };
@@ -41,8 +41,8 @@ endmodule)raw";
 
 	// rom generic port definitions
 	std::string rom_ports_sv = R"raw(
-	input  wire[NUM_PORTS][ADDRBITS-1 : 0] in_addr,
-	output wire[NUM_PORTS][WORDBITS-1 : 0] out_data
+	input  wire[NUM_PORTS][ADDR_BITS-1 : 0] in_addr,
+	output wire[NUM_PORTS][WORD_BITS-1 : 0] out_data
 )raw";
 
 	// rom generic port assignment
@@ -122,7 +122,7 @@ endgenerate
 		{
 			// print as hex
 			ostr_data
-				//<< "WORDBITS'('h"
+				//<< "WORD_BITS'('h"
 				<< "%%WORD_BITS%%'h"
 				<< std::hex << std::setfill('0') << std::setw(word_bits/4)
 				<< dat.to_ulong() /*<< ")"*/;
@@ -131,7 +131,7 @@ endgenerate
 		{
 			// print as binary
 			ostr_data
-				//<< "WORDBITS'('h"
+				//<< "WORD_BITS'('h"
 				<< "%%WORD_BITS%%'b"
 				<< dat /*<< ")"*/;
 		}
@@ -170,7 +170,7 @@ endgenerate
 			{
 				// print as hex
 				ostr_data
-					//<< "WORDBITS'('h"
+					//<< "WORD_BITS'('h"
 					<< "%%WORD_BITS%%'h"
 					<< std::hex << std::setfill('0') << std::setw(word_bits/4)
 					<< fill_data.to_ulong() /*<< ")"*/;
@@ -179,7 +179,7 @@ endgenerate
 			{
 				// print as binary
 				ostr_data
-					//<< "WORDBITS'('h"
+					//<< "WORD_BITS'('h"
 					<< "%%WORD_BITS%%'b"
 					<< fill_data /*<< ")"*/;
 			}
@@ -209,8 +209,8 @@ endgenerate
 		std::ostringstream ostrPorts;
 
 		ostrPorts << "\n";
-		ostrPorts << "\tinput  wire[ADDRBITS-1 : 0] in_addr,\n";
-		ostrPorts << "\toutput wire[WORDBITS-1 : 0] out_data\n";
+		ostrPorts << "\tinput  wire[ADDR_BITS-1 : 0] in_addr,\n";
+		ostrPorts << "\toutput wire[WORD_BITS-1 : 0] out_data\n";
 
 		boost::replace_all(rom_sv, "%%PORTS_DEF%%", ostrPorts.str());
 		boost::replace_all(rom_sv, "%%PORTS_ASSIGN%%", "assign out_data = words[in_addr];\n");
@@ -223,8 +223,8 @@ endgenerate
 		ostrPorts << "\n";
 		for(int port = 0; port < num_ports; ++port)
 		{
-			ostrPorts << "\tinput  wire[ADDRBITS-1 : 0] in_addr_" << (port+1) << ",\n";
-			ostrPorts << "\toutput wire[WORDBITS-1 : 0] out_data_" << (port+1);
+			ostrPorts << "\tinput  wire[ADDR_BITS-1 : 0] in_addr_" << (port+1) << ",\n";
+			ostrPorts << "\toutput wire[WORD_BITS-1 : 0] out_data_" << (port+1);
 
 			ostrAssign << "assign out_data_" << (port+1)
 				<< " = words[in_addr_" << (port+1) << "];";

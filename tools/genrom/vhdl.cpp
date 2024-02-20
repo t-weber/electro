@@ -29,8 +29,8 @@ use work.conv.all;
 entity rom is
 	generic(
 		constant NUM_PORTS : natural := %%NUM_PORTS%%;
-		constant ADDRBITS  : natural := %%ADDR_BITS%%;
-		constant WORDBITS  : natural := %%WORD_BITS%%;
+		constant ADDR_BITS : natural := %%ADDR_BITS%%;
+		constant WORD_BITS : natural := %%WORD_BITS%%;
 		constant NUM_WORDS : natural := %%NUM_WORDS%%
 	);
 
@@ -38,7 +38,7 @@ entity rom is
 end entity;
 
 architecture rom_impl of rom is
-	subtype t_word is std_logic_vector(WORDBITS-1 downto 0);
+	subtype t_word is std_logic_vector(WORD_BITS-1 downto 0);
 	type t_words is array(0 to NUM_WORDS-1) of t_word;
 
 	constant words : t_words :=
@@ -53,8 +53,8 @@ end architecture;)raw";
 
 	// rom generic port definitions
 	std::string rom_ports_vhdl = R"raw(
-		in_addr  : in  t_logicvecarray(0 to NUM_PORTS-1)(ADDRBITS-1 downto 0);
-		out_data : out t_logicvecarray(0 to NUM_PORTS-1)(WORDBITS-1 downto 0)
+		in_addr  : in  t_logicvecarray(0 to NUM_PORTS-1)(ADDR_BITS-1 downto 0);
+		out_data : out t_logicvecarray(0 to NUM_PORTS-1)(WORD_BITS-1 downto 0)
 	)raw";
 
 	// rom generic port assignment
@@ -212,8 +212,8 @@ end architecture;)raw";
 		std::ostringstream ostrPorts;
 
 		ostrPorts << "\n";
-		ostrPorts << "\t\tin_addr  : in  std_logic_vector(ADDRBITS-1 downto 0);\n";
-		ostrPorts << "\t\tout_data : out std_logic_vector(WORDBITS-1 downto 0)\n";
+		ostrPorts << "\t\tin_addr  : in  std_logic_vector(ADDR_BITS-1 downto 0);\n";
+		ostrPorts << "\t\tout_data : out std_logic_vector(WORD_BITS-1 downto 0)\n";
 		ostrPorts << "\t";
 
 		boost::replace_all(rom_vhdl, "%%PORTS_DEF%%", ostrPorts.str());
@@ -227,8 +227,8 @@ end architecture;)raw";
 		ostrPorts << "\n";
 		for(int port = 0; port < num_ports; ++port)
 		{
-			ostrPorts << "\t\tin_addr_" << (port+1) << "  : in  std_logic_vector(ADDRBITS-1 downto 0);\n";
-			ostrPorts << "\t\tout_data_" << (port+1) << " : out std_logic_vector(WORDBITS-1 downto 0)";
+			ostrPorts << "\t\tin_addr_" << (port+1) << "  : in  std_logic_vector(ADDR_BITS-1 downto 0);\n";
+			ostrPorts << "\t\tout_data_" << (port+1) << " : out std_logic_vector(WORD_BITS-1 downto 0)";
 
 			ostrAssign << "\tout_data_" << (port+1) << " <= words(to_int(in_addr_" << (port+1)<< "));";
 
