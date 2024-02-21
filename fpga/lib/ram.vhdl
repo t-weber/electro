@@ -24,11 +24,10 @@ entity ram is
 
 	port(
 		-- clock and reset
-		in_clk, in_reset : in std_logic;
+		in_clk, in_rst : in std_logic;
 
 		-- enable signals
-		in_read_ena  : in t_logicarray(0 to NUM_PORTS-1);
-		in_write_ena : in t_logicarray(0 to NUM_PORTS-1);
+		in_read_ena, in_write_ena : in t_logicarray(0 to NUM_PORTS-1);
 
 		-- address and data
 		in_addr  : in  t_logicvecarray(0 to NUM_PORTS-1)(ADDR_BITS-1 downto 0);
@@ -43,15 +42,16 @@ architecture ram_impl of ram is
 	subtype t_word is std_logic_vector(WORD_BITS-1 downto 0);
 	type t_words is array(0 to NUM_WORDS-1) of t_word;
 
+	-- memory flip-flops
 	signal words : t_words; --:= (x"31", x"32", x"33", x"34", x"35", x"36", x"37", x"38");
 
 begin
 
 	gen_ports : for portidx in 0 to NUM_PORTS-1 generate
 	begin
-		process(in_clk)
+		process(in_clk, in_rst)
 		begin
-			if in_reset = '1' then
+			if in_rst = '1' then
 				-- fill ram with zeros
 				for i in 0 to NUM_WORDS-1 loop
 					words(i) <= (others => '0');

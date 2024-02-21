@@ -120,7 +120,7 @@ begin
 			NUM_PORTS => 1
 		)
 		port map(
-			in_clk => theclk, in_reset => reset,
+			in_clk => theclk, in_rst => reset,
 			in_read_ena(0) => enable, in_write_ena(0) => write_enable,
 			in_addr(0) => addr, in_data(0) => data,
 			out_data(0) => out_data
