@@ -5,7 +5,8 @@
 -- @license see 'LICENSE' file
 --
 -- References:
---     Listing 5.24 on pp. 119-120 of the book by Pong P. Chu, 2011, ISBN 978-1-118-00888-1.
+--     - Listing 5.24 on pp. 119-120 of the book by Pong P. Chu, 2011, ISBN 978-1-118-00888-1.
+--     - Chapter 7 in: https://docs.xilinx.com/v/u/en-US/xst_v6s6
 --
 
 library ieee;
@@ -42,20 +43,21 @@ architecture ram_impl of ram is
 	subtype t_word is std_logic_vector(WORD_BITS-1 downto 0);
 	type t_words is array(0 to NUM_WORDS-1) of t_word;
 
-	-- memory flip-flops
-	signal words : t_words; --:= (x"31", x"32", x"33", x"34", x"35", x"36", x"37", x"38");
+	-- memory flip-flops (should be recognised as multi-port syncram)
+	signal words : t_words := (others => (others => '0'));
 
 begin
 
 	gen_ports : for portidx in 0 to NUM_PORTS-1 generate
+	-- repeat this process for each port if generate for loops don't work
+	--gen_port0 : if NUM_PORTS >= 1 generate
+	--	constant portidx : natural := 0;
 	begin
 		process(in_clk, in_rst)
 		begin
 			if in_rst = '1' then
 				-- fill ram with zeros
-				for i in 0 to NUM_WORDS-1 loop
-					words(i) <= (others => '0');
-				end loop;
+				words <= (others => (others => '0'));
 
 			elsif rising_edge(in_clk) then
 				-- write data to ram: will be written in the next cycle
@@ -71,6 +73,5 @@ begin
 				end if;
 			end if;
 		end process;
-	end generate;
-
+	end generate;  -- gen_ports
 end architecture;
