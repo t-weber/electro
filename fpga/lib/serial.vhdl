@@ -60,28 +60,15 @@ begin
 	--
 	-- generate serial clock
 	--
-	proc_clk : process(in_clk, in_reset)
-		constant clk_ctr_max : natural := MAIN_HZ / SERIAL_HZ / 2 - 1;
-		variable clk_ctr : natural range 0 to clk_ctr_max := 0;
-	begin
-		-- reset
-		if in_reset = '1' then
-			clk_ctr := 0;
-			serial_clk <= '1';
-
-		-- clock
-		elsif rising_edge(in_clk) then
-			if clk_ctr = clk_ctr_max then
-				serial_clk <= not serial_clk;
-				clk_ctr := 0;
-			else
-				clk_ctr := clk_ctr + 1;
-			end if;
-		end if;
-	end process;
+	serial_clkgen : entity work.clkgen
+		generic map(MAIN_HZ => MAIN_HZ, CLK_HZ => SERIAL_HZ, CLK_INIT => '1')
+		port map(in_clk => in_clk, in_reset => in_reset,
+			out_clk => serial_clk);
 
 
+	--
 	-- output serial clock
+	--
 	gen_outclk : if SERIAL_CLK_INACTIVE = '1' generate
 		-- inactive '1' and trigger on falling edge
 		out_clk <= serial_clk when serial_state = Transmit else '1';

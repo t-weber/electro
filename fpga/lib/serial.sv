@@ -45,7 +45,7 @@ t_serial_state next_serial_state = Ready;
 reg [BITS-1 : 0] parallel_data, next_parallel_data;
 
 // serial clock
-reg serial_clk = 1;
+reg serial_clk;
 
 // bit counter
 reg [$clog2(BITS) : 0] bit_ctr = 0;
@@ -59,27 +59,16 @@ assign out_next_word = next_word;
 
 
 // generate serial clock
-localparam CLK_CTR_MAX = MAIN_CLK_HZ / SERIAL_CLK_HZ / 2 - 1;
-int clk_ctr = 0;
+clkgen #(
+		.MAIN_CLK_HZ(MAIN_CLK_HZ), .CLK_HZ(SERIAL_CLK_HZ),
+		.CLK_INIT(1)
+	)
+	serial_clk_mod
+	(
+		.in_clk(in_clk), .in_rst(in_rst),
+		.out_clk(serial_clk)
+	);
 
-always_ff@(posedge in_clk, posedge in_rst) begin
-	// reset
-	if(in_rst == 1) begin
-		clk_ctr <= 0;
-		serial_clk <= 1;
-	end
-
-	// clock
-	else if(in_clk == 1) begin
-		if(clk_ctr == CLK_CTR_MAX) begin
-			clk_ctr <= 0;
-			serial_clk <= !serial_clk;
-		end
-		else begin
-			clk_ctr <= clk_ctr + 1;
-		end
-	end
-end
 
 // output serial clock
 generate
