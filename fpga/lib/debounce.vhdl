@@ -55,8 +55,8 @@ begin
 
 	-- count the cycles the signal has been stable
 	stable_counter_next <= inc_logvec(stable_counter, 1);
-	
-	
+
+
 	-- clock process
 	clk_proc : process(in_clk, in_rst) begin
 		if in_rst = '1' then
@@ -70,19 +70,19 @@ begin
 			shiftloop: for i in 1 to NUM_STEPS-1 loop
 				shiftreg(i) <= shiftreg(i-1);
 			end loop;
-			
+
 			-- count the cycles the signal has been stable
 			if(signal_changed = '1') then
 				stable_counter <= (others => '0');
 			else
 				stable_counter <= stable_counter_next;
 			end if;
-			
+
 			debounced <= debounced_next;
 		end if;
 	end process;
-	
-	
+
+
 	-- output sampling process
 	out_proc : process(stable_counter, debounced, shiftreg(NUM_STEPS-1)) begin
 		-- keep value
@@ -93,7 +93,7 @@ begin
 			debounced_next <= shiftreg(NUM_STEPS-1);
 		end if;
 	end process;
-	
+
 end architecture;
 
 
@@ -151,7 +151,7 @@ begin
 					btnstate_next <= Pressed;
 				end if;
 
-			when Pressed => 
+			when Pressed =>
 				-- button being released?
 				if in_signal = '0' then
 					stable_counter_next <= inc_logvec(stable_counter, 1);
@@ -164,7 +164,7 @@ begin
 					btnstate_next <= Released;
 				end if;
 
-			when Released => 
+			when Released =>
 				stable_counter_next <= (others => '0');
 				btnstate_next <= NotPressed;
 				debounced_next <= '1';

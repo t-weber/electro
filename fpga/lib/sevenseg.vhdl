@@ -42,7 +42,7 @@ architecture sevenseg_impl of sevenseg is
 	constant inv_numb : integer := log_to_int(INVERSE_NUMBERING);
 
 	-- constants, see: https://en.wikipedia.org/wiki/Seven-segment_display
-	constant ledvec : t_ledvec := 
+	constant ledvec : t_ledvec :=
 	(
 		-- non-inverted numbering
 		(

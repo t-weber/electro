@@ -1,5 +1,5 @@
 --
--- ram
+-- ram (should be recognised as block ram by synthesiser)
 -- @author Tobias Weber <tobias.weber@tum.de>
 -- @date 20-feb-2024
 -- @license see 'LICENSE' file

@@ -20,6 +20,7 @@ entity counter is
 	port
 	(
 		in_clk, in_reset : in std_logic;
+		in_enable : in std_logic;
 
 		-- counter value
 		out_counter : out std_logic_vector(BITS-1 downto 0);
@@ -33,17 +34,17 @@ end entity;
 
 architecture counter_impl of counter is
 	signal counter : std_logic_vector(BITS-1 downto 0) := (others => '0');
-	
+
 	constant max_val : std_logic_vector(BITS-1 downto 0) := (others => '1');
 	constant min_val : std_logic_vector(BITS-1 downto 0) := (others => '0');
-	
+
 begin
 
 	out_at_start <= '1' when counter = min_val else '0';
 	out_at_end   <= '1' when counter = max_val else '0';
-	
-	out_counter <= counter;
-	
+
+	out_counter <= counter when in_enable = '1' else (others => 'Z');
+
 
 	proc_ctr : process(in_clk, in_reset) is
 	begin

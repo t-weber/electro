@@ -62,7 +62,7 @@ begin
 
 	-- count cycles to skip
 	next_ctr <=
-		int_to_logvec(0, num_ctrbits) 
+		int_to_logvec(0, num_ctrbits)
 			when ctr = nat_to_logvec(shift_bits-1, num_ctrbits)
 		else inc_logvec(ctr, 1);
 

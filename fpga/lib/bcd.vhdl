@@ -4,7 +4,7 @@
 -- @date feb-2021
 -- @license see 'LICENSE' file
 --
--- @see https://en.wikipedia.org/wiki/Double_dabble
+-- Reference: https://en.wikipedia.org/wiki/Double_dabble
 --
 
 library ieee;

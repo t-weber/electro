@@ -43,7 +43,7 @@ entity lcd_2wire is
 
 		-- reset for LCD
 		out_lcd_reset : out std_logic;
-		
+
 		-- update the display
 		in_update : in std_logic;
 
@@ -115,7 +115,7 @@ architecture lcd_2wire_impl of lcd_2wire is
 		ctrl_command, "01010111",  -- no icon, voltage regulator, contrast bits 5 and 4
 		ctrl_command, "01110000",  -- contrast bits 3-0
 		ctrl_command, "01101110",  -- voltage divider, amplifier bits 2-0
-		
+
 		ctrl_command, "00111000",  -- 8 bit, 4 lines, no blinking, no reversing, re=0, is=0
 		ctrl_command, "00000110",  -- caret moving right, no display shifting
 		ctrl_command, "00001100",  -- turn on display, no caret, no blinking
@@ -149,7 +149,7 @@ begin
 		if in_reset = '1' then
 			-- state register
 			lcd_state <= Wait_Reset;
-			
+
 			-- timer register
 			wait_counter <= 0;
 
@@ -187,15 +187,15 @@ begin
 	--
 	proc_comb : process(
 		in_update, wait_counter, wait_counter_max,
-		lcd_state, bus_cycle, init_cycle, write_cycle, 
+		lcd_state, bus_cycle, init_cycle, write_cycle,
 		in_mem_word, in_bus_busy, in_bus_error)
 	begin
 		-- defaults
 		next_lcd_state <= lcd_state;
-	
+
 		next_init_cycle <= init_cycle;
 		next_write_cycle <= write_cycle;
-		
+
 		wait_counter_max <= 0;
 
 		out_lcd_reset <= '1';
@@ -225,7 +225,7 @@ begin
 				end if;
 
 
-			when Resetted => 
+			when Resetted =>
 				wait_counter_max <= const_wait_resetted;
 				if wait_counter = wait_counter_max then
 					next_lcd_state <= ReadInitSeq;
@@ -268,14 +268,14 @@ begin
 					next_lcd_state <= Pre_UpdateDisplay;
 				end if;
 
-				
+
 			when Pre_UpdateDisplay =>
 				if in_update = '1' then
 					next_lcd_state <= UpdateDisplay;
 				end if;
 
 
-			when UpdateDisplay =>	
+			when UpdateDisplay =>
 				-- next character
 				if bus_cycle='1' then
 					next_write_cycle <= write_cycle + 1;
@@ -313,7 +313,7 @@ begin
 								next_lcd_state <= UpdateDisplay;
 								next_write_cycle <= -3;
 							end if;
-								
+
 						-- write characters to lcd
 						else
 							out_mem_addr <= int_to_logvec(

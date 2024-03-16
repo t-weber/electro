@@ -39,7 +39,7 @@ entity lcd_3wire is
 
 		-- reset for LCD
 		out_lcd_reset : out std_logic;
-		
+
 		-- update the display
 		in_update : in std_logic;
 
@@ -117,7 +117,7 @@ architecture lcd_3wire_impl of lcd_3wire is
 		ctrl_command, "00000111", "00000101",  -- no icon, voltage regulator, contrast bits 5 and 4
 		ctrl_command, "00000000", "00000111",  -- contrast bits 3-0
 		ctrl_command, "00001110", "00000110",  -- voltage divider, amplifier bits 2-0
-		
+
 		ctrl_command, "00001000", "00000011",  -- 8 bit, 4 lines, no blinking, no reversing, re=0, is=0
 		ctrl_command, "00000110", "00000000",  -- caret moving right, no display shifting
 		ctrl_command, "00001100", "00000000",  -- turn on display, no caret, no blinking
@@ -155,7 +155,7 @@ begin
 		if in_reset = '1' then
 			-- state register
 			lcd_state <= Wait_Reset;
-			
+
 			-- timer register
 			wait_counter <= 0;
 
@@ -199,7 +199,7 @@ begin
 	begin
 		-- defaults
 		next_lcd_state <= lcd_state;
-	
+
 		next_init_cycle <= init_cycle;
 		next_write_cycle <= write_cycle;
 		next_cmd_byte_cycle <= cmd_byte_cycle;
@@ -232,7 +232,7 @@ begin
 				end if;
 
 
-			when Resetted => 
+			when Resetted =>
 				wait_counter_max <= const_wait_resetted;
 				if wait_counter = wait_counter_max then
 					next_lcd_state <= ReadInitSeq;
