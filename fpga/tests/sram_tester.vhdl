@@ -59,7 +59,7 @@ end entity;
 architecture sram_tester_impl of sram_tester is
 	-- states
 	type t_state is (
-		BeginWriting, Writing, FinishWriting,
+		BeginWriting, Writing,
 		BeginReading, Reading, ReadNext,
 		Manual
 	);
@@ -204,7 +204,9 @@ begin
 	---------------------------------------------------------------------------
 	-- combinatoric part of the state machine for waveform generation
 	---------------------------------------------------------------------------
-	proc_state_comb : process(state, at_last_addr, out_data, addr, error, sram_ready) is
+	proc_state_comb : process(state,
+		at_first_addr, at_last_addr,
+		out_data, addr, error, sram_ready) is
 	begin
 		-- save registers into next cycle
 		state_next <= state;
@@ -220,7 +222,10 @@ begin
 		case state is
 			when BeginWriting =>
 				reset_addrctr <= '1';
-				state_next <= Writing;
+
+				if at_first_addr = '1' then
+					state_next <= Writing;
+				end if;
 
 			-- write values to memory
 			when Writing =>
@@ -229,21 +234,11 @@ begin
 				start_memop <= '1';
 
 				if sram_ready = '1' then
-					if at_last_addr = '1' then
-						state_next <= FinishWriting;
-					else
-						to_next_addr <= '1';
+					to_next_addr <= '1';
+					-- addresses wrapped around?
+					if at_first_addr = '1' then
+						state_next <= BeginReading;
 					end if;
-				end if;
-
-			-- write word at last address
-			when FinishWriting =>
-				select_write <= '1';
-				start_memop <= '1';
-
-				if sram_ready = '1' then
-					reset_addrctr <= '1';
-					state_next <= BeginReading;
 				end if;
 
 			-- read at current address
@@ -259,7 +254,6 @@ begin
 				start_memop <= '1';
 
 				if sram_ready = '1' then
-					-- take into account clock delay of readout
 					if out_data /= addr(DATA_WIDTH-1 downto 0) then
 						state_next <= Manual;
 						error_next <= '1';
