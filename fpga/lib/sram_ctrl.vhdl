@@ -31,7 +31,7 @@ entity sram_ctrl is
 		in_clk, in_reset : in std_logic;
 
 		-- choose writing or reading
-		in_write : in std_logic;
+		in_start, in_write : in std_logic;
 
 		-- address
 		in_addr : in std_logic_vector(ADDR_WIDTH-1 downto 0);
@@ -127,7 +127,7 @@ begin
 	-- combinatoric part of the state machine for waveform generation
 	---------------------------------------------------------------------------
 	proc_waves : process(state, in_write,
-		in_addr, in_data, inout_sram_data,
+		in_start, in_addr, in_data, inout_sram_data,
 		read_enable, write_enable,
 		addr, read_data, write_data) is
 	begin
@@ -149,12 +149,14 @@ begin
 			when Starting =>
 				addr_next <= in_addr;
 
-				if in_write = '1' then
-					write_data_next <= in_data;
-					state_next <= Writing;
-				else
-					read_enable <= '1';
-					state_next <= Reading;
+				if in_start = '1' then
+					if in_write = '1' then
+						write_data_next <= in_data;
+						state_next <= Writing;
+					else
+						read_enable <= '1';
+						state_next <= Reading;
+					end if;
 				end if;
 
 			--

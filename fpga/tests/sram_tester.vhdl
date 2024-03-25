@@ -32,14 +32,14 @@ entity sram_tester is
 		-- sram
 		sram_a : out std_logic_vector(ADDR_WIDTH-1 downto 0);
 		sram_d : inout std_logic_vector(DATA_WIDTH-1 downto 0);
-		sram_ub_n : out std_logic;
-		sram_lb_n : out std_logic;
+		sram_ub_n : out std_logic;  -- upper byte enable
+		sram_lb_n : out std_logic;  -- lower byte enable
 		sram_ce_n : out std_logic;  -- chip enable
 		sram_oe_n : out std_logic;  -- output enable
 		sram_we_n : out std_logic;  -- write enable
 
 		-- switches
-		key : in std_logic_vector(3 downto 0);
+		key : in std_logic_vector(0 downto 0);
 		sw : in std_logic_vector(9 downto 0);
 
 		-- leds
@@ -59,30 +59,32 @@ end entity;
 architecture sram_tester_impl of sram_tester is
 	-- states
 	type t_state is (
-		Writing,
-		Reading,
+		BeginWriting, Writing, FinishWriting,
+		BeginReading, Reading, ReadNext,
 		Manual
 	);
-	signal state, state_next : t_state := Writing;
+	signal state, state_next : t_state := BeginWriting;
 
 	signal mem_clk : std_logic := '0';
 
 	signal addr : std_logic_vector(ADDR_WIDTH-1 downto 0);
+	signal addr_from_ctr : std_logic_vector(ADDR_WIDTH-1 downto 0);
 	signal in_data : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal out_data : std_logic_vector(DATA_WIDTH-1 downto 0);
 
 	signal reset : std_logic := '0';
-	signal select_write : std_logic := '0';
+	signal start_memop, select_write : std_logic := '0';
 
 	-- signal to select next address
+	signal sram_ready : std_logic;
 	signal to_next_addr : std_logic;
+	signal reset_addrctr : std_logic := '0';
 
 	-- enter address manually using the switches
 	signal manual_addr : std_logic := '0';
 
 	signal at_first_addr, at_last_addr : std_logic := '0';
 	signal error, error_next : std_logic := '0';
-
 
 begin
 	---------------------------------------------------------------------------
@@ -96,8 +98,10 @@ begin
 	sram_ce_n <= '0';
 
 	-- select address using switches
-	addr(ADDR_WIDTH-1 downto 10) <= (others => '0') when manual_addr = '1' else (others => 'Z');
-	addr(9 downto 0) <= sw when manual_addr = '1' else (others => 'Z');
+	addr(ADDR_WIDTH-1 downto 10) <= (others => '0') when manual_addr = '1'
+		else addr_from_ctr(ADDR_WIDTH-1 downto 10);
+	addr(9 downto 0) <= sw when manual_addr = '1'
+		else addr_from_ctr(9 downto 0);
 
 	-- leds
 	ledg(7 downto 5) <= (others => error);
@@ -110,6 +114,7 @@ begin
 
 	-- write lower bits of address as test data
 	in_data <= addr(DATA_WIDTH-1 downto 0);
+	--in_data <= (others => '0');
 	---------------------------------------------------------------------------
 
 
@@ -118,9 +123,8 @@ begin
 		generic map(BITS => ADDR_WIDTH)
 		port map
 		(
-			in_clk => to_next_addr, in_reset => reset,
-			in_enable => not manual_addr,
-			out_counter => addr,
+			in_clk => to_next_addr, in_reset => reset or reset_addrctr,
+			out_counter => addr_from_ctr,
 			out_at_start => at_first_addr, out_at_end => at_last_addr
 		);
 
@@ -138,7 +142,8 @@ begin
 			in_clk => mem_clk, in_reset => reset,
 			-- input/output data and address
 			in_addr => addr, in_data => in_data, out_data => out_data,
-			in_write => select_write, out_ready => to_next_addr,
+			in_start => start_memop, in_write => select_write,
+			out_ready => sram_ready,
 			-- sram interface
 			out_sram_readenable => sram_oe_n, out_sram_writeenable => sram_we_n,
 			out_sram_addr => sram_a, inout_sram_data => sram_d
@@ -184,7 +189,7 @@ begin
 		if rising_edge(clock_50_b7a) then
 			if reset = '1' then
 				-- synchronous reset
-				state <= Writing;
+				state <= BeginWriting;
 				error <= '0';
 			else
 				-- advance states
@@ -199,7 +204,7 @@ begin
 	---------------------------------------------------------------------------
 	-- combinatoric part of the state machine for waveform generation
 	---------------------------------------------------------------------------
-	proc_state_comb : process(state, at_last_addr, out_data, addr, error) is
+	proc_state_comb : process(state, at_last_addr, out_data, addr, error, sram_ready) is
 	begin
 		-- save registers into next cycle
 		state_next <= state;
@@ -208,32 +213,74 @@ begin
 		-- default values
 		manual_addr <= '0';
 		select_write <= '0';
+		reset_addrctr <= '0';
+		start_memop <= '0';
+		to_next_addr <= '0';
 
 		case state is
+			when BeginWriting =>
+				reset_addrctr <= '1';
+				state_next <= Writing;
+
 			-- write values to memory
 			when Writing =>
 				error_next <= '0';
 				select_write <= '1';
+				start_memop <= '1';
 
-				if at_last_addr = '1' then
+				if sram_ready = '1' then
+					if at_last_addr = '1' then
+						state_next <= FinishWriting;
+					else
+						to_next_addr <= '1';
+					end if;
+				end if;
+
+			-- write word at last address
+			when FinishWriting =>
+				select_write <= '1';
+				start_memop <= '1';
+
+				if sram_ready = '1' then
+					reset_addrctr <= '1';
+					state_next <= BeginReading;
+				end if;
+
+			-- read at current address
+			when BeginReading =>
+				start_memop <= '1';
+
+				if sram_ready = '1' then
 					state_next <= Reading;
 				end if;
 
 			-- read back the values and test if they are correct
 			when Reading =>
-				-- take into account clock delay of readout
-				if out_data /= inc_logvec(addr(DATA_WIDTH-1 downto 0), 1) then
-					state_next <= Manual;
-					error_next <= '1';
+				start_memop <= '1';
+
+				if sram_ready = '1' then
+					-- take into account clock delay of readout
+					if out_data /= addr(DATA_WIDTH-1 downto 0) then
+						state_next <= Manual;
+						error_next <= '1';
+					else
+						state_next <= ReadNext;
+					end if;
+
+					if at_last_addr = '1' then
+						state_next <= Manual;
+					end if;
 				end if;
 
-				if at_last_addr = '1' then
-					state_next <= Manual;
-				end if;
+			-- increament address
+			when ReadNext =>
+				to_next_addr <= '1';
+				state_next <= BeginReading;
 
 			-- manual address entry
 			when Manual =>
-				manual_addr <= '1';
+				start_memop <= '1';
+				manual_addr <= '1';  -- comment out to see error data and address
 
 		end case;
 	end process;

@@ -20,7 +20,7 @@ entity counter is
 	port
 	(
 		in_clk, in_reset : in std_logic;
-		in_enable : in std_logic;
+		--in_enable : in std_logic;
 
 		-- counter value
 		out_counter : out std_logic_vector(BITS-1 downto 0);
@@ -43,7 +43,7 @@ begin
 	out_at_start <= '1' when counter = min_val else '0';
 	out_at_end   <= '1' when counter = max_val else '0';
 
-	out_counter <= counter when in_enable = '1' else (others => 'Z');
+	out_counter <= counter; --when in_enable = '1' else (others => 'Z');
 
 
 	proc_ctr : process(in_clk, in_reset) is
@@ -52,8 +52,13 @@ begin
 			-- asynchronously reset counter
 			counter <= (others => '0');
 		elsif rising_edge(in_clk) then
-			-- advance counter
-			counter <= inc_logvec(counter, 1);
+			--if in_reset = '1' then
+			--	-- synchronously reset counter
+			--	counter <= (others => '0');
+			--else
+				-- advance counter
+				counter <= inc_logvec(counter, 1);
+			--end if;
 		end if;
 	end process;
 
