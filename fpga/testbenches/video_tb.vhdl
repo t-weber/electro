@@ -23,11 +23,11 @@ architecture video_tb_arch of video_tb is
 	constant CLK_DELAY : time := 20 ns;
 	signal clk, rst : std_logic := '0';
 
-	signal hsync, vsync, pixel_enable : std_logic;
-	signal hpix, hpix_raw : std_logic_vector(3 downto 0);
-	signal vpix, vpix_raw : std_logic_vector(3 downto 0);
+	signal hsync, vsync, pixel_enable : std_logic := '0';
+	signal hpix, hpix_raw : std_logic_vector(3 downto 0) := (others => '0');
+	signal vpix, vpix_raw : std_logic_vector(3 downto 0) := (others => '0');
 
-	signal pixel : std_logic_vector(23 downto 0);
+	signal pixel : std_logic_vector(23 downto 0) := (others => '0');
 
 begin
 	-- generate clock
@@ -38,11 +38,11 @@ begin
 	video_ent : entity work.video
 		generic map(NUM_HCTR_BITS => 4, NUM_VCTR_BITS => 4,
 
-			HPIX_VISIBLE => 3, HPIX_TOTAL => 9,
-			HSYNC_START => 0, HSYNC_STOP => 2, HSYNC_DELAY => 3,
+			HPIX_VISIBLE => 4, -- HPIX_TOTAL => 5,
+			HSYNC_START => 0, HSYNC_STOP => 1, HSYNC_DELAY => 2,
 
-			VPIX_VISIBLE => 3, VPIX_TOTAL => 9,
-			VSYNC_START => 0, VSYNC_STOP => 2, VSYNC_DELAY => 3)
+			VPIX_VISIBLE => 4, -- VPIX_TOTAL => 5,
+			VSYNC_START => 0, VSYNC_STOP => 2, VSYNC_DELAY => 2)
 
 		port map(in_clk => clk, in_rst => rst,
 			in_testpattern => '1',
