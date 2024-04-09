@@ -4,10 +4,10 @@
 -- @date jan-2021, mar-2024
 -- @license see 'LICENSE' file
 --
--- References:
---	https://www.digikey.com/eewiki/pages/viewpage.action?pageId=15925278
---	https://academic.csuohio.edu/chu_p/rtl/sopc_vhdl.html
---	https://www.analog.com/media/en/technical-documentation/user-guides/ADV7513_Programming_Guide.pdf
+-- references:
+--   - https://www.digikey.com/eewiki/pages/viewpage.action?pageId=15925278
+--   - https://academic.csuohio.edu/chu_p/rtl/sopc_vhdl.html
+--   - https://www.analog.com/media/en/technical-documentation/user-guides/ADV7513_Programming_Guide.pdf
 --
 
 library ieee;
@@ -19,9 +19,6 @@ use work.conv.all;
 
 entity video is
 	generic(
-		-- memory address length
-		constant NUM_PIXADDR_BITS : natural := 19;
-
 		-- colour channels
 		-- number of bits in one colour channel
 		constant NUM_COLOUR_BITS : natural := 8;
@@ -29,25 +26,27 @@ entity video is
 		constant NUM_PIXEL_BITS : natural := 3 * NUM_COLOUR_BITS;
 
 		-- rows
-		constant HSYNC_START  : natural := 88;
-		constant HSYNC_STOP   : natural := 88 + 44;
-		constant HSYNC_DELAY  : natural := 88 + 44 + 148;
-		constant HPIX_VISIBLE : natural := 1920;
-		constant HPIX_TOTAL   : natural := HPIX_VISIBLE + HSYNC_DELAY; -- 2200;
+		constant HSYNC_START  : natural := 110;              -- 88;
+		constant HSYNC_STOP   : natural := HSYNC_START + 40; -- HSYNC_START + 44;
+		constant HSYNC_DELAY  : natural := HSYNC_STOP + 220; -- HSYNC_STOP + 148;
+		constant HPIX_VISIBLE : natural := 1280;             -- 1920;
+		constant HPIX_TOTAL   : natural := HPIX_VISIBLE + HSYNC_DELAY;
 
 		-- columns
-		constant VSYNC_START  : natural := 4;
-		constant VSYNC_STOP   : natural := 4 + 5;
-		constant VSYNC_DELAY  : natural := 4 + 5 + 36;
-		constant VPIX_VISIBLE : natural := 1080;
-		constant VPIX_TOTAL   : natural := VPIX_VISIBLE + VSYNC_DELAY; -- 1125;
+		constant VSYNC_START  : natural := 5;                -- 4;
+		constant VSYNC_STOP   : natural := VSYNC_START + 5;  -- VSYNC_START + 5;
+		constant VSYNC_DELAY  : natural := VSYNC_STOP + 20;  -- VSYNC_STOP + 36;
+		constant VPIX_VISIBLE : natural := 720;              -- 1080;
+		constant VPIX_TOTAL   : natural := VPIX_VISIBLE + VSYNC_DELAY;
 
 		-- counter bits
-		constant NUM_HCTR_BITS : natural := 13; -- ceil(log2(HPIX_TOTAL)) + 1;
-		constant NUM_VCTR_BITS : natural := 12; -- ceil(log2(VPIX_TOTAL)) + 1;
+		constant NUM_HCTR_BITS : natural := 12;    -- ceil(log2(HPIX_TOTAL)) + 1;
+		constant NUM_VCTR_BITS : natural := 11;    -- ceil(log2(VPIX_TOTAL)) + 1;
 
 		-- start address of the display buffer in memory
-		constant MEM_START_ADDR : natural := 0
+		constant MEM_START_ADDR : natural := 0;
+		-- memory address length
+		constant NUM_PIXADDR_BITS : natural := 21  -- ceil(log2(HPIX_VISIBLE*VPIX_VISIBLE)) + 1
 	);
 
 	port(
@@ -111,7 +110,7 @@ begin
 
 
 	-- generate test pattern
-	pixel_testpattern : process(all) begin
+	pixel_testpattern : process(visible_range, vpix, hpix) begin
 		-- default value
 		pattern <= (others => '0');
 

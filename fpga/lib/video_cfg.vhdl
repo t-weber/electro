@@ -67,10 +67,10 @@ architecture video_cfg_impl of video_cfg is
 	signal status_reg, next_status_reg : std_logic_vector(BUS_NUM_DATABITS-1 downto 0) := (others => '0');
 
 	-- register init sequence
-	type t_init_arr is array(0 to 16*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+	type t_init_arr is array(0 to 18*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
 	constant init_arr : t_init_arr := (
 	-- reg,   val
-		x"41", x"00",          -- power on, [sw, p. 149]
+		x"41", x"00",         -- power on, [sw, p. 149]
 
 		-- constants, [sw, p. 14, p. 25]
 		x"98", x"03",
@@ -82,13 +82,15 @@ architecture video_cfg_impl of video_cfg is
 		x"e0", x"d0",
 		x"f9", x"00",
 
-		x"15", b"00000000",  -- input format, [sw, p. 34, p. 141]
-		x"16", b"00110100",  -- in/out formats, [sw, p. 34, p. 142]
-		x"17", b"00000010",  -- aspect, [sw, p. 34, p. 143]
-		x"18", b"00000000",  -- colour space converter, [sw, p. 144]
-		x"55", b"00000000",  -- output format
-		x"a1", b"00000010",  -- monitor sense
-		x"af", b"00000010"   -- mode
+		x"15", "00000000",  -- input format, [sw, p. 34, p. 141]
+		x"16", "00110100",  -- in/out formats, [sw, p. 34, p. 142]
+		x"17", "00000010",  -- aspect, [sw, p. 34, p. 143]
+		x"18", "00000000",  -- colour space converter, [sw, p. 144]
+		x"44", "00010001",  -- avi, [sw, p. 150]
+		x"55", "00000000",  -- output format, [sw, p. 152]
+		x"56", "00100000",  -- aspect, [sw, p. 153]
+		x"a1", "00000000",  -- monitor sense, [sw, p. 104, p. 160]
+		x"af", "00000110"   -- mode, [sw, p. 161]
 	);
 
 	signal init_cycle, next_init_cycle : natural range 0 to init_arr'length := 0;
