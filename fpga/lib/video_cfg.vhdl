@@ -58,7 +58,7 @@ architecture video_cfg_impl of video_cfg is
 		Status_SetAddr, Status_SetData, Status_Next,
 		ReadStatus_SetAddr, ReadStatus_SetReg, ReadStatus_GetData,
 		PowerUp_SetAddr, PowerUp_SetData, PowerUp_Next,
-		Idle);
+		Wait_Int);
 	signal state, next_state : t_state := Wait_Reset;
 
 	-- serial bus busy signal
@@ -70,22 +70,38 @@ architecture video_cfg_impl of video_cfg is
 
 	-- status register
 	signal status_reg, next_status_reg : std_logic_vector(BUS_NUM_DATABITS-1 downto 0) := (others => '0');
-	signal int_triggered : std_logic := '0';
+	signal int_triggered, next_int_triggered : std_logic := '0';
 
-	-- sequence to enable status register
-	type t_status_arr is array(0 to 3*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+	-- all video outputs on?
+	signal is_powered, next_is_powered : std_logic := '0';
+
+	-- sequence to power down and enable status register monitoring
+	type t_status_arr is array(0 to 13*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
 	constant status_arr : t_status_arr := (
 	-- reg,   val
+		x"41", "01010000",    -- power off, [sw, p. 149]
+
+		x"98", x"03",         -- constants, [sw, p. 14, p. 25]
+		x"9a", x"e0",         --
+		x"9c", x"30",         --
+		x"9d", x"01",         --
+		x"a2", x"a4",         --
+		x"a3", x"a4",         --
+		x"e0", x"d0",         --
+		x"f9", x"00",         --
+
+		-- status register monitoring
 		x"94", "11000000",  -- status interrupts enable, [sw, p. 17, p. 158]
+		x"96", "11000000",  -- clear interrupts, [sw, p. 130]
 		x"a1", "00000000",  -- monitor sense, [sw, p. 104, p. 160]
 		x"d6", "10000000"   -- hotplug detection, [sw, p. 17, p. 164]
 	);
 
 	-- power up sequence
-	type t_powerup_arr is array(0 to 20*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+	type t_powerup_arr is array(0 to 21*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
 	constant powerup_arr : t_powerup_arr := (
 	-- reg,   val
-		x"41", x"00",         -- power on, [sw, p. 149]
+		x"41", "00010000",    -- power on, [sw, p. 149]
 
 		x"98", x"03",         -- constants, [sw, p. 14, p. 25]
 		x"9a", x"e0",         --
@@ -108,13 +124,13 @@ architecture video_cfg_impl of video_cfg is
 
 		-- status register monitoring
 		x"94", "11000000",  -- status interrupts enable, [sw, p. 17, p. 158]
+		x"96", "11000000",  -- clear interrupts, [sw, p. 130]
 		x"a1", "00000000",  -- monitor sense, [sw, p. 104, p. 160]
 		x"d6", "10000000"   -- hotplug detection, [sw, p. 17, p. 164]
 	);
 
 	signal status_cycle, next_status_cycle : natural range 0 to powerup_arr'length := 0;
 	signal powerup_cycle, next_powerup_cycle : natural range 0 to powerup_arr'length := 0;
-
 
 begin
 
@@ -124,15 +140,6 @@ begin
 
 	-- rising edge of serial bus busy signal
 	bus_cycle <= in_bus_busy and (not bus_last_busy);
-
-
-
-	-- status interrupt handler
-	proc_int : process(in_int) begin
-		--if rising_edge(in_int) then
-			int_triggered <= '1';
-		--end if;
-	end process;
 
 
 
@@ -152,6 +159,12 @@ begin
 			-- status register
 			status_reg <= (others => '0');
 
+			-- interrupt signal
+			int_triggered <= '0';
+
+			-- all video outputs on?
+			is_powered <= '0';
+
 			-- timer register
 			wait_counter <= 0;
 
@@ -168,6 +181,12 @@ begin
 
 			-- status register
 			status_reg <= next_status_reg;
+
+			-- all video outputs on?
+			is_powered <= next_is_powered;
+
+			-- interrupt signal
+			int_triggered <= next_int_triggered;
 
 			-- timer register
 			if wait_counter = wait_counter_max then
@@ -190,18 +209,26 @@ begin
 		state, wait_counter, wait_counter_max,
 		in_bus_busy, in_bus_error, in_bus_data,
 		bus_cycle, powerup_cycle,
-		status_reg, status_cycle, int_triggered)
+		status_reg, status_cycle,
+		in_int, int_triggered, is_powered)
 	begin
 		-- defaults
 		next_state <= state;
 		next_powerup_cycle <= powerup_cycle;
 		next_status_cycle <= status_cycle;
 		next_status_reg <= status_reg;
+		next_int_triggered <= int_triggered;
+		next_is_powered <= is_powered;
 		wait_counter_max <= 0;
 
 		out_bus_enable <= '0';
 		out_bus_addr <= BUS_READADDR;
 		out_bus_data <= (others => '0');
+
+
+		if in_int = '1' then
+			next_int_triggered <= '1';
+		end if;
 
 
 		-- fsm
@@ -213,7 +240,7 @@ begin
 			when Wait_Reset =>
 				wait_counter_max <= const_wait_reset;
 				if wait_counter = wait_counter_max then
-					next_state <= ReadStatus_SetAddr;
+					next_state <= Status_SetAddr;
 				end if;
 
 
@@ -246,7 +273,8 @@ begin
 				if in_bus_busy = '0' then
 					if status_cycle + 2 = status_arr'length then
 						-- at end of command list
-						next_state <= ReadStatus_SetAddr;
+						next_state <= Wait_Int;
+						next_is_powered <= '0';
 						next_status_cycle <= 0;
 					else
 						-- next command
@@ -255,6 +283,17 @@ begin
 					end if;
 				end if;
 			----------------------------------------------------------------------
+
+
+			--
+			-- wait for status interrupt
+			--
+			when Wait_Int =>
+				if int_triggered = '1' then
+					-- read status register
+					next_state <= ReadStatus_SetAddr;
+					next_int_triggered <= '0';
+				end if;
 
 
 			----------------------------------------------------------------------
@@ -287,16 +326,24 @@ begin
 
 
 			--
-			-- check if a monitor is present
+			-- check status register if a monitor is present
 			--
 			when CheckStatus =>
-				if status_reg(5) = '1' and status_reg(6) = '1' then
-					-- monitor present
-					next_state <= PowerUp_SetAddr;
-
-				elsif int_triggered = '1' then
-					-- read status registers again
-					next_state <= ReadStatus_SetAddr;
+				if is_powered = '0' then
+					if status_reg(5) = '1' and status_reg(6) = '1' then
+						-- monitor present -> power on
+						next_state <= PowerUp_SetAddr;
+					else
+						-- monitor not present
+						next_state <= Wait_Int;
+					end if;
+				else
+					if status_reg(5) = '0' or status_reg(6) = '0' then
+						-- monitor no longer present -> power off
+						next_state <= Status_SetAddr;
+					else
+						next_state <= Wait_Int;
+					end if;
 				end if;
 
 
@@ -329,7 +376,8 @@ begin
 				if in_bus_busy = '0' then
 					if powerup_cycle + 2 = powerup_arr'length then
 						-- at end of command list
-						next_state <= Idle;
+						next_state <= Wait_Int;
+						next_is_powered <= '1';
 						next_powerup_cycle <= 0;
 					else
 						-- next command
@@ -338,9 +386,6 @@ begin
 					end if;
 				end if;
 			----------------------------------------------------------------------
-
-
-			when Idle =>
 
 
 			when others =>
