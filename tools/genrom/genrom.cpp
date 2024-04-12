@@ -31,6 +31,7 @@ int main(int argc, char** argv)
 		bool direct_ports = false;
 		bool fill_rom = true;
 		bool print_chars = true;
+		std::string module_name = "rom";
 
 		args::options_description arg_descr("ROM generator arguments");
 		arg_descr.add_options()
@@ -52,6 +53,9 @@ int main(int argc, char** argv)
 			("directports,d", args::value<bool>(&direct_ports),
 				("generate direct ports, default: "
 					+ std::to_string(direct_ports)).c_str())
+			("module,m", args::value<decltype(module_name)>(&module_name),
+				("module name, default: "
+					+ module_name).c_str())
 			("input,i", args::value<decltype(in_filename)>(&in_filename),
 				"input data file")
 			("output,o", args::value<decltype(out_rom)>(&out_rom),
@@ -148,18 +152,21 @@ int main(int argc, char** argv)
 		}
 
 		// set rom generator function
-		std::string (*gen_rom_fkt)(const t_words&, int, int, bool, bool, bool)
-			= &gen_rom_vhdl;
-		if(rom_type == "vhdl")
+		std::string (*gen_rom_fkt)(const t_words&, int, int,
+			bool, bool, bool, const std::string&)
+				= &gen_rom_vhdl;
+
+		if(boost::to_lower_copy(rom_type) == "vhdl")
 			gen_rom_fkt = &gen_rom_vhdl;
-		else if(rom_type == "sv")
+		else if(boost::to_lower_copy(rom_type) == "sv")
 			gen_rom_fkt = &gen_rom_sv;
-		else if(rom_type == "hex")
+		else if(boost::to_lower_copy(rom_type) == "hex")
 			gen_rom_fkt = &gen_rom_hex;
 
 		// generate rom
 		(*postr) << (*gen_rom_fkt)(data, line_len, num_ports,
-			direct_ports, fill_rom, print_chars) << std::endl;
+			direct_ports, fill_rom, print_chars, module_name)
+			<< std::endl;
 	}
 	catch(const std::exception& ex)
 	{

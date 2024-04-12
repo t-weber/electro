@@ -19,10 +19,10 @@
  * generates an SV rom
  */
 std::string gen_rom_sv(const t_words& data, int max_line_len, int num_ports,
-	bool direct_ports, bool fill_rom, bool print_chars)
+	bool direct_ports, bool fill_rom, bool print_chars, const std::string& module_name)
 {
 	// rom file
-	std::string rom_sv = R"raw(module rom
+	std::string rom_sv = R"raw(module %%MODULE_NAME%%
 #(
 	parameter NUM_PORTS = %%NUM_PORTS%%,
 	parameter ADDR_BITS = %%ADDR_BITS%%,
@@ -193,6 +193,7 @@ endgenerate
 		write_chars();
 
 	// fill in missing rom data fields
+	boost::replace_all(rom_sv, "%%MODULE_NAME%%", module_name);
 	if(fill_rom)
 		boost::replace_all(rom_sv, "%%NUM_WORDS%%", "2**" + std::to_string(addr_bits));
 	else

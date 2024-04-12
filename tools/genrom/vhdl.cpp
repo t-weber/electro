@@ -19,14 +19,14 @@
  * generates a vhdl rom
  */
 std::string gen_rom_vhdl(const t_words& data, int max_line_len, int num_ports,
-	bool direct_ports, bool fill_rom, bool print_chars)
+	bool direct_ports, bool fill_rom, bool print_chars, const std::string& module_name)
 {
 	// rom file
 	std::string rom_vhdl = R"raw(library ieee;
 use ieee.std_logic_1164.all;
 use work.conv.all;
 
-entity rom is
+entity %%MODULE_NAME%% is
 	generic(
 		constant NUM_PORTS : natural := %%NUM_PORTS%%;
 		constant ADDR_BITS : natural := %%ADDR_BITS%%;
@@ -37,7 +37,7 @@ entity rom is
 	port(%%PORTS_DEF%%);
 end entity;
 
-architecture rom_impl of rom is
+architecture %%MODULE_NAME%%_impl of %%MODULE_NAME%% is
 	subtype t_word is std_logic_vector(WORD_BITS-1 downto 0);
 	type t_words is array(0 to NUM_WORDS-1) of t_word;
 
@@ -196,6 +196,7 @@ end architecture;)raw";
 		write_chars();
 
 	// fill in missing rom data fields
+	boost::replace_all(rom_vhdl, "%%MODULE_NAME%%", module_name);
 	if(fill_rom)
 		boost::replace_all(rom_vhdl, "%%NUM_WORDS%%", "2**" + std::to_string(addr_bits));
 	else

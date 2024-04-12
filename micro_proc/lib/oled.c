@@ -16,7 +16,7 @@
 	#include "characters.c"
 	#define _HAS_FONT_
 #else
-	#pragma message("Please create the font character map using tools/create_font.cpp!")
+	#pragma message("Please create the font character map using tools/genfont!")
 #endif
 
 
