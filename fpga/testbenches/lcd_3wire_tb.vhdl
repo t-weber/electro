@@ -4,7 +4,7 @@
 -- @date 2-dec-2023
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../lib/conv.vhdl  &&  ghdl -a --std=08 ../lib/clkgen.vhdl  &&  ghdl -a --std=08 ../lib/lcd_3wire.vhdl  &&  ghdl -a --std=08 ../lib/serial.vhdl  &&  ghdl -a --std=08 lcd_3wire_tb.vhdl  &&  ghdl -e --std=08 lcd_3wire_tb lcd_3wire_tb_arch
+-- ghdl -a --std=08 ../lib/conv.vhdl  &&  ghdl -a --std=08 ../lib/clkgen.vhdl  &&  ghdl -a --std=08 ../hw/lcd_3wire.vhdl  &&  ghdl -a --std=08 ../lib/serial.vhdl  &&  ghdl -a --std=08 lcd_3wire_tb.vhdl  &&  ghdl -e --std=08 lcd_3wire_tb lcd_3wire_tb_arch
 -- ghdl -r --std=08 lcd_3wire_tb lcd_3wire_tb_arch --vcd=lcd_3wire_tb.vcd --stop-time=5000ns
 -- gtkwave lcd_3wire_tb.vcd
 --

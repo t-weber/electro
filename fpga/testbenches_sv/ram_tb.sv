@@ -4,7 +4,7 @@
  * @date 21-feb-2024
  * @license see 'LICENSE' file
  *
- * iverilog -g2012 -o ram_tb ../lib/ram.sv ram_tb.sv
+ * iverilog -g2012 -o ram_tb ../lib_sv/ram.sv ram_tb.sv
  * ./ram_tb
  */
 
