@@ -44,13 +44,13 @@ architecture main_impl of main is
 begin
 	-- lcd memory
 	disp_rom : entity work.rom
-		generic map(NUM_PORTS => 1, NUM_WORDS => lcd_size,
+		generic map(NUM_PORTS => 1, NUM_WORDS => LCD_SIZE,
 			WORDBITS => WORDBITS, ADDRBITS => ADDRBITS)
 		port map(in_addr(0) => ram_addr, out_data(0) => ram_read);
 
 	-- lcd
 	lcd : entity work.lcd_3wire
-		generic map(MAIN_CLK => main_clk, LCD_SIZE => lcd_size)
+		generic map(MAIN_CLK => MAIN_CLK, LCD_SIZE => LCD_SIZE)
 		port map(in_clk => clock_50_b7a, in_reset => reset,
 			in_update => refresh,
 			in_bus_next => serial_next, in_bus_ready => serial_ready,
@@ -59,7 +59,7 @@ begin
 
 	-- serial bus for lcd
 	serial_lcd : entity work.serial
-		generic map(MAIN_HZ => main_clk, SERIAL_HZ => serial_clk)
+		generic map(MAIN_HZ => MAIN_CLK, SERIAL_HZ => SERIAL_CLK)
 		port map(in_clk => clock_50_b7a, in_reset => reset,
 			in_enable => serial_enable, in_parallel => serial_data,
 			out_next_word => serial_next, out_ready => serial_ready,

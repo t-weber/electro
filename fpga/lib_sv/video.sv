@@ -33,14 +33,14 @@ module video
 	parameter VPIX_TOTAL   = VPIX_VISIBLE + VSYNC_DELAY,
 
 	// counter bits
-	parameter NUM_HCTR_BITS = $clog2(HPIX_TOTAL) + 1,
-	parameter NUM_VCTR_BITS = $clog2(VPIX_TOTAL) + 1,
+	parameter NUM_HCTR_BITS = $clog2(HPIX_TOTAL),
+	parameter NUM_VCTR_BITS = $clog2(VPIX_TOTAL),
 
 	// start address of the display buffer in memory
 	parameter MEM_START_ADDR = 0,
 
 	// memory address length
-	parameter NUM_PIXADDR_BITS = $clog2(VPIX_VISIBLE*HPIX_VISIBLE + MEM_START_ADDR) + 1
+	parameter NUM_PIXADDR_BITS = $clog2(VPIX_VISIBLE*HPIX_VISIBLE + MEM_START_ADDR)
  )
 (
 	// pixel clock, reset

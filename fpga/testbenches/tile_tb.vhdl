@@ -18,8 +18,11 @@ end entity;
 
 
 architecture tile_tb_arch of tile_tb is
-	signal tile_x, tile_y, tile_num : natural;
-	signal tile_pix_x, tile_pix_y : natural;
+	signal tile_x : std_logic_vector(6 downto 0) := (others => '0');
+	signal tile_y : std_logic_vector(4 downto 0) := (others => '0');
+	signal tile_num : std_logic_vector(11 downto 0) := (others => '0');
+	signal tile_pix_x : std_logic_vector(3 downto 0) := (others => '0');
+	signal tile_pix_y : std_logic_vector(4 downto 0) := (others => '0');
 
 begin
 
@@ -30,7 +33,7 @@ begin
 			TILE_WIDTH => 20, TILE_HEIGHT => 10
 		)
 		port map(
-			in_x => 25, in_y => 25,
+			in_x => int_to_logvec(25, 11), in_y => int_to_logvec(25, 10),
 			out_tile_x => tile_x, out_tile_y => tile_y, out_tile_num => tile_num,
 			out_tile_pix_x => tile_pix_x, out_tile_pix_y => tile_pix_y
 		);
@@ -39,11 +42,11 @@ begin
 	sim_report : process(all)
 	begin
 		report lf
-		      & "tile x = "   & natural'image(tile_x)
-		      & ", tile y = " & natural'image(tile_y)
-		      & ", tile number = " & natural'image(tile_num)
-		      & ", tile pixel x = " & natural'image(tile_pix_x)
-		      & ", tile pixel y = " & natural'image(tile_pix_y);
+		      & "tile x = "   & integer'image(to_int(tile_x))
+		      & ", tile y = " & integer'image(to_int(tile_y))
+		      & ", tile number = " & integer'image(to_int(tile_num))
+		      & ", tile pixel x = " & integer'image(to_int(tile_pix_x))
+		      & ", tile pixel y = " & integer'image(to_int(tile_pix_y));
 	end process;
 
 end architecture;

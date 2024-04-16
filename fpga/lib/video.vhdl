@@ -40,13 +40,13 @@ entity video is
 		constant VPIX_TOTAL   : natural := VPIX_VISIBLE + VSYNC_DELAY;
 
 		-- counter bits
-		constant NUM_HCTR_BITS : natural := 12;    -- ceil(log2(HPIX_TOTAL)) + 1;
-		constant NUM_VCTR_BITS : natural := 11;    -- ceil(log2(VPIX_TOTAL)) + 1;
+		constant NUM_HCTR_BITS : natural := 11;    -- ceil(log2(HPIX_TOTAL));
+		constant NUM_VCTR_BITS : natural := 10;    -- ceil(log2(VPIX_TOTAL));
 
 		-- start address of the display buffer in memory
 		constant MEM_START_ADDR : natural := 0;
 		-- memory address length
-		constant NUM_PIXADDR_BITS : natural := 21  -- ceil(log2(HPIX_VISIBLE*VPIX_VISIBLE)) + 1
+		constant NUM_PIXADDR_BITS : natural := 20  -- ceil(log2(HPIX_VISIBLE*VPIX_VISIBLE))
 	);
 
 	port(
