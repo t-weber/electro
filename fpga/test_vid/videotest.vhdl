@@ -69,6 +69,7 @@ architecture videotest_impl of videotest is
 	signal tile_pix_x : std_logic_vector(3 downto 0) := (others => '0');
 	signal tile_pix_y : std_logic_vector(4 downto 0) := (others => '0');
 	signal cur_char : std_logic_vector(7 downto 0) := (others => '0');
+	signal font_pixel : std_logic := '0';
 
 
 begin
@@ -79,6 +80,7 @@ begin
 	ledr(2) <= pixel_clk_locked;
 	ledr(3) <= test_clk;
 	ledr(4) <= vid_active;
+
 
 	----------------------------------------------------------------------------
 	-- clocks
@@ -127,13 +129,13 @@ begin
 			VSYNC_START => 5,   VSYNC_STOP => 5 + 5,    VSYNC_DELAY => 5 + 5 + 20,
 			HPIX_VISIBLE => 1280, HPIX_TOTAL => 1280 + 110 + 40 + 220,
 			VPIX_VISIBLE => 720,  VPIX_TOTAL => 720 + 5 + 5 + 20)
-		port map(in_clk => pixel_clk, in_rst => not pixel_clk_locked,
-			in_mem => (others => '0'), in_testpattern => sw(0),
+		port map(in_clk => pixel_clk, in_rst => reset or not pixel_clk_locked,
+			in_mem => (others => font_pixel), in_testpattern => sw(0),
 			out_hsync => vid_tx_hs, out_vsync => vid_tx_vs,
 			out_pixel_enable => vid_tx_de,
 			out_pixel => vid_tx_d, out_hpix => vid_x, out_vpix => vid_y);
 
-	vid_tx_clk <= not pixel_clk;
+	vid_tx_clk <= not pixel_clk; --when pixel_clk_locked = '1' else '0';
 
 	-- text output
 	tile_ent : entity work.tile
@@ -149,7 +151,12 @@ begin
 		generic map(NUM_PORTS => 1)
 		port map(in_addr(0) => tile_num, out_data(0) => cur_char);
 
-	-- TODO: font rom
+	-- generate font rom with:
+	--   ./genfont -h 24 -w 24 --target_height 24 --target_pitch 2 -t vhdl -o font.vhdl
+	font_rom : entity work.font
+		port map(in_char => cur_char(6 downto 0),
+			in_x => tile_pix_x, in_y => tile_pix_y,
+			out_pixel => font_pixel);
 	----------------------------------------------------------------------------
 
 end videotest_impl;

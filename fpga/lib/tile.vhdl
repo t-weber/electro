@@ -55,8 +55,8 @@ end entity;
 
 
 architecture tile_impl of tile is
-	signal tile_x : natural range 0 to TILE_WIDTH - 1 := 0;
-	signal tile_y : natural range 0 to TILE_HEIGHT - 1 := 0;
+	signal tile_x : natural range 0 to NUM_TILES_X - 1 := 0;
+	signal tile_y : natural range 0 to NUM_TILES_Y - 1 := 0;
 
 begin
 

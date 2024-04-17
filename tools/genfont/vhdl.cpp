@@ -40,16 +40,16 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 		<< "\t\tconstant CHAR_HEIGHT : natural := " << cfg.target_height << "\n"
 		<< "\t);\n\n"
 		<< "\tport(\n"
-		<< "\t\tin_char : in std_logic_vector(" << std::ceil(std::log2(cfg.ch_last)) << " downto 0);\n"
-		<< "\t\tin_x : in std_logic_vector(" << std::ceil(std::log2(cfg.target_pitch * cfg.pitch_bits)) << " downto 0);\n"
-		<< "\t\tin_y : in std_logic_vector(" << std::ceil(std::log2(cfg.target_height)) << " downto 0);\n"
+		<< "\t\tin_char : in std_logic_vector(" << std::ceil(std::log2(cfg.ch_last)) - 1 << " downto 0);\n"
+		<< "\t\tin_x : in std_logic_vector(" << std::ceil(std::log2(cfg.target_pitch * cfg.pitch_bits)) - 1 << " downto 0);\n"
+		<< "\t\tin_y : in std_logic_vector(" << std::ceil(std::log2(cfg.target_height)) - 1 << " downto 0);\n"
 		<< "\t\tout_pixel : out std_logic\n"
 		<< "\t);\n\n"
 		<< "end entity;\n\n";
 
 	(*ostr) << "\narchitecture " << cfg.entity_name << "_impl of " << cfg.entity_name << " is\n";
 
-	(*ostr) << "\tsubtype t_line is std_logic_vector(CHAR_WIDTH-1 downto 0);\n"
+	(*ostr) << "\tsubtype t_line is std_logic_vector(0 to CHAR_WIDTH-1);\n"
 		<< "\ttype t_char is array(0 to CHAR_HEIGHT-1) of t_line;\n"
 		<< "\ttype t_chars is array(FIRST_CHAR to LAST_CHAR-1) of t_char;\n";
 
@@ -98,7 +98,9 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 	(*ostr) << "\n\t);\n";
 
 	(*ostr) << "\nbegin\n";
-	(*ostr) << "\n\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x));\n";
+	(*ostr) << "\n\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x))\n"
+		<< "\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR\n"
+		<< "\t\telse '0';\n";
 	(*ostr) << "\nend architecture;" << std::endl;
 
 
