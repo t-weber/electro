@@ -135,7 +135,7 @@ begin
 			out_pixel_enable => vid_tx_de,
 			out_pixel => vid_tx_d, out_hpix => vid_x, out_vpix => vid_y);
 
-	vid_tx_clk <= not pixel_clk; --when pixel_clk_locked = '1' else '0';
+	vid_tx_clk <= pixel_clk; --when pixel_clk_locked = '1' else '0';
 
 	-- text output
 	tile_ent : entity work.tile

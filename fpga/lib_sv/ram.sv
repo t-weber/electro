@@ -5,7 +5,8 @@
  * @license see 'LICENSE' file
  *
  * References:
- *   Listing 5.24 on pp. 119-120 of the book by Pong P. Chu, 2011, ISBN 978-1-118-00888-1.
+ *   - Listing 5.24 on pp. 119-120 of the book by Pong P. Chu, 2011, ISBN 978-1-118-00888-1.
+ *   - Chapter 7 in: https://docs.xilinx.com/v/u/en-US/xst_v6s6
  */
 
 
@@ -71,7 +72,7 @@ begin : gen_ports
 			if(in_read_ena == 1) begin
 				data[port_idx] <= words[in_addr[port_idx]];
 			end else begin
-				data[port_idx] <= {WORD_BITS{1'bz}};
+				data[port_idx] <= {WORD_BITS{1'b0}};
 			end
 		end
 	end

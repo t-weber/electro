@@ -15,9 +15,10 @@ use ieee.std_logic_1164.all;
 
 entity delay_tb is
 	port(
-		sig1_out : out std_logic;
-		sig2_out : out std_logic;
-		out_direct : out std_logic
+		out_direct : out std_logic;
+		out_sig : out std_logic;
+		out_vianext : out std_logic;
+		out_viareg : out std_logic
 	);
 end entity;
 
@@ -34,12 +35,15 @@ architecture delay_tb_arch of delay_tb is
 	constant ctr_max : natural := 5;
 
 	-- registered signals via next-state logic
-	signal sig1, sig1_next : std_logic := '0';
+	signal vianext, vianext_next : std_logic := '0';
 	signal ctr1, ctr1_next : natural range 0 to ctr_max := 0;
 
 	-- registered signals
-	signal sig2 : std_logic := '0';
+	signal sig : std_logic := '0';
 	signal ctr2 : natural range 0 to ctr_max := 0;
+
+	-- registered signals using separate process
+	signal viareg : std_logic := '0';
 
 begin
 	-- clock
@@ -47,8 +51,9 @@ begin
 
 
 	-- outputs
-	sig1_out <= sig1;
-	sig2_out <= sig2;
+	out_vianext <= vianext;
+	out_sig <= sig;
+	out_viareg <= viareg;
 
 
 	-- flip-flops
@@ -56,7 +61,7 @@ begin
 	begin
 		if rising_edge(clk) then
 			state <= state_next;
-			sig1 <= sig1_next;
+			vianext <= vianext_next;
 			ctr1 <= ctr1_next;
 
 			if state = Zero then
@@ -65,25 +70,27 @@ begin
 		end if;
 
 		report lf
-			& "clk = "          & std_logic'image(clk)
-			& ", state = "      & t_state'image(state)
-			& ", state_next = " & t_state'image(state_next)
+			& "clk = "            & std_logic'image(clk)
+			& ", state = "        & t_state'image(state)
+			& ", state_next = "   & t_state'image(state_next)
 			& lf
-			& "sig1 = "         & std_logic'image(sig1)
-			& ", sig1_next = "  & std_logic'image(sig1_next)
-			& ", sig2 = "       & std_logic'image(sig2)
+			& "vianext = "        & std_logic'image(vianext)
+			& ", vianext_next = " & std_logic'image(vianext_next)
+			& ", sig = "          & std_logic'image(sig)
+			& ", viareg = "       & std_logic'image(viareg)
 			& lf
-			& "ctr1 = "         & natural'image(ctr1)
-			& ", ctr1_next = "  & natural'image(ctr1_next)
-			& ", ctr2 = "       & natural'image(ctr2)
+			& "ctr1 = "           & natural'image(ctr1)
+			& ", ctr1_next = "    & natural'image(ctr1_next)
+			& ", ctr2 = "         & natural'image(ctr2)
 			& lf
-			& "sig1_out = "     & std_logic'image(sig1_out)
-			& ", sig2_out = "   & std_logic'image(sig2_out)
-			& ", out_direct = " & std_logic'image(out_direct);
+			& "out_vianext = "    & std_logic'image(out_vianext)
+			& ", out_sig = "      & std_logic'image(out_sig)
+			& ", out_viareg = "   & std_logic'image(out_viareg)
+			& ", out_direct = "   & std_logic'image(out_direct);
 	end process;
 
 
-	-- combinatorics
+	-- (mostly) combinatorics
 	sim_comb : process(all)
 		-- variable without delay
 		variable var1 : std_logic := '0';
@@ -91,34 +98,34 @@ begin
 
 	begin
 		state_next <= state;
-		sig1_next <= sig1;
+		vianext_next <= vianext;
 		ctr1_next <= ctr1;
 
-		sig2 <= '0';
+		sig <= '0';
 		var1 := '0';
 		--ctr2 <= 0;
 		--ctr3 := 0;
 
 		case state is
 			when Start =>
-				sig1_next <= '0';
-				sig2 <= '0';
+				vianext_next <= '0';
+				sig <= '0';
 				var1 := '0';
 				out_direct <= '0';
 
 				state_next <= One;
 
 			when One =>
-				sig1_next <= '1';
-				sig2 <= '1';
+				vianext_next <= '1';
+				sig <= '1';
 				var1 := '1';
 				out_direct <= '1';
 
 				state_next <= Zero;
 
 			when Zero =>
-				sig1_next <= '0';
-				sig2 <= '0';
+				vianext_next <= '0';
+				sig <= '0';
 				var1 := '0';
 				out_direct <= '0';
 
@@ -139,6 +146,25 @@ begin
 		report "var1 = " & std_logic'image(var1)
 			& ", ctr3 = " & natural'image(ctr3)
 			& lf;
+	end process;
+
+
+	-- registered outputs in separate process
+	sim_reg : process(clk)
+	begin
+		if rising_edge(clk) then
+			viareg <= '0';
+			case state_next is
+				when Start =>
+					viareg <= '0';
+				when One =>
+					viareg <= '1';
+				when Zero =>
+					viareg <= '0';
+				when Finish =>
+					null;
+			end case;
+		end if;
 	end process;
 
 end architecture;

@@ -69,7 +69,7 @@ begin
 				if in_read_ena(portidx) = '1' then
 					out_data(portidx) <= words(to_int(in_addr(portidx)));
 				else
-					out_data(portidx) <= (others => 'Z');
+					out_data(portidx) <= (others => '0');
 				end if;
 			end if;
 		end process;
