@@ -69,6 +69,9 @@ architecture videotest_impl of videotest is
 	signal tile_pix_x : std_logic_vector(3 downto 0) := (others => '0');
 	signal tile_pix_y : std_logic_vector(4 downto 0) := (others => '0');
 	signal cur_char : std_logic_vector(7 downto 0) := (others => '0');
+	signal cur_fgcol : std_logic_vector(8*3-1 downto 0) := (others => '1');
+	signal cur_bgcol : std_logic_vector(8*3-1 downto 0) := (others => '0');
+	signal cur_col : std_logic_vector(8*3-1 downto 0) := (others => '0');
 	signal font_pixel : std_logic := '0';
 
 
@@ -100,6 +103,7 @@ begin
 	----------------------------------------------------------------------------
 	-- video configuration
 	----------------------------------------------------------------------------
+	-- serial bus
 	vid_serial : entity work.serial2wire_ctrl
 		generic map(MAIN_CLK => MAIN_HZ, SERIAL_CLK => SERIAL_HZ)
 		port map(clk => clock50, rst => reset, enable => serial_vid_enable,
@@ -108,6 +112,7 @@ begin
 			err => serial_vid_err, busy => serial_vid_busy,
 			scl => vid_scl, sda => vid_sda);
 
+	-- configuration
 	vid_cfg : entity work.video_cfg
 		generic map(MAIN_CLK => MAIN_HZ,
 			BUS_WRITEADDR => SERIAL_VID_WRITE_ADDR, BUS_READADDR => SERIAL_VID_READ_ADDR)
@@ -123,6 +128,7 @@ begin
 	----------------------------------------------------------------------------
 	-- video signal generation
 	----------------------------------------------------------------------------
+	-- video controller
 	vid : entity work.video
 		generic map(
 			HSYNC_START => 110, HSYNC_STOP => 110 + 40, HSYNC_DELAY => 110 + 40 + 220,
@@ -130,14 +136,16 @@ begin
 			HPIX_VISIBLE => 1280, HPIX_TOTAL => 1280 + 110 + 40 + 220,
 			VPIX_VISIBLE => 720,  VPIX_TOTAL => 720 + 5 + 5 + 20)
 		port map(in_clk => pixel_clk, in_rst => reset or not pixel_clk_locked,
-			in_mem => (others => font_pixel), in_testpattern => sw(0),
+			in_mem => cur_col, --(others => font_pixel),
+			in_testpattern => sw(0),
 			out_hsync => vid_tx_hs, out_vsync => vid_tx_vs,
 			out_pixel_enable => vid_tx_de,
 			out_pixel => vid_tx_d, out_hpix => vid_x, out_vpix => vid_y);
 
+	-- pixel clock
 	vid_tx_clk <= pixel_clk; --when pixel_clk_locked = '1' else '0';
 
-	-- text output
+	-- --calculate character tiles for text output
 	tile_ent : entity work.tile
 		generic map(
 			SCREEN_WIDTH => 1280, SCREEN_HEIGHT => 720,
@@ -147,9 +155,40 @@ begin
 			out_tile_num => tile_num,
 			out_tile_pix_x => tile_pix_x, out_tile_pix_y => tile_pix_y);
 
-	txt_rom : entity work.textrom
-		generic map(NUM_PORTS => 1)
-		port map(in_addr(0) => tile_num, out_data(0) => cur_char);
+	-- text buffer in rom
+	--txt_rom : entity work.textrom
+	--	generic map(NUM_PORTS => 1)
+	--	port map(in_addr(0) => tile_num, out_data(0) => cur_char);
+
+	-- text buffer in ram
+	txt_ram : entity work.ram
+		generic map(NUM_PORTS => 1, NUM_WORDS => 80*30,
+			ADDR_BITS => 12, WORD_BITS => 8)
+		port map(
+			in_clk => pixel_clk, in_rst => reset,
+			in_addr(0) => tile_num, out_data(0) => cur_char,
+			in_read_ena(0) => '1', in_write_ena(0) => '0',
+			in_data(0) => (others => '0'));
+
+	-- text foreground colour
+	txt_fgram : entity work.ram
+		generic map(NUM_PORTS => 1, NUM_WORDS => 80*30,
+			ADDR_BITS => 12, WORD_BITS => 3*8)
+		port map(
+			in_clk => pixel_clk, in_rst => reset,
+			in_addr(0) => tile_num, out_data(0) => cur_fgcol,
+			in_read_ena(0) => '1', in_write_ena(0) => '0',
+			in_data(0) => (others => '0'));
+
+	-- text background colour
+	txt_bgram : entity work.ram
+		generic map(NUM_PORTS => 1, NUM_WORDS => 80*30,
+			ADDR_BITS => 12, WORD_BITS => 3*8)
+		port map(
+			in_clk => pixel_clk, in_rst => reset,
+			in_addr(0) => tile_num, out_data(0) => cur_bgcol,
+			in_read_ena(0) => '1', in_write_ena(0) => '0',
+			in_data(0) => (others => '0'));
 
 	-- generate font rom with:
 	--   ./genfont -h 24 -w 24 --target_height 24 --target_pitch 2 -t vhdl -o font.vhdl
@@ -157,6 +196,9 @@ begin
 		port map(in_char => cur_char(6 downto 0),
 			in_x => tile_pix_x, in_y => tile_pix_y,
 			out_pixel => font_pixel);
+
+	-- current pixel colour
+	cur_col <= cur_fgcol when font_pixel = '1' else cur_bgcol;
 	----------------------------------------------------------------------------
 
 end videotest_impl;

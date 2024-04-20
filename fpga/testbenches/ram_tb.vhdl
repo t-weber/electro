@@ -4,7 +4,7 @@
 -- @date 20-feb-2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../lib/conv.vhdl  &&   ghdl -a --std=08 ../lib/ram.vhdl  &&  ghdl -a --std=08 ram_tb.vhdl  &&  ghdl -e --std=08 ram_tb ram_tb_impl
+-- ghdl -a --std=08 ../lib/conv.vhdl  &&   ghdl -a --std=08 ../mem/ram.vhdl  &&  ghdl -a --std=08 ram_tb.vhdl  &&  ghdl -e --std=08 ram_tb ram_tb_impl
 -- ghdl -r --std=08 ram_tb ram_tb_impl --vcd=ram_tb.vcd --stop-time=25ns
 -- gtkwave ram_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --
@@ -37,7 +37,7 @@ architecture ram_tb_impl of ram_tb is
 
 	signal enable, write_enable : std_logic := '0';
 
-	signal addr : std_logic_vector(ADDR_WIDTH-1 downto 0); 
+	signal addr : std_logic_vector(ADDR_WIDTH-1 downto 0);
 	signal data, out_data : std_logic_vector(DATA_WIDTH-1 downto 0);
 begin
 

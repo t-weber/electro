@@ -4,7 +4,7 @@
 -- @date feb-2021, feb-2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../lib/sram_ctrl.vhdl  &&  ghdl -a --std=08 sram_ctrl_tb.vhdl  &&  ghdl -e --std=08 sram_ctrl_tb sram_ctrl_tb_impl
+-- ghdl -a --std=08 ../mem/sram_ctrl.vhdl  &&  ghdl -a --std=08 sram_ctrl_tb.vhdl  &&  ghdl -e --std=08 sram_ctrl_tb sram_ctrl_tb_impl
 -- ghdl -r --std=08 sram_ctrl_tb sram_ctrl_tb_impl --vcd=sram_ctrl_tb.vcd --stop-time=100ns
 -- gtkwave sram_ctrl_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --
@@ -46,7 +46,7 @@ architecture sram_ctrl_tb_impl of sram_ctrl_tb is
 
 	signal enable, write_enable : std_logic := '0';
 
-	signal addr : std_logic_vector(ADDR_WIDTH-1 downto 0); 
+	signal addr : std_logic_vector(ADDR_WIDTH-1 downto 0);
 	signal in_data, out_data : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal ready : std_logic;
 begin
@@ -186,7 +186,7 @@ begin
 		)
 		port map(
 			in_clk => theclk, --in_clk_mod => theclk_mod,
-			in_reset => '0', in_enable => enable, in_writeenable => write_enable,
+			in_reset => '0', in_start => enable, in_write => write_enable,
 			in_addr => addr, in_data => in_data,
 			out_data => out_data, out_ready => ready
 		);

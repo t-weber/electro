@@ -50,14 +50,22 @@ begin
 
 	gen_ports : for portidx in 0 to NUM_PORTS-1 generate
 	-- repeat this process for each port if generate for loops don't work
+	-- or if the module is not recognised as block ram
 	--gen_port0 : if NUM_PORTS >= 1 generate
 	--	constant portidx : natural := 0;
+
+	-- optional output register
+	--signal outreg : std_logic_vector(WORD_BITS-1 downto 0);
+
 	begin
+		--out_data(portidx) <= outreg;
+
 		process(in_clk, in_rst)
 		begin
 			if in_rst = '1' then
 				-- fill ram with zeros
 				words <= (others => (others => '0'));
+				--outreg <= (others => '0');
 
 			elsif rising_edge(in_clk) then
 				-- write data to ram: will be written in the next cycle
@@ -67,9 +75,10 @@ begin
 
 				-- read data from ram: will be available in the next cycle
 				if in_read_ena(portidx) = '1' then
+					--outreg <= words(to_int(in_addr(portidx)));
 					out_data(portidx) <= words(to_int(in_addr(portidx)));
-				else
-					out_data(portidx) <= (others => '0');
+				--else
+				--	out_data(portidx) <= (others => '0');
 				end if;
 			end if;
 		end process;
