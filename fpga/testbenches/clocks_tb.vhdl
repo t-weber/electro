@@ -4,7 +4,7 @@
 -- @date 17-mar-2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../lib/conv.vhdl  &&  ghdl -a --std=08 ../clock/clkgen.vhdl &&  ghdl -a --std=08 clocks_tb.vhdl  &&  ghdl -e --std=08 clocks_tb clocks_tb_arch
+-- ghdl -a --std=08 ../lib/conv.vhdl  &&  ghdl -a --std=08 ../clock/clkgen.vhdl  &&  ghdl -a --std=08 ../clock/clksync.vhdl  &&  ghdl -a --std=08 clocks_tb.vhdl  &&  ghdl -e --std=08 clocks_tb clocks_tb_arch
 -- ghdl -r --std=08 clocks_tb clocks_tb_arch --vcd=clocks_tb.vcd --stop-time=500ns
 -- gtkwave clocks_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --
@@ -30,13 +30,12 @@ architecture clocks_tb_arch of clocks_tb is
 	-- data generated in slow clock domain
 	constant BITS : natural := 8;
 	signal data : std_logic_vector(BITS-1 downto 0);
-
-	-- flip-flops to pass the data to the fast clock domain
-	constant NUM_FLIPFLOPS : natural := 2;
-	signal data_stable : t_logicvecarray(0 to NUM_FLIPFLOPS-1)(BITS-1 downto 0);
+	signal stable_data : std_logic_vector(BITS-1 downto 0);
 
 begin
-	-- main clock
+	--
+	-- fast main clock
+	--
 	main_clk <= not main_clk after MAIN_CLK_DELAY;
 
 
@@ -49,29 +48,26 @@ begin
 
 
 	--
+	-- data synchronisation
+	--
+	clk_sync : entity work.clksync
+		generic map(BITS => BITS, FLIPFLOPS => 2)
+		port map(in_clk => main_clk, in_rst => rst,
+			in_data => data, out_data => stable_data);
+
+
+	--
 	-- main clock process
 	--
 	sim_main_clk : process(main_clk, rst)
 	begin
-		if rst = '1' then
-			data_stable <= (others => (others => '0'));
-
-		elsif rising_edge(main_clk) then
-			-- move data through flip-flop chain
-			data_stable(0) <= data;
-
-			for i in 1 to NUM_FLIPFLOPS - 1 loop
-				data_stable(i) <= data_stable(i-1);
-			end loop;
-		end if;
-
 		if VERBOSE = '1' then
 			report	lf &
 				"main_clk = " & std_logic'image(main_clk) &
 				", slow_clk = " & std_logic'image(slow_clk) &
 				", reset: " & std_logic'image(rst) &
-				", data: " & to_hstring(data) &
-				", data_buf: " & to_hstring(data_stable(NUM_FLIPFLOPS-1));
+				", data: " & to_hstring(stable_data);
+				--", data_buf: " & to_hstring(data_stable(NUM_FLIPFLOPS-1));
 		end if;
 	end process;
 

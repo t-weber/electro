@@ -7,6 +7,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use work.conv.all;
 
 library pixclk_pll;
 use pixclk_pll.all;
@@ -38,7 +39,7 @@ entity videotest is
 		vid_tx_d : out std_logic_vector(23 downto 0);
 
 		-- buttons, switches, and leds
-		key : in std_logic_vector(0 downto 0);
+		key : in std_logic_vector(1 downto 0);
 		sw : in std_logic_vector(0 downto 0);
 		ledr : out std_logic_vector(4 downto 0)
 	);
@@ -74,10 +75,17 @@ architecture videotest_impl of videotest is
 	signal cur_col : std_logic_vector(8*3-1 downto 0) := (others => '0');
 	signal font_pixel : std_logic := '0';
 
+	-- writing to text memory
+	signal char_to_write : std_logic_vector(7 downto 0) := (others => '0');
+	signal char_to_write_stable : std_logic_vector(7 downto 0) := (others => '0');
+	signal write_char : std_logic := '0';
+
 
 begin
 
 	reset <= not key(0);
+	write_char <= not key(1);
+
 	ledr(0) <= serial_vid_err;
 	ledr(1) <= serial_vid_busy;
 	ledr(2) <= pixel_clk_locked;
@@ -166,9 +174,14 @@ begin
 			ADDR_BITS => 12, WORD_BITS => 8)
 		port map(
 			in_clk => pixel_clk, in_rst => reset,
+			-- port 0
 			in_addr(0) => tile_num, out_data(0) => cur_char,
 			in_read_ena(0) => '1', in_write_ena(0) => '0',
-			in_data(0) => (others => '0'));
+			in_data(0) => (others => '0'),
+			-- port 1
+			in_addr(1) => int_to_logvec(15*80 + 40, 12),
+			in_read_ena(1) => '0', in_write_ena(1) => write_char,
+			in_data(1) => char_to_write_stable);
 
 	-- text foreground colour
 	txt_fgram : entity work.ram
@@ -190,7 +203,7 @@ begin
 			in_read_ena(0) => '1', in_write_ena(0) => '0',
 			in_data(0) => (others => '0'));
 
-	-- generate font rom with:
+	-- font rom; generate with:
 	--   ./genfont -h 24 -w 24 --target_height 24 --target_pitch 2 -t vhdl -o font.vhdl
 	font_rom : entity work.font
 		port map(in_char => cur_char(6 downto 0),
@@ -199,6 +212,18 @@ begin
 
 	-- current pixel colour
 	cur_col <= cur_fgcol when font_pixel = '1' else cur_bgcol;
+
+	----------------------------------------------------------------------------
+
+	-- data synchronisation for writing in text memory
+	txt_clk_sync : entity work.clksync
+		generic map(BITS => 8, FLIPFLOPS => 2)
+		port map(in_clk => pixel_clk, in_rst => reset,
+			in_data => char_to_write, out_data => char_to_write_stable);
+
+	-- char to write to memory
+	char_to_write <= x"41";
+
 	----------------------------------------------------------------------------
 
 end videotest_impl;
