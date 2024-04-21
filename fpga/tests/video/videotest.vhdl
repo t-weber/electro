@@ -15,16 +15,6 @@ use pixclk_pll.all;
 
 
 entity videotest is
-	generic(
-		-- clocks
-		MAIN_HZ   : natural := 50_000_000;
-		SERIAL_HZ : natural := 400_000;
-
-		-- serial bus addresses
-		SERIAL_VID_WRITE_ADDR : std_logic_vector(7 downto 0) := x"72";
-		SERIAL_VID_READ_ADDR  : std_logic_vector(7 downto 0) := x"73"
-	);
-
 	port(
 		-- main clock
 		clock50 : in std_logic;
@@ -48,6 +38,36 @@ end videotest;
 
 
 architecture videotest_impl of videotest is
+	----------------------------------------------------------------------------
+	-- constants
+	----------------------------------------------------------------------------
+	-- clocks
+	constant MAIN_HZ   : natural := 50_000_000;
+	constant SERIAL_HZ : natural := 400_000;
+
+	-- synchronisation signals
+	constant HSYNC_START : natural := 110;
+	constant HSYNC_STOP : natural := HSYNC_START + 40;
+	constant HSYNC_DELAY : natural := HSYNC_STOP + 220;
+	constant VSYNC_START : natural := 5;
+	constant VSYNC_STOP : natural := VSYNC_START + 5;
+	constant VSYNC_DELAY : natural := VSYNC_STOP + 20;
+
+	-- screen dimensions
+	constant SCREEN_WIDTH : natural := 1280;
+	constant SCREEN_HEIGHT : natural := 720;
+
+	-- text tiles
+	constant TEXT_TILE_WIDTH : natural := 16;
+	constant TEXT_TILE_HEIGHT : natural := 24;
+	constant NUM_TEXT_ROWS : natural := 30;
+	constant NUM_TEXT_COLS : natural := 80;
+
+	-- serial bus addresses
+	constant SERIAL_VID_WRITE_ADDR : std_logic_vector(7 downto 0) := x"72";
+	constant SERIAL_VID_READ_ADDR  : std_logic_vector(7 downto 0) := x"73";
+	----------------------------------------------------------------------------
+
 	signal reset : std_logic := '0';
 
 	-- serial interface
@@ -79,7 +99,6 @@ architecture videotest_impl of videotest is
 	signal char_to_write : std_logic_vector(7 downto 0) := (others => '0');
 	signal char_to_write_stable : std_logic_vector(7 downto 0) := (others => '0');
 	signal write_char : std_logic := '0';
-
 
 begin
 
@@ -139,10 +158,10 @@ begin
 	-- video controller
 	vid : entity work.video
 		generic map(
-			HSYNC_START => 110, HSYNC_STOP => 110 + 40, HSYNC_DELAY => 110 + 40 + 220,
-			VSYNC_START => 5,   VSYNC_STOP => 5 + 5,    VSYNC_DELAY => 5 + 5 + 20,
-			HPIX_VISIBLE => 1280, HPIX_TOTAL => 1280 + 110 + 40 + 220,
-			VPIX_VISIBLE => 720,  VPIX_TOTAL => 720 + 5 + 5 + 20)
+			HSYNC_START => HSYNC_START, HSYNC_STOP => HSYNC_STOP, HSYNC_DELAY => HSYNC_DELAY,
+			VSYNC_START => VSYNC_START, VSYNC_STOP => VSYNC_STOP, VSYNC_DELAY => VSYNC_DELAY,
+			HPIX_VISIBLE => SCREEN_WIDTH,  HPIX_TOTAL => SCREEN_WIDTH + HSYNC_DELAY,
+			VPIX_VISIBLE => SCREEN_HEIGHT, VPIX_TOTAL => SCREEN_HEIGHT + VSYNC_DELAY)
 		port map(in_clk => pixel_clk, in_rst => reset or not pixel_clk_locked,
 			in_mem => cur_col, --(others => font_pixel),
 			in_testpattern => sw(0),
@@ -155,11 +174,9 @@ begin
 
 	-- --calculate character tiles for text output
 	tile_ent : entity work.tile
-		generic map(
-			SCREEN_WIDTH => 1280, SCREEN_HEIGHT => 720,
-			TILE_WIDTH => 16, TILE_HEIGHT => 24)
-		port map(
-			in_x => vid_x, in_y => vid_y,
+		generic map(SCREEN_WIDTH => SCREEN_WIDTH, SCREEN_HEIGHT => SCREEN_HEIGHT,
+			TILE_WIDTH => TEXT_TILE_WIDTH, TILE_HEIGHT => TEXT_TILE_HEIGHT)
+		port map(in_x => vid_x, in_y => vid_y,
 			out_tile_num => tile_num,
 			out_tile_pix_x => tile_pix_x, out_tile_pix_y => tile_pix_y);
 
@@ -170,10 +187,9 @@ begin
 
 	-- text buffer in ram
 	txt_ram : entity work.ram
-		generic map(NUM_PORTS => 1, NUM_WORDS => 80*30,
+		generic map(NUM_PORTS => 2, NUM_WORDS => NUM_TEXT_ROWS * NUM_TEXT_COLS,
 			ADDR_BITS => 12, WORD_BITS => 8)
-		port map(
-			in_clk => pixel_clk, in_rst => reset,
+		port map(in_clk => pixel_clk, in_rst => reset,
 			-- port 0
 			in_addr(0) => tile_num, out_data(0) => cur_char,
 			in_read_ena(0) => '1', in_write_ena(0) => '0',
@@ -185,20 +201,18 @@ begin
 
 	-- text foreground colour
 	txt_fgram : entity work.ram
-		generic map(NUM_PORTS => 1, NUM_WORDS => 80*30,
+		generic map(NUM_PORTS => 1, NUM_WORDS => NUM_TEXT_ROWS * NUM_TEXT_COLS,
 			ADDR_BITS => 12, WORD_BITS => 3*8)
-		port map(
-			in_clk => pixel_clk, in_rst => reset,
+		port map(in_clk => pixel_clk, in_rst => reset,
 			in_addr(0) => tile_num, out_data(0) => cur_fgcol,
 			in_read_ena(0) => '1', in_write_ena(0) => '0',
 			in_data(0) => (others => '0'));
 
 	-- text background colour
 	txt_bgram : entity work.ram
-		generic map(NUM_PORTS => 1, NUM_WORDS => 80*30,
+		generic map(NUM_PORTS => 1, NUM_WORDS => NUM_TEXT_ROWS * NUM_TEXT_COLS,
 			ADDR_BITS => 12, WORD_BITS => 3*8)
-		port map(
-			in_clk => pixel_clk, in_rst => reset,
+		port map(in_clk => pixel_clk, in_rst => reset,
 			in_addr(0) => tile_num, out_data(0) => cur_bgcol,
 			in_read_ena(0) => '1', in_write_ena(0) => '0',
 			in_data(0) => (others => '0'));
