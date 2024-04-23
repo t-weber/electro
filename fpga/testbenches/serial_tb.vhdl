@@ -52,7 +52,7 @@ begin
 		port map(in_clk => clk, in_reset => rst,
 			in_enable => start, in_parallel => data,
 			out_clk => serial_clk, out_serial => serial_data,
-			out_next_word => nextbyte);
+			in_serial => '0', out_next_word => nextbyte);
 
 
 	sim : process(clk)

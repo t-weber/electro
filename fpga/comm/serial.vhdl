@@ -29,13 +29,23 @@ entity serial is
 		-- main clock and reset
 		in_clk, in_reset : in std_logic;
 
-		-- serial output data
+		-- serial clock
 		out_clk, out_ready : out std_logic;
+
+		-- enable transmission
+		in_enable : in std_logic;
+
+		-- parallel input data (FPGA -> IC)
+		in_parallel : in std_logic_vector(BITS-1 downto 0);
+
+		-- serial output data (FPGA -> IC)
 		out_serial, out_next_word : out std_logic;
 
-		-- parallel input data
-		in_parallel : in std_logic_vector(BITS-1 downto 0);
-		in_enable : in std_logic
+		-- serial input data (IC -> FPGA)
+		in_serial : in std_logic;
+
+		-- parallel output data (IC -> FPGA)
+		out_parallel : out std_logic_vector(BITS-1 downto 0)
 	);
 end entity;
 
@@ -45,7 +55,6 @@ architecture serial_impl of serial is
 	-- states and next state logic
 	type t_serial_state is ( Ready, Transmit );
 	signal serial_state, next_serial_state : t_serial_state := Ready;
-	signal parallel_data, next_parallel_data : std_logic_vector(BITS-1 downto 0);
 
 	-- serial clock
 	signal serial_clk : std_logic := '1';
@@ -53,8 +62,17 @@ architecture serial_impl of serial is
 	-- bit counter
 	signal bit_ctr, next_bit_ctr : natural range 0 to BITS-1 := 0;
 
-	-- serial output buffer
-	signal out_serial_buf : std_logic := SERIAL_DATA_INACTIVE;
+	-- bit counter with correct ordering
+	signal actual_bit_ctr : natural range 0 to BITS-1 := 0;
+
+	-- parallel output buffer (FPGA -> IC)
+	signal parallel_data, next_parallel_data : std_logic_vector(BITS-1 downto 0)  := (others => '0');
+
+	-- serial output buffer (FPGA -> IC)
+	signal serial_buf_out : std_logic := SERIAL_DATA_INACTIVE;
+
+	-- parallel input buffer (IC -> FPGA)
+	signal parallel_buf_in, next_parallel_buf_in : std_logic_vector(BITS-1 downto 0) := (others => '0');
 
 begin
 	--
@@ -110,18 +128,31 @@ begin
 		if in_reset = '1' then
 			-- parallel data register
 			parallel_data <= (others => '0');
+			parallel_buf_in <= (others => '0');
 
 		-- clock
 		--elsif falling_edge(in_clk) then
 		elsif rising_edge(in_clk) then
 			-- parallel data register
 			parallel_data <= next_parallel_data;
+			parallel_buf_in <= next_parallel_buf_in;
 		end if;
 	end process;
 
 
 	--
-	-- register input parallel data
+	-- get bit counter with correct ordering
+	--
+	gen_ctr_1 : if LOWBIT_FIRST = '1' generate
+		actual_bit_ctr <= bit_ctr;
+	end generate;
+	gen_ctr_0 : if LOWBIT_FIRST = '0' generate
+		actual_bit_ctr <= BITS - bit_ctr - 1;
+	end generate;
+
+
+	--
+	-- register input parallel data (FPGA -> IC)
 	--
 	proc_input : process(in_enable, in_parallel, parallel_data)
 	begin
@@ -134,26 +165,46 @@ begin
 
 
 	--
-	-- generate output with the chosen bit ordering
+	-- buffer output with the chosen bit ordering (FPGA -> IC)
 	--
-	gen_outp_1 : if LOWBIT_FIRST = '1' generate
-		out_serial_buf <= parallel_data(bit_ctr);
-	end generate;
-	gen_outp_0 : if LOWBIT_FIRST = '0' generate
-		out_serial_buf <= parallel_data(BITS - bit_ctr - 1);
-	end generate;
+	serial_buf_out <= parallel_data(actual_bit_ctr);
 
 
-	-- registered output
-	out_serial <= out_serial_buf
+	--
+	-- output serial data (FPGA -> IC)
+	--
+	out_serial <= serial_buf_out
 		when serial_state = Transmit
 		else SERIAL_DATA_INACTIVE;
 
 
 	--
+	-- buffer serial input (IC -> FPGA)
+	--
+	proc_in : process(in_serial, parallel_buf_in, serial_state, actual_bit_ctr)
+	begin
+		-- defaults
+		next_parallel_buf_in <= parallel_buf_in;
+
+		case serial_state is
+			when Ready => null;
+
+			when Transmit =>
+				next_parallel_buf_in(actual_bit_ctr) <= in_serial;
+			end case;
+	end process;
+
+
+	--
+	-- output read parallel data (IC -> FPGA)
+	--
+	out_parallel <= parallel_buf_in;
+
+
+	--
 	-- state combinatorics
 	--
-	proc_comb : process(in_enable, serial_state, bit_ctr, parallel_data)
+	proc_comb : process(in_enable, serial_state, bit_ctr)
 	begin
 		-- defaults
 		next_serial_state <= serial_state;

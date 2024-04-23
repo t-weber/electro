@@ -23,8 +23,9 @@ entity main is
 		-- main clock
 		clock_50_b7a : in std_logic;
 
-		-- lcd serial clock and data lines
-		lcd_scl, lcd_sda : out std_logic;
+		-- lcd reset, serial clock and data lines (3-wire serial bus)
+		lcd_reset, lcd_scl, lcd_sda : out std_logic;
+		lcd_sda_in : in std_logic;
 
 		ledg : out std_logic_vector(1 downto 0);
 		key : in std_logic_vector(1 downto 0)
@@ -40,6 +41,7 @@ architecture main_impl of main is
 
 	signal serial_enable, serial_next, serial_ready : std_logic;
 	signal serial_data : std_logic_vector(WORDBITS-1 downto 0);
+	signal serial_data_in : std_logic_vector(WORDBITS-1 downto 0);
 
 begin
 	-- lcd memory
@@ -54,7 +56,7 @@ begin
 		port map(in_clk => clock_50_b7a, in_reset => reset,
 			in_update => refresh,
 			in_bus_next => serial_next, in_bus_ready => serial_ready,
-			out_bus_data => serial_data, out_bus_enable => serial_enable, 
+			out_bus_data => serial_data, out_bus_enable => serial_enable,
 			in_mem_word => ram_read, out_mem_addr => ram_addr);
 
 	-- serial bus for lcd
@@ -63,12 +65,15 @@ begin
 		port map(in_clk => clock_50_b7a, in_reset => reset,
 			in_enable => serial_enable, in_parallel => serial_data,
 			out_next_word => serial_next, out_ready => serial_ready,
-			out_clk => lcd_scl, out_serial => lcd_sda);
+			out_clk => lcd_scl, out_serial => lcd_sda,
+			in_serial => lcd_sda_in, out_parallel => serial_data_in);
 
 	reset <= not key(0);
 	refresh <= not key(1);
 
 	ledg(0) <= reset;
 	ledg(1) <= refresh;
+
+	lcd_reset <= not reset;
 
 end main_impl;
