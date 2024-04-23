@@ -121,7 +121,7 @@ begin
 
 
 	--
-	-- buffer input parallel data
+	-- register input parallel data
 	--
 	proc_input : process(in_enable, in_parallel, parallel_data)
 	begin
@@ -144,10 +144,16 @@ begin
 	end generate;
 
 
+	-- registered output
+	out_serial <= out_serial_buf
+		when serial_state = Transmit
+		else SERIAL_DATA_INACTIVE;
+
+
 	--
 	-- state combinatorics
 	--
-	proc_comb : process(in_enable, serial_state, bit_ctr, parallel_data, out_serial_buf)
+	proc_comb : process(in_enable, serial_state, bit_ctr, parallel_data)
 	begin
 		-- defaults
 		next_serial_state <= serial_state;
@@ -155,7 +161,6 @@ begin
 
 		out_next_word <= '0';
 		out_ready <= '0';
-		out_serial <= SERIAL_DATA_INACTIVE;
 
 		-- state machine
 		case serial_state is
@@ -169,9 +174,6 @@ begin
 
 			-- serialise parallel data
 			when Transmit =>
-				-- output current bit
-				out_serial <= out_serial_buf;
-
 				-- end of word?
 				if bit_ctr = BITS - 1 then
 					out_next_word <= '1';

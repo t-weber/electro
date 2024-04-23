@@ -52,9 +52,9 @@ reg [$clog2(BITS) : 0] bit_ctr = 0;
 reg [$clog2(BITS) : 0] next_bit_ctr;
 
 // output registers
-reg serial = SERIAL_DATA_INACTIVE;
+reg serial_buf = SERIAL_DATA_INACTIVE;
 reg next_word = 0;
-assign out_serial = serial;
+assign out_serial = serial_buf;
 assign out_next_word = next_word;
 
 
@@ -122,7 +122,7 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 end
 
 
-// buffer input parallel data
+// register input parallel data
 always@(in_enable, in_parallel, parallel_data) begin
 	next_parallel_data <= parallel_data;
 
@@ -132,14 +132,35 @@ always@(in_enable, in_parallel, parallel_data) begin
 end
 
 
+// registered output
+always_ff@(posedge in_clk) begin
+	serial_buf = SERIAL_DATA_INACTIVE;
+
+	case(next_serial_state)
+		Ready: begin
+		end
+
+		Transmit: begin
+			// output current bit
+			if(LOWBIT_FIRST == 1) begin
+				serial_buf = parallel_data[bit_ctr];
+			end else begin
+				serial_buf = parallel_data[BITS - bit_ctr - 1];
+			end
+		end
+
+		default: begin
+		end
+	endcase
+end
+
+
 // state combinatorics
 always_comb begin
-	//defaults
+	// defaults
 	next_serial_state = serial_state;
 	next_bit_ctr = bit_ctr;
-
 	next_word = 0;
-	serial = SERIAL_DATA_INACTIVE;
 
 	// state machine
 	case(serial_state)
@@ -153,13 +174,6 @@ always_comb begin
 
 		// serialise parallel data
 		Transmit: begin
-			// output current bit
-			if(LOWBIT_FIRST == 1) begin
-				serial = parallel_data[bit_ctr];
-			end else begin
-				serial = parallel_data[BITS - bit_ctr - 1];
-			end
-
 			// end of word?
 			if(bit_ctr == BITS - 1) begin
 				next_word = 1;
