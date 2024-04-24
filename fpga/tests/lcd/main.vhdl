@@ -27,6 +27,7 @@ entity main is
 		lcd_reset, lcd_scl, lcd_sda : out std_logic;
 		lcd_sda_in : in std_logic;
 
+		ledr : out std_logic_vector(7 downto 0);
 		ledg : out std_logic_vector(1 downto 0);
 		key : in std_logic_vector(1 downto 0)
 	);
@@ -54,17 +55,18 @@ begin
 	lcd : entity work.lcd_3wire
 		generic map(MAIN_CLK => MAIN_CLK, LCD_SIZE => LCD_SIZE)
 		port map(in_clk => clock_50_b7a, in_reset => reset,
-			in_update => refresh,
+			in_update => refresh, in_bus_data => serial_data_in,
 			in_bus_next => serial_next, in_bus_ready => serial_ready,
 			out_bus_data => serial_data, out_bus_enable => serial_enable,
-			in_mem_word => ram_read, out_mem_addr => ram_addr);
+			in_mem_word => ram_read, out_mem_addr => ram_addr,
+			out_busy_flag => ledr);
 
 	-- serial bus for lcd
 	serial_lcd : entity work.serial
 		generic map(MAIN_HZ => MAIN_CLK, SERIAL_HZ => SERIAL_CLK)
 		port map(in_clk => clock_50_b7a, in_reset => reset,
 			in_enable => serial_enable, in_parallel => serial_data,
-			out_next_word => serial_next, out_ready => serial_ready,
+			out_word_finished => serial_next, out_ready => serial_ready,
 			out_clk => lcd_scl, out_serial => lcd_sda,
 			in_serial => lcd_sda_in, out_parallel => serial_data_in);
 

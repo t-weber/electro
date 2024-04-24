@@ -39,7 +39,7 @@ entity serial is
 		in_parallel : in std_logic_vector(BITS-1 downto 0);
 
 		-- serial output data (FPGA -> IC)
-		out_serial, out_next_word : out std_logic;
+		out_serial, out_word_finished : out std_logic;
 
 		-- serial input data (IC -> FPGA)
 		in_serial : in std_logic;
@@ -66,13 +66,15 @@ architecture serial_impl of serial is
 	signal actual_bit_ctr : natural range 0 to BITS-1 := 0;
 
 	-- parallel output buffer (FPGA -> IC)
-	signal parallel_data, next_parallel_data : std_logic_vector(BITS-1 downto 0)  := (others => '0');
+	signal parallel_data, next_parallel_data
+		: std_logic_vector(BITS-1 downto 0)  := (others => '0');
 
 	-- serial output buffer (FPGA -> IC)
 	signal serial_buf_out : std_logic := SERIAL_DATA_INACTIVE;
 
 	-- parallel input buffer (IC -> FPGA)
-	signal parallel_buf_in, next_parallel_buf_in : std_logic_vector(BITS-1 downto 0) := (others => '0');
+	signal parallel_buf_in, next_parallel_buf_in
+		: std_logic_vector(BITS-1 downto 0) := (others => '0');
 
 begin
 	--
@@ -191,7 +193,7 @@ begin
 
 			when Transmit =>
 				next_parallel_buf_in(actual_bit_ctr) <= in_serial;
-			end case;
+		end case;
 	end process;
 
 
@@ -210,7 +212,7 @@ begin
 		next_serial_state <= serial_state;
 		next_bit_ctr <= bit_ctr;
 
-		out_next_word <= '0';
+		out_word_finished <= '0';
 		out_ready <= '0';
 
 		-- state machine
@@ -227,7 +229,7 @@ begin
 			when Transmit =>
 				-- end of word?
 				if bit_ctr = BITS - 1 then
-					out_next_word <= '1';
+					out_word_finished <= '1';
 					next_bit_ctr <= 0;
 				else
 					-- next bit of the word

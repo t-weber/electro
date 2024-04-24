@@ -29,20 +29,23 @@ architecture serial_tb_arch of serial_tb is
 	signal clk, rst : std_logic := '0';
 
 	signal start : std_logic := '0';
+	signal ready : std_logic := '0';
 	signal initial : std_logic := '1';
 
 	signal data : std_logic_vector(BITS-1 downto 0);
 	signal serial_data : std_logic := '0';
 	signal serial_clk : std_logic := '0';
-	signal nextbyte, last_nextbyte : std_logic := '0';
+	signal byte_finished, last_byte_finished : std_logic := '0';
 	signal bus_cycle : std_logic := '0';
+
+	signal received_data : std_logic_vector(BITS-1 downto 0);
 
 	signal byte_ctr : natural range 0 to 3 := 0;
 
 begin
 	-- clock
 	clk <= not clk after CLK_DELAY;
-	bus_cycle <= nextbyte and (not last_nextbyte);
+	bus_cycle <= byte_finished and (not last_byte_finished);
 
 
 	-- instantiate modules
@@ -50,14 +53,15 @@ begin
 		generic map(BITS => BITS, SERIAL_CLK_INACTIVE => '1',
 			MAIN_HZ => MAIN_HZ, SERIAL_HZ => SERIAL_HZ)
 		port map(in_clk => clk, in_reset => rst,
-			in_enable => start, in_parallel => data,
-			out_clk => serial_clk, out_serial => serial_data,
-			in_serial => '0', out_next_word => nextbyte);
+			in_enable => start, out_ready => ready,
+			out_clk => serial_clk, out_word_finished => byte_finished,
+			in_parallel => data, out_serial => serial_data,
+			in_serial => serial_data, out_parallel => received_data);
 
 
 	sim : process(clk)
 	begin
-		last_nextbyte <= nextbyte;
+		last_byte_finished <= byte_finished;
 
 		-- next byte to transmit
 		if bus_cycle = '1' then
@@ -94,7 +98,8 @@ begin
 				", reset: " & std_logic'image(rst) &
 				", start: " & std_logic'image(start) &
 				", data: " & integer'image(to_int(data)) &
-				", next: " & std_logic'image(nextbyte) &
+				", received_data: " & integer'image(to_int(received_data)) &
+				", byte_finished: " & std_logic'image(byte_finished) &
 				", cycle: " & std_logic'image(bus_cycle) &
 				", serial_clk: " & std_logic'image(serial_clk) &
 				", serial_data: " & std_logic'image(serial_data) &
@@ -107,7 +112,9 @@ begin
 	begin
 		--if rising_edge(serial_clk) then
 		if falling_edge(serial_clk) then
-			report "serial_data: " & std_logic'image(serial_data);
+			report "transmitted data: " & std_logic'image(serial_data) &
+				", received data: " & to_hstring(received_data) &
+				", byte finished: " & std_logic'image(byte_finished);
 		end if;
 	end process;
 

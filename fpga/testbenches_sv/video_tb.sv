@@ -4,7 +4,7 @@
  * @date 30-mar-2024
  * @license see 'LICENSE' file
  *
- * iverilog -g2012 -o video_tb ../video_sv/video.sv video_tb.sv
+ * iverilog -g2012 -o video_tb ../display_sv/video.sv video_tb.sv
  * ./video_tb
  * gtkwave video_tb.vcd --rcvar "do_initial_zoom_fit yes"
  */

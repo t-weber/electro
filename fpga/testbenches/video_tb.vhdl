@@ -4,7 +4,7 @@
 -- @date 28 March 2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../lib/conv.vhdl  &&  ghdl -a --std=08 ../video/video.vhdl  &&  ghdl -a --std=08 video_tb.vhdl  &&  ghdl -e --std=08 video_tb video_tb_arch
+-- ghdl -a --std=08 ../lib/conv.vhdl  &&  ghdl -a --std=08 ../display/video.vhdl  &&  ghdl -a --std=08 video_tb.vhdl  &&  ghdl -e --std=08 video_tb video_tb_arch
 -- ghdl -r --std=08 video_tb video_tb_arch --vcd=video_tb.vcd --stop-time=3000ns
 -- gtkwave video_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --
