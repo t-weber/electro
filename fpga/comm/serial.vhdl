@@ -1,5 +1,5 @@
 --
--- serial controller: serialises parallel data
+-- serial controller for 3-wire protocol
 -- @author Tobias Weber <tobias.weber@tum.de>
 -- @date 25-nov-2023
 -- @license see 'LICENSE' file
@@ -32,6 +32,9 @@ entity serial is
 		-- serial clock
 		out_clk, out_ready : out std_logic;
 
+		-- current word transmitted or received?
+		out_word_finished : out std_logic;
+
 		-- enable transmission
 		in_enable : in std_logic;
 
@@ -39,7 +42,7 @@ entity serial is
 		in_parallel : in std_logic_vector(BITS-1 downto 0);
 
 		-- serial output data (FPGA -> IC)
-		out_serial, out_word_finished : out std_logic;
+		out_serial : out std_logic;
 
 		-- serial input data (IC -> FPGA)
 		in_serial : in std_logic;
@@ -65,14 +68,14 @@ architecture serial_impl of serial is
 	-- bit counter with correct ordering
 	signal actual_bit_ctr : natural range 0 to BITS-1 := 0;
 
-	-- parallel output buffer (FPGA -> IC)
+	-- parallel input buffer (FPGA -> IC)
 	signal parallel_data, next_parallel_data
-		: std_logic_vector(BITS-1 downto 0)  := (others => '0');
+		: std_logic_vector(BITS-1 downto 0) := (others => '0');
 
 	-- serial output buffer (FPGA -> IC)
 	signal serial_buf_out : std_logic := SERIAL_DATA_INACTIVE;
 
-	-- parallel input buffer (IC -> FPGA)
+	-- parallel output buffer (IC -> FPGA)
 	signal parallel_buf_in, next_parallel_buf_in
 		: std_logic_vector(BITS-1 downto 0) := (others => '0');
 
@@ -81,7 +84,8 @@ begin
 	-- generate serial clock
 	--
 	serial_clkgen : entity work.clkgen
-		generic map(MAIN_HZ => MAIN_HZ, CLK_HZ => SERIAL_HZ, CLK_INIT => '1')
+		generic map(MAIN_HZ => MAIN_HZ, CLK_HZ => SERIAL_HZ,
+			CLK_INIT => '1')
 		port map(in_clk => in_clk, in_reset => in_reset,
 			out_clk => serial_clk);
 
@@ -156,7 +160,8 @@ begin
 	--
 	-- register input parallel data (FPGA -> IC)
 	--
-	proc_input : process(in_enable, in_parallel, parallel_data)
+	proc_input : process(in_enable,
+		in_parallel, parallel_data)
 	begin
 		next_parallel_data <= parallel_data;
 
@@ -183,17 +188,15 @@ begin
 	--
 	-- buffer serial input (IC -> FPGA)
 	--
-	proc_in : process(in_serial, parallel_buf_in, serial_state, actual_bit_ctr)
+	proc_in : process(in_serial, parallel_buf_in,
+		serial_state, actual_bit_ctr)
 	begin
 		-- defaults
 		next_parallel_buf_in <= parallel_buf_in;
 
-		case serial_state is
-			when Ready => null;
-
-			when Transmit =>
-				next_parallel_buf_in(actual_bit_ctr) <= in_serial;
-		end case;
+		if serial_state = Transmit then
+			next_parallel_buf_in(actual_bit_ctr) <= in_serial;
+		end if;
 	end process;
 
 

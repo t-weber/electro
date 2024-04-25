@@ -22,6 +22,7 @@ module serial_tb;
 
 	logic clk = 0, rst = 0;
 	logic [BITS-1 : 0] data;
+	logic [BITS-1 : 0] parallel_in;
 	logic enable, ready, next;
 	logic serial, serial_clk;
 
@@ -36,8 +37,9 @@ module serial_tb;
 		serial_mod(
 		.in_clk(clk), .in_rst(rst),
 		.in_parallel(data), .in_enable(enable),
-		.out_serial(serial), .out_next_word(next),
-		.out_ready(ready), .out_clk(serial_clk)
+		.out_serial(serial), .out_word_finished(next),
+		.out_ready(ready), .out_clk(serial_clk),
+		.in_serial(serial), .out_parallel(parallel_in)
 	);
 
 
@@ -99,8 +101,8 @@ module serial_tb;
 	// output serial signal
 	//always@(posedge serial_clk) begin
 	always@(negedge serial_clk) begin
-		$display("t=%0t: serial=%b, next=%b, ready=%b",
-			$time, serial, next, ready);
+		$display("t=%0t: serial_out=%b, parallel_in=%x, next=%b, ready=%b",
+			$time, serial, parallel_in, next, ready);
 	end
 
 endmodule

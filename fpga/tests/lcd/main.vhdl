@@ -59,7 +59,7 @@ begin
 			in_bus_next => serial_next, in_bus_ready => serial_ready,
 			out_bus_data => serial_data, out_bus_enable => serial_enable,
 			in_mem_word => ram_read, out_mem_addr => ram_addr,
-			out_busy_flag => ledr);
+			out_busy_flag => ledr, out_lcd_reset => lcd_reset);
 
 	-- serial bus for lcd
 	serial_lcd : entity work.serial
@@ -73,9 +73,9 @@ begin
 	reset <= not key(0);
 	refresh <= not key(1);
 
+	--lcd_reset <= not reset;
+
 	ledg(0) <= reset;
 	ledg(1) <= refresh;
-
-	lcd_reset <= not reset;
 
 end main_impl;

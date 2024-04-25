@@ -29,10 +29,7 @@ entity lcd_3wire is
 		constant LCD_NUM_ADDRBITS : natural := 7;
 		constant LCD_NUM_DATABITS : natural := BUS_NUM_DATABITS;
 
-		-- start address of the display buffer in the memory
-		constant MEM_START_ADDR : natural := 0;
-
-		-- read lcd busy flag (1) or use wait timers (0)
+		-- read lcd busy flag
 		constant READ_BUSY_FLAG : std_logic := '1'
 	);
 
@@ -68,7 +65,7 @@ architecture lcd_3wire_impl of lcd_3wire is
 	type t_lcd_state is (
 		Wait_Reset, Reset, Resetted,
 		ReadInitSeq, Wait_Init,
-		ReadBusyFlag_Cmd, ReadBusyFlag, CheckBusyFlag,
+		ReadBusyFlag_Cmd, ReadBusyFlag_Wait, ReadBusyFlag, CheckBusyFlag,
 		Wait_PreUpdateDisplay, Pre_UpdateDisplay,
 		UpdateDisplay_Setup1, UpdateDisplay_Setup2,
 		UpdateDisplay_Setup3, UpdateDisplay_Setup4,
@@ -84,69 +81,68 @@ architecture lcd_3wire_impl of lcd_3wire is
 		BUS_NUM_DATABITS-1 downto 0) := (others => '0');
 
 	-- delays
-	constant const_wait_prereset : natural := MAIN_CLK/1000*50;           -- 50 ms
-	constant const_wait_reset : natural := MAIN_CLK/1000_000*500;         -- 500 us
-	constant const_wait_resetted : natural := MAIN_CLK/1000*1;            -- 1 ms
-	constant const_wait_init : natural := MAIN_CLK/1000_000*100;          -- 100 us
-	constant const_wait_PreUpdateDisplay : natural := MAIN_CLK/1000*100;  -- 100 ms
+	constant const_wait_prereset : natural := MAIN_CLK/1000*50;    -- 50 ms
+	constant const_wait_reset : natural := MAIN_CLK/1000_000*500;  -- 500 us
+	constant const_wait_resetted : natural := MAIN_CLK/1000*1;     -- 1 ms
+	constant const_wait_init : natural := MAIN_CLK/1000_000*100;   -- 100 us
+	constant const_wait_read : natural := MAIN_CLK/1000_000*100;   -- 100 us
+	constant const_wait_update : natural := MAIN_CLK/1000*100;     -- 100 ms
 
 	-- the maximum of the above delays
-	constant const_wait_max : natural := const_wait_PreUpdateDisplay;
+	constant const_wait_max : natural := const_wait_update;
 
 	-- busy wait counters
 	signal wait_counter, wait_counter_max : natural range 0 to const_wait_max := 0;
 
-	-- lcd with 4-lines and 20 characters per line
-	constant static_LCD_SIZE : natural := 4 * 20;
-
 	-- control bytes
-	constant ctrl_command : std_logic_vector(BUS_NUM_DATABITS-1 downto 0) := "00011111";
-	constant ctrl_data : std_logic_vector(BUS_NUM_DATABITS-1 downto 0) := "01011111";
-	constant ctrl_read : std_logic_vector(BUS_NUM_DATABITS-1 downto 0) := "00111111";
+	constant ctrl_command : std_logic_vector(BUS_NUM_DATABITS/2 - 1 downto 0) := "0001";
+	constant ctrl_data : std_logic_vector(BUS_NUM_DATABITS/2 - 1 downto 0) := "0101";
+	constant ctrl_read : std_logic_vector(BUS_NUM_DATABITS/2 - 1 downto 0) := "0011";
 
 	-- lcd init commands
 	-- see p. 5 in https://www.lcd-module.de/fileadmin/pdf/doma/dogm204.pdf
 	constant init_num_commands : natural := 21;
-	type t_init_arr is array(0 to init_num_commands*3 - 1) of std_logic_vector(LCD_NUM_DATABITS-1 downto 0);
+	type t_init_arr is array(0 to init_num_commands*3 - 1)
+		of std_logic_vector(LCD_NUM_DATABITS/2 - 1 downto 0);
 	constant init_arr : t_init_arr := (
-		ctrl_command, "00001011", "00000011",  -- 8 bit, 4 lines, normal font size, re=1, is=1
-		ctrl_command, "00000010", "00000000",  -- no sleep
-		ctrl_command, "00000110", "00000000",  -- shift direction (mirror view)
-		ctrl_command, "00001001", "00000000",  -- short font width, no caret inversion, 4 lines
-		ctrl_command, "00000000", "00000001",  -- scroll (or shift) off for lines 3-0
-		ctrl_command, "00000000", "00001100",  -- scroll amount
-		ctrl_command, "00000010", "00000111",  -- select rom
-		ctrl_data,    "00000000", "00000000",  -- first rom
-		--ctrl_data, "00000100", "00000000",   -- second rom
-		--ctrl_data, "00001000", "00000000",   -- third rom
-		ctrl_command, "00000110", "00000111",  -- select temperature control
-		ctrl_data, "00000010", "00000000",     -- temperature
+		ctrl_command, "1011", "0011",  -- 8 bit, 4 lines, normal font size, re=1, is=1
+		ctrl_command, "0010", "0000",  -- no sleep
+		ctrl_command, "0110", "0000",  -- shift direction (mirror view)
+		ctrl_command, "1001", "0000",  -- short font width, no caret inversion, 4 lines
+		ctrl_command, "0000", "0001",  -- scroll (or shift) off for lines 3-0
+		ctrl_command, "0000", "1100",  -- scroll amount
+		ctrl_command, "0010", "0111",  -- select rom
+		ctrl_data,    "0000", "0000",  -- first rom
+		--ctrl_data, "0100", "0000",   -- second rom
+		--ctrl_data, "1000", "0000",   -- third rom
+		ctrl_command, "0110", "0111",  -- select temperature control
+		ctrl_data,    "0010", "0000",  -- temperature
 
-		ctrl_command, "00001010", "00000011",  -- 8 bit, 4 lines, normal font size, re=1, is=0
-		ctrl_command, "00000010", "00000001",  -- 2 double-height bits, voltage divider bias bit 1, shift off (scroll on)
+		ctrl_command, "1010", "0011",  -- 8 bit, 4 lines, normal font size, re=1, is=0
+		ctrl_command, "0010", "0001",  -- 2 double-height bits, voltage divider bias bit 1, shift off (scroll on)
 
-		ctrl_command, "00001001", "00000011",  -- 8 bit, 4 lines, no blinking, no reversing, re=0, is=1
-		ctrl_command, "00001011", "00000001",  -- voltage divider bias bit 0, oscillator bits 2-0
-		ctrl_command, "00000111", "00000101",  -- no icon, voltage regulator, contrast bits 5 and 4
-		ctrl_command, "00000000", "00000111",  -- contrast bits 3-0
-		ctrl_command, "00001110", "00000110",  -- voltage divider, amplifier bits 2-0
+		ctrl_command, "1001", "0011",  -- 8 bit, 4 lines, no blinking, no reversing, re=0, is=1
+		ctrl_command, "1011", "0001",  -- voltage divider bias bit 0, oscillator bits 2-0
+		ctrl_command, "0111", "0101",  -- no icon, voltage regulator, contrast bits 5 and 4
+		ctrl_command, "0000", "0111",  -- contrast bits 3-0
+		ctrl_command, "1110", "0110",  -- voltage divider, amplifier bits 2-0
 
-		ctrl_command, "00001000", "00000011",  -- 8 bit, 4 lines, no blinking, no reversing, re=0, is=0
-		ctrl_command, "00000110", "00000000",  -- caret moving right, no display shifting
-		ctrl_command, "00001100", "00000000",  -- turn on display, no caret, no blinking
-		--ctrl_command, "00000000", "00000100" -- character ram address
-		--ctrl_data, "00001111", "00000001",   -- define character 0 line 0
-		--ctrl_data, "00001011", "00000001",   -- define character 0 line 1
-		--ctrl_data, "00000001", "00000001",   -- define character 0 line 2
-		--ctrl_data, "00000001", "00000001",   -- define character 0 line 3
-		--ctrl_data, "00000001", "00000001",   -- define character 0 line 4
-		--ctrl_data, "00000001", "00000001",   -- define character 0 line 5
-		--ctrl_data, "00000001", "00000001",   -- define character 0 line 6
-		--ctrl_data, "00000000", "00000000",   -- define character 0 line 7
-		ctrl_command, "00000001", "00000000"   -- clear
+		ctrl_command, "1000", "0011",  -- 8 bit, 4 lines, no blinking, no reversing, re=0, is=0
+		ctrl_command, "0110", "0000",  -- caret moving right, no display shifting
+		ctrl_command, "1100", "0000",  -- turn on display, no caret, no blinking
+		--ctrl_command, "0000", "0100" -- character ram address
+		--ctrl_data, "1111", "0001",   -- define character 0 line 0
+		--ctrl_data, "1011", "0001",   -- define character 0 line 1
+		--ctrl_data, "0001", "0001",   -- define character 0 line 2
+		--ctrl_data, "0001", "0001",   -- define character 0 line 3
+		--ctrl_data, "0001", "0001",   -- define character 0 line 4
+		--ctrl_data, "0001", "0001",   -- define character 0 line 5
+		--ctrl_data, "0001", "0001",   -- define character 0 line 6
+		--ctrl_data, "0000", "0000",   -- define character 0 line 7
+		ctrl_command, "0001", "0000"   -- clear
 
-		--ctrl_data, "00000010", "00000011",   -- test data -> 0x32 = '2'
-		--ctrl_data, "00000011", "00000011"    -- test data -> 0x33 = '3'
+		--ctrl_data, "0010", "0011",   -- test data -> 0x32 = '2'
+		--ctrl_data, "0011", "0011"    -- test data -> 0x33 = '3'
 	);
 
 	-- cycle counters
@@ -280,12 +276,7 @@ begin
 
 				-- end of current command?
 				if cmd_byte_cycle = 3 then
-					if READ_BUSY_FLAG = '1' then
-						next_lcd_state <= ReadBusyFlag_Cmd;
-						next_cmd_after_busy_check <= ReadInitSeq;
-					else
-						next_lcd_state <= Wait_Init;
-					end if;
+					next_lcd_state <= Wait_Init;
 					next_init_cycle <= init_cycle + 1;
 					next_cmd_byte_cycle <= 0;
 
@@ -300,7 +291,17 @@ begin
 						end if;
 					else
 						-- put command on bus
-						out_bus_data <= init_arr(init_cycle*3 + cmd_byte_cycle);
+						if cmd_byte_cycle = 0 then
+							-- command
+							out_bus_data <=
+								init_arr(init_cycle*3 + cmd_byte_cycle)
+								& "1111";
+						else
+							-- data
+							out_bus_data <=
+								"0000" &
+								init_arr(init_cycle*3 + cmd_byte_cycle);
+						end if;
 						out_bus_enable <= '1';
 					end if;
 				end if;
@@ -309,8 +310,13 @@ begin
 			when Wait_Init =>
 				wait_counter_max <= const_wait_init;
 				if wait_counter = wait_counter_max then
-					-- continue with init sequence
-					next_lcd_state <= ReadInitSeq;
+					if READ_BUSY_FLAG = '1' then
+						next_lcd_state <= ReadBusyFlag_Cmd;
+						next_cmd_after_busy_check <= ReadInitSeq;
+					else
+						-- continue with init sequence
+						next_lcd_state <= ReadInitSeq;
+					end if;
 				end if;
 			----------------------------------------------------------------------
 
@@ -319,10 +325,20 @@ begin
 			-- read busy flag
 			----------------------------------------------------------------------
 			when ReadBusyFlag_Cmd =>
-				out_bus_data <= ctrl_read;
+				out_bus_data <= ctrl_read & "1111";
 				out_bus_enable <= '1';
 
 				if next_byte_cycle = '1' then
+					next_lcd_state <= ReadBusyFlag_Wait;
+				end if;
+
+
+			when ReadBusyFlag_Wait =>
+				out_bus_data <= (others => '0');
+				out_bus_enable <= '0';
+
+				wait_counter_max <= const_wait_read;
+				if wait_counter = wait_counter_max then
 					next_lcd_state <= ReadBusyFlag;
 				end if;
 
@@ -344,7 +360,7 @@ begin
 					next_lcd_state <= cmd_after_busy_check;
 				else
 					-- keep polling the busy flag
-					next_lcd_state <= ReadBusyFlag_Cmd;
+					next_lcd_state <= ReadBusyFlag;
 				end if;
 			----------------------------------------------------------------------
 
@@ -353,7 +369,7 @@ begin
 			-- update display
 			----------------------------------------------------------------------
 			when Wait_PreUpdateDisplay =>
-				wait_counter_max <= const_wait_PreUpdateDisplay;
+				wait_counter_max <= const_wait_update;
 				if wait_counter = wait_counter_max then
 					next_lcd_state <= Pre_UpdateDisplay;
 				end if;
@@ -362,8 +378,8 @@ begin
 			when Pre_UpdateDisplay =>
 				if in_update = '1' then
 					if READ_BUSY_FLAG = '1' then
-						next_cmd_after_busy_check <= UpdateDisplay_Setup1;
 						next_lcd_state <= ReadBusyFlag_Cmd;
+						next_cmd_after_busy_check <= UpdateDisplay_Setup1;
 					else
 						next_lcd_state <= UpdateDisplay_Setup1;
 					end if;
@@ -372,7 +388,7 @@ begin
 
 			when UpdateDisplay_Setup1 =>
 				-- control byte for return
-				out_bus_data <= ctrl_command;
+				out_bus_data <= ctrl_command & "1111";
 				out_bus_enable <= '1';
 
 				if next_byte_cycle = '1' then
@@ -411,7 +427,7 @@ begin
 
 			when UpdateDisplay_Setup5 =>
 				-- control byte for data
-				out_bus_data <= ctrl_data;
+				out_bus_data <= ctrl_data & "1111";
 				out_bus_enable <= '1';
 
 				if next_byte_cycle = '1' then
@@ -436,20 +452,15 @@ begin
 				-- write characters
 				else
 					-- end of character data?
-					if write_cycle = static_LCD_SIZE then
+					if write_cycle = LCD_SIZE then
 						-- sequence finished
 						if in_bus_ready = '1' then
-							--if READ_BUSY_FLAG = '1' then
-							--	next_lcd_state <= Pre_UpdateDisplay;
-							--else
-								next_lcd_state <= Wait_PreUpdateDisplay;
-							--end if;
+							next_lcd_state <= Wait_PreUpdateDisplay;
 							next_write_cycle <= 0;
 							next_cmd_byte_cycle <= 0;
 						end if;
 					else
-						out_mem_addr <= int_to_logvec(
-							write_cycle + MEM_START_ADDR, LCD_NUM_ADDRBITS);
+						out_mem_addr <= int_to_logvec(write_cycle, LCD_NUM_ADDRBITS);
 						out_bus_data <= "0000" &
 							in_mem_word(cmd_byte_cycle*4 + 3) &
 							in_mem_word(cmd_byte_cycle*4 + 2) &

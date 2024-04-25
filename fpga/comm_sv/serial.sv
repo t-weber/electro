@@ -1,5 +1,5 @@
 /**
- * serial controller: serialises parallel data
+ * serial controller for 3-wire protocol
  * @author Tobias Weber
  * @date 22-dec-2023
  * @license see 'LICENSE' file
@@ -24,15 +24,26 @@ module serial
 	input wire in_clk,
 	input wire in_rst,
 
-	// serial output data
 	output wire out_clk,
 	output wire out_ready,
-	output wire out_serial,
-	output wire out_next_word,
 
-	// parallel input data
+	// enable transmission
+	input wire in_enable,
+
+	// current word transmitted or received?
+	output wire out_word_finished,
+
+	// parallel input data (FPGA -> IC)
 	input wire [BITS-1 : 0] in_parallel,
-	input wire in_enable
+
+	// serial output data (FPGA -> IC)
+	output wire out_serial,
+
+	// serial input data (IC -> FPGA)
+	input wire in_serial,
+
+	// parallel output data (IC -> FPGA)
+	output wire [BITS-1 : 0] out_parallel
 );
 
 
@@ -41,21 +52,37 @@ typedef enum bit [1 : 0] { Ready, Transmit } t_serial_state;
 t_serial_state serial_state      = Ready;
 t_serial_state next_serial_state = Ready;
 
-// input register
-reg [BITS-1 : 0] parallel_data, next_parallel_data;
-
 // serial clock
 reg serial_clk;
 
 // bit counter
-reg [$clog2(BITS) : 0] bit_ctr = 0;
-reg [$clog2(BITS) : 0] next_bit_ctr;
+reg [$clog2(BITS) : 0] bit_ctr = 0, next_bit_ctr = 0;
 
-// output registers
+// bit counter with correct ordering
+wire [$clog2(BITS) : 0] actual_bit_ctr;
+
+generate
+	if(LOWBIT_FIRST == 1) begin
+		assign actual_bit_ctr = bit_ctr;
+	end else begin
+		assign actual_bit_ctr = BITS - bit_ctr - 1;
+	end
+endgenerate
+
+
+// parallel input buffer (FPGA -> IC)
+reg [BITS-1 : 0] parallel_data = 0, next_parallel_data = 0;
+
+// serial output buffer (FPGA -> IC)
 reg serial_buf = SERIAL_DATA_INACTIVE;
-reg next_word = 0;
 assign out_serial = serial_buf;
-assign out_next_word = next_word;
+
+// parallel output buffer (IC -> FPGA)
+reg [BITS-1 : 0] parallel_buf_in = 0, next_parallel_buf_in = 0;
+assign out_parallel = parallel_buf_in;
+
+reg word_finished = 0;
+assign out_word_finished = word_finished;
 
 
 // generate serial clock
@@ -112,17 +139,19 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 	if(in_rst == 1) begin
 		// parallel data register
 		parallel_data <= 0;
+		parallel_buf_in <= 0;
 	end
 
 	// clock
 	else if(in_clk == 1) begin
 		// parallel data register
 		parallel_data <= next_parallel_data;
+		parallel_buf_in <= next_parallel_buf_in;
 	end
 end
 
 
-// register input parallel data
+// input parallel data to register (FPGA -> IC)
 always@(in_enable, in_parallel, parallel_data) begin
 	next_parallel_data <= parallel_data;
 
@@ -132,9 +161,9 @@ always@(in_enable, in_parallel, parallel_data) begin
 end
 
 
-// registered output
+// registered output (FPGA -> IC)
 always_ff@(posedge in_clk) begin
-	serial_buf = SERIAL_DATA_INACTIVE;
+	serial_buf <= SERIAL_DATA_INACTIVE;
 
 	case(next_serial_state)
 		Ready: begin
@@ -142,11 +171,25 @@ always_ff@(posedge in_clk) begin
 
 		Transmit: begin
 			// output current bit
-			if(LOWBIT_FIRST == 1) begin
-				serial_buf = parallel_data[bit_ctr];
-			end else begin
-				serial_buf = parallel_data[BITS - bit_ctr - 1];
-			end
+			serial_buf <= parallel_data[actual_bit_ctr];
+		end
+
+		default: begin
+		end
+	endcase
+end
+
+
+// buffer serial input (IC -> FPGA)
+always_comb begin
+	next_parallel_buf_in = parallel_buf_in;
+
+	case(serial_state)
+		Ready: begin
+		end
+
+		Transmit: begin
+			next_parallel_buf_in[actual_bit_ctr] = in_serial;
 		end
 
 		default: begin
@@ -160,7 +203,7 @@ always_comb begin
 	// defaults
 	next_serial_state = serial_state;
 	next_bit_ctr = bit_ctr;
-	next_word = 0;
+	word_finished = 0;
 
 	// state machine
 	case(serial_state)
@@ -176,7 +219,7 @@ always_comb begin
 		Transmit: begin
 			// end of word?
 			if(bit_ctr == BITS - 1) begin
-				next_word = 1;
+				word_finished = 1;
 				next_bit_ctr = 0;
 			end else begin
 				next_bit_ctr = bit_ctr + 1;
