@@ -71,15 +71,15 @@ endgenerate
 
 
 // parallel input buffer (FPGA -> IC)
-reg [BITS-1 : 0] parallel_data = 0, next_parallel_data = 0;
+reg [BITS-1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
 
 // serial output buffer (FPGA -> IC)
-reg serial_buf = SERIAL_DATA_INACTIVE;
-assign out_serial = serial_buf;
+reg serial_fromfpga = SERIAL_DATA_INACTIVE;
+assign out_serial = serial_fromfpga;
 
 // parallel output buffer (IC -> FPGA)
-reg [BITS-1 : 0] parallel_buf_in = 0, next_parallel_buf_in = 0;
-assign out_parallel = parallel_buf_in;
+reg [BITS-1 : 0] parallel_tofpga = 0, next_parallel_tofpga = 0;
+assign out_parallel = parallel_tofpga;
 
 reg word_finished = 0;
 assign out_word_finished = word_finished;
@@ -138,32 +138,32 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 	// reset
 	if(in_rst == 1) begin
 		// parallel data register
-		parallel_data <= 0;
-		parallel_buf_in <= 0;
+		parallel_fromfpga <= 0;
+		parallel_tofpga <= 0;
 	end
 
 	// clock
 	else if(in_clk == 1) begin
 		// parallel data register
-		parallel_data <= next_parallel_data;
-		parallel_buf_in <= next_parallel_buf_in;
+		parallel_fromfpga <= next_parallel_fromfpga;
+		parallel_tofpga <= next_parallel_tofpga;
 	end
 end
 
 
 // input parallel data to register (FPGA -> IC)
-always@(in_enable, in_parallel, parallel_data) begin
-	next_parallel_data <= parallel_data;
+always@(in_enable, in_parallel, parallel_fromfpga) begin
+	next_parallel_fromfpga <= parallel_fromfpga;
 
 	if(in_enable == 1) begin
-		next_parallel_data <= in_parallel;
+		next_parallel_fromfpga <= in_parallel;
 	end
 end
 
 
 // registered output (FPGA -> IC)
 always_ff@(posedge in_clk) begin
-	serial_buf <= SERIAL_DATA_INACTIVE;
+	serial_fromfpga <= SERIAL_DATA_INACTIVE;
 
 	case(next_serial_state)
 		Ready: begin
@@ -171,7 +171,7 @@ always_ff@(posedge in_clk) begin
 
 		Transmit: begin
 			// output current bit
-			serial_buf <= parallel_data[actual_bit_ctr];
+			serial_fromfpga <= parallel_fromfpga[actual_bit_ctr];
 		end
 
 		default: begin
@@ -182,14 +182,14 @@ end
 
 // buffer serial input (IC -> FPGA)
 always_comb begin
-	next_parallel_buf_in = parallel_buf_in;
+	next_parallel_tofpga = parallel_tofpga;
 
 	case(serial_state)
 		Ready: begin
 		end
 
 		Transmit: begin
-			next_parallel_buf_in[actual_bit_ctr] = in_serial;
+			next_parallel_tofpga[actual_bit_ctr] = in_serial;
 		end
 
 		default: begin

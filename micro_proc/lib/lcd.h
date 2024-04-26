@@ -15,7 +15,7 @@
 
 typedef struct _LCDInfo
 {
-	/* use direct pins or i2c bus */
+	/* use direct pins or 2-wire bus */
 	bool pin_mode;
 
 	/*------------------------------------------------------------*/
@@ -40,13 +40,13 @@ typedef struct _LCDInfo
 	/*------------------------------------------------------------*/
 
 	/*------------------------------------------------------------*/
-	/* i2c mode */
+	/* 2-wire mode */
 	/*------------------------------------------------------------*/
-	uint8_t i2c_addr;
+	uint8_t wire_addr;
 
-	void (*i2c_write)(uint8_t data);
-	void (*i2c_begin)(uint8_t addr);
-	void (*i2c_end)(uint8_t addr);
+	void (*wire_write)(uint8_t data);
+	void (*wire_begin)(uint8_t addr);
+	void (*wire_end)(uint8_t addr);
 	/*------------------------------------------------------------*/
 
 	/* (microcontroller's) delay function */
@@ -59,7 +59,7 @@ typedef struct _LCDInfo
  */
 extern void lcd_send_nibble(const LCDInfo* lcd, bool rs, uint8_t data);
 extern void lcd_send_nibble_pins(const LCDInfo* lcd, bool rs, uint8_t data);
-extern void lcd_send_nibble_i2c(const LCDInfo* lcd, bool rs, uint8_t data);
+extern void lcd_send_nibble_wire(const LCDInfo* lcd, bool rs, uint8_t data);
 
 
 /**

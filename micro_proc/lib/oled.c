@@ -25,14 +25,14 @@
  */
 void oled_send_byte(const OLEDInfo* oled, bool is_command, uint8_t data)
 {
-	oled->i2c_begin(oled->i2c_addr);
+	oled->wire_begin(oled->wire_addr);
 	if(is_command)
-		oled->i2c_write(0x80);
+		oled->wire_write(0x80);
 	else
-		oled->i2c_write(0xc0);
+		oled->wire_write(0xc0);
 
-	oled->i2c_write(data);
-	oled->i2c_end(oled->i2c_addr);
+	oled->wire_write(data);
+	oled->wire_end(oled->wire_addr);
 }
 
 
@@ -42,15 +42,15 @@ void oled_send_byte(const OLEDInfo* oled, bool is_command, uint8_t data)
 void oled_send_2bytes(const OLEDInfo* oled, bool is_command,
 	uint8_t data1, uint8_t data2)
 {
-	oled->i2c_begin(oled->i2c_addr);
+	oled->wire_begin(oled->wire_addr);
 	if(is_command)
-		oled->i2c_write(0x00);
+		oled->wire_write(0x00);
 	else
-		oled->i2c_write(0x40);
+		oled->wire_write(0x40);
 
-	oled->i2c_write(data1);
-	oled->i2c_write(data2);
-	oled->i2c_end(oled->i2c_addr);
+	oled->wire_write(data1);
+	oled->wire_write(data2);
+	oled->wire_end(oled->wire_addr);
 }
 
 
@@ -60,15 +60,15 @@ void oled_send_2bytes(const OLEDInfo* oled, bool is_command,
 void oled_send_nbytes(const OLEDInfo* oled, bool is_command,
 	const uint8_t *data, t_size len)
 {
-	oled->i2c_begin(oled->i2c_addr);
+	oled->wire_begin(oled->wire_addr);
 	if(is_command)
-		oled->i2c_write(0x00);
+		oled->wire_write(0x00);
 	else
-		oled->i2c_write(0x40);
+		oled->wire_write(0x40);
 
 	for(t_size i=0; i<len; ++i)
-		oled->i2c_write(data[i]);
-	oled->i2c_end(oled->i2c_addr);
+		oled->wire_write(data[i]);
+	oled->wire_end(oled->wire_addr);
 }
 
 

@@ -28,9 +28,9 @@ void lcd_send_nibble_pins(const LCDInfo* lcd, bool rs, uint8_t data)
 
 
 /**
- * send 4 bits to the display via the i2c bus
+ * send 4 bits to the display via the 2-wire bus
  */
-void lcd_send_nibble_i2c(const LCDInfo* lcd, bool rs, uint8_t data)
+void lcd_send_nibble_wire(const LCDInfo* lcd, bool rs, uint8_t data)
 {
 	uint8_t pin_en = 0b0100;
 	uint8_t pin_rs = 0b0001;
@@ -41,14 +41,14 @@ void lcd_send_nibble_i2c(const LCDInfo* lcd, bool rs, uint8_t data)
 		data |= pin_rs;
 	data |= pin_led;
 
-	lcd->i2c_begin(lcd->i2c_addr);
-	lcd->i2c_write(data | pin_en);
-	lcd->i2c_end(lcd->i2c_addr);
+	lcd->wire_begin(lcd->wire_addr);
+	lcd->wire_write(data | pin_en);
+	lcd->wire_end(lcd->wire_addr);
 
 	lcd->delay(1);
-	lcd->i2c_begin(lcd->i2c_addr);
-	lcd->i2c_write(data);
-	lcd->i2c_end(lcd->i2c_addr);
+	lcd->wire_begin(lcd->wire_addr);
+	lcd->wire_write(data);
+	lcd->wire_end(lcd->wire_addr);
 }
 
 
@@ -60,7 +60,7 @@ void lcd_send_nibble(const LCDInfo* lcd, bool rs, uint8_t data)
 	if(lcd->pin_mode)
 		lcd_send_nibble_pins(lcd, rs, data);
 	else
-		lcd_send_nibble_i2c(lcd, rs, data);
+		lcd_send_nibble_wire(lcd, rs, data);
 }
 
 

@@ -10,12 +10,12 @@
  *   - S. Fitzgerald and M. Shiloh, "Arduino Projects Book" (2013).
  */
 
-#define USE_I2C
+#define USE_2WIRE
 
 #include "lib/lcd.c"
 #include "lib/string.c"
 
-#ifdef USE_I2C
+#ifdef USE_2WIRE
 	#include <Wire.h>
 
 	static void wire_begin_transmission(uint8_t addr)
@@ -45,12 +45,12 @@ void setup()
 
 	/* set up lcd */
 	lcd.delay = &delay;
-#ifdef USE_I2C
+#ifdef USE_2WIRE
 	lcd.pin_mode = 0;
-	lcd.i2c_addr = 0x27;
-	lcd.i2c_begin = &wire_begin_transmission;
-	lcd.i2c_end = &wire_end_transmission;
-	lcd.i2c_write = &wire_write;
+	lcd.wire_addr = 0x27;
+	lcd.wire_begin = &wire_begin_transmission;
+	lcd.wire_end = &wire_end_transmission;
+	lcd.wire_write = &wire_write;
 
 	Wire.begin();
 #else

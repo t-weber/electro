@@ -18,7 +18,7 @@
 
 
 /*---------------------------------------------------------------------------*/
-/* i2c interface */
+/* 2-wire interface */
 /*---------------------------------------------------------------------------*/
 #include <Wire.h>
 
@@ -91,12 +91,12 @@ void setup()
 	oled.delay = &delay;
 	oled.width = 128;
 	oled.height = 64;
-	oled.i2c_addr = 0x3c;
-	oled.i2c_begin = &wire_begin_transmission;
-	oled.i2c_end = &wire_end_transmission;
-	oled.i2c_write = &wire_write;
+	oled.wire_addr = 0x3c;
+	oled.wire_begin = &wire_begin_transmission;
+	oled.wire_end = &wire_end_transmission;
+	oled.wire_write = &wire_write;
 
-	/* set up oled i2c bus */
+	/* set up oled 2-wire bus */
 	Wire.begin();
 	Wire.setClock(400000ul);
 	oled_init(&oled);

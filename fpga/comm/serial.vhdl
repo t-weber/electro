@@ -69,14 +69,14 @@ architecture serial_impl of serial is
 	signal actual_bit_ctr : natural range 0 to BITS-1 := 0;
 
 	-- parallel input buffer (FPGA -> IC)
-	signal parallel_data, next_parallel_data
+	signal parallel_fromfpga, next_parallel_fromfpga
 		: std_logic_vector(BITS-1 downto 0) := (others => '0');
 
 	-- serial output buffer (FPGA -> IC)
-	signal serial_buf_out : std_logic := SERIAL_DATA_INACTIVE;
+	signal serial_fromfpga : std_logic := SERIAL_DATA_INACTIVE;
 
 	-- parallel output buffer (IC -> FPGA)
-	signal parallel_buf_in, next_parallel_buf_in
+	signal parallel_tofpga, next_parallel_tofpga
 		: std_logic_vector(BITS-1 downto 0) := (others => '0');
 
 begin
@@ -133,15 +133,15 @@ begin
 		-- reset
 		if in_reset = '1' then
 			-- parallel data register
-			parallel_data <= (others => '0');
-			parallel_buf_in <= (others => '0');
+			parallel_fromfpga <= (others => '0');
+			parallel_tofpga <= (others => '0');
 
 		-- clock
 		--elsif falling_edge(in_clk) then
 		elsif rising_edge(in_clk) then
 			-- parallel data register
-			parallel_data <= next_parallel_data;
-			parallel_buf_in <= next_parallel_buf_in;
+			parallel_fromfpga <= next_parallel_fromfpga;
+			parallel_tofpga <= next_parallel_tofpga;
 		end if;
 	end process;
 
@@ -161,12 +161,12 @@ begin
 	-- register input parallel data (FPGA -> IC)
 	--
 	proc_input : process(in_enable,
-		in_parallel, parallel_data)
+		in_parallel, parallel_fromfpga)
 	begin
-		next_parallel_data <= parallel_data;
+		next_parallel_fromfpga <= parallel_fromfpga;
 
 		if in_enable = '1' then
-			next_parallel_data <= in_parallel;
+			next_parallel_fromfpga <= in_parallel;
 		end if;
 	end process;
 
@@ -174,13 +174,13 @@ begin
 	--
 	-- buffer output with the chosen bit ordering (FPGA -> IC)
 	--
-	serial_buf_out <= parallel_data(actual_bit_ctr);
+	serial_fromfpga <= parallel_fromfpga(actual_bit_ctr);
 
 
 	--
 	-- output serial data (FPGA -> IC)
 	--
-	out_serial <= serial_buf_out
+	out_serial <= serial_fromfpga
 		when serial_state = Transmit
 		else SERIAL_DATA_INACTIVE;
 
@@ -188,14 +188,14 @@ begin
 	--
 	-- buffer serial input (IC -> FPGA)
 	--
-	proc_in : process(in_serial, parallel_buf_in,
+	proc_in : process(in_serial, parallel_tofpga,
 		serial_state, actual_bit_ctr)
 	begin
 		-- defaults
-		next_parallel_buf_in <= parallel_buf_in;
+		next_parallel_tofpga <= parallel_tofpga;
 
 		if serial_state = Transmit then
-			next_parallel_buf_in(actual_bit_ctr) <= in_serial;
+			next_parallel_tofpga(actual_bit_ctr) <= in_serial;
 		end if;
 	end process;
 
@@ -203,7 +203,7 @@ begin
 	--
 	-- output read parallel data (IC -> FPGA)
 	--
-	out_parallel <= parallel_buf_in;
+	out_parallel <= parallel_tofpga;
 
 
 	--

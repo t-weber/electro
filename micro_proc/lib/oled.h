@@ -29,13 +29,13 @@ typedef struct _OLEDInfo
 	uint16_t cur_y;
 
 	/*------------------------------------------------------------*/
-	/* i2c mode */
+	/* 2-wire mode */
 	/*------------------------------------------------------------*/
-	uint8_t i2c_addr;
+	uint8_t wire_addr;
 
-	void (*i2c_write)(uint8_t data);
-	void (*i2c_begin)(uint8_t addr);
-	void (*i2c_end)(uint8_t addr);
+	void (*wire_write)(uint8_t data);
+	void (*wire_begin)(uint8_t addr);
+	void (*wire_end)(uint8_t addr);
 	/*------------------------------------------------------------*/
 
 	/* (microcontroller's) delay function */

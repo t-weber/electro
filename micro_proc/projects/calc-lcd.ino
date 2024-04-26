@@ -11,7 +11,7 @@
  *   - Interrupts: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
  */
 
-#define USE_I2C
+#define USE_2WIRE
 
 #include "lib/keypad.c"
 #include "lib/lcd.c"
@@ -21,9 +21,9 @@
 
 
 /*---------------------------------------------------------------------------*/
-/* i2c interface */
+/* 2-wire interface */
 /*---------------------------------------------------------------------------*/
-#ifdef USE_I2C
+#ifdef USE_2WIRE
 	#include <Wire.h>
 
 
@@ -164,12 +164,12 @@ void setup()
 	/* set up the lcd */
 	screen_needs_update = true;
 	lcd.delay = &delay;
-#ifdef USE_I2C
+#ifdef USE_2WIRE
 	lcd.pin_mode = 0;
-	lcd.i2c_addr = 0x27;
-	lcd.i2c_begin = &wire_begin_transmission;
-	lcd.i2c_end = &wire_end_transmission;
-	lcd.i2c_write = &wire_write;
+	lcd.wire_addr = 0x27;
+	lcd.wire_begin = &wire_begin_transmission;
+	lcd.wire_end = &wire_end_transmission;
+	lcd.wire_write = &wire_write;
 
 	Wire.begin();
 	/*Wire.setClock(400000ul);*/
