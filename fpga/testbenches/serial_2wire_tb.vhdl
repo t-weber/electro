@@ -103,8 +103,8 @@ begin
 				"clk = " & std_logic'image(clk) &
 				", reset: " & std_logic'image(rst) &
 				", start: " & std_logic'image(start) &
-				", tx: " & integer'image(to_int(data)) &
-				", rx: " & integer'image(to_int(received_data)) &
+				--", tx: " & integer'image(to_int(data)) &
+				--", rx: " & integer'image(to_int(received_data)) &
 				", next: " & std_logic'image(byte_finished) &
 				", cycle: " & std_logic'image(bus_cycle) &
 				", scl: " & std_logic'image(serial_clk) &
@@ -112,17 +112,6 @@ begin
 				", err: " & std_logic'image(error) &
 				", byte_ctr: " & integer'image(byte_ctr);
 		end if;
-	end process;
-
-
-	serial_proc : process(serial_clk)
-	begin
-		--if falling_edge(serial_clk) then
-		--	report  "scl = " & std_logic'image(serial_clk) &
-		--		", sda: " & std_logic'image(serial_data) &
-		--		", rx: " & to_hstring(received_data) &
-		--		", next: " & std_logic'image(byte_finished);
-		--end if;
 	end process;
 
 end architecture;

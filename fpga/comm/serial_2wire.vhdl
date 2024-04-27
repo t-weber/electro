@@ -25,8 +25,9 @@ entity serial_2wire is
 
 		-- word length
 		constant BITS : natural := 8;
-		constant LOWBIT_FIRST : std_logic := '1';
+		constant LOWBIT_FIRST : std_logic := '0';
 
+		-- continue after errors
 		constant IGNORE_ERROR : std_logic := '0'
 	);
 
@@ -190,9 +191,9 @@ begin
 	begin
 		next_parallel_fromfpga <= parallel_fromfpga;
 
-		if in_write = '1' then
+		--if in_write = '1' then
 			next_parallel_fromfpga <= in_parallel;
-		end if;
+		--end if;
 	end process;
 
 
@@ -213,7 +214,8 @@ begin
 	--
 	-- input serial data (IC -> FPGA)
 	--
-	proc_tofpga : process(serial_state, inout_serial, parallel_tofpga)
+	proc_tofpga : process(serial_state, inout_serial, parallel_tofpga,
+		actual_bit_ctr)
 	begin
 		next_parallel_tofpga <= parallel_tofpga;
 
@@ -307,6 +309,8 @@ begin
 		out_ready <= '0';
 		out_err <= '0';
 
+		--report t_serial_state'image(serial_state);
+
 		-- state machine
 		case serial_state is
 			-- wait for enable signal
@@ -372,7 +376,8 @@ begin
 
 				-- enable signal not active anymore?
 				if in_enable = '0' then
-					next_serial_state <= SendStop;
+					next_serial_state <= ReceiveAck;
+					next_state_afterack <= SendStop;
 					next_state_afterstop <= Ready;
 				end if;
 			-------------------------------------------------------
@@ -425,7 +430,7 @@ begin
 			-- receive or send acknowledge signal
 			-------------------------------------------------------
 			when ReceiveAck =>
-				if inout_serial = '1' or IGNORE_ERROR = '1' then
+				if inout_serial = '0' or IGNORE_ERROR = '1' then
 					next_serial_state <= state_afterack;
 				else
 					next_serial_state <= Error;
