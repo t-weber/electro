@@ -17,7 +17,7 @@ use pixclk_pll.all;
 entity videotest is
 	port(
 		-- main clock
-		clock50 : in std_logic;
+		clock_50_b7a : in std_logic;
 
 		-- video control interface
 		vid_scl, vid_sda : inout std_logic;
@@ -31,6 +31,7 @@ entity videotest is
 		-- buttons, switches, and leds
 		key : in std_logic_vector(1 downto 0);
 		sw : in std_logic_vector(0 downto 0);
+		ledg : out std_logic_vector(7 downto 0);
 		ledr : out std_logic_vector(4 downto 0)
 	);
 end videotest;
@@ -75,7 +76,9 @@ architecture videotest_impl of videotest is
 	signal serial_vid_data_read : std_logic_vector(7 downto 0) := (others => '0');
 	signal serial_vid_addr : std_logic_vector(7 downto 0) := (others => '0');
 	signal serial_vid_err, serial_vid_busy, serial_vid_enable : std_logic := '0';
+	signal serial_vid_ready, serial_vid_byte_finished : std_logic := '0';
 	signal vid_active : std_logic := '0';
+	signal vid_status : std_logic_vector(7 downto 0) := (others => '0');
 
 	-- pixel clock (via pll)
 	signal pixel_clk, pixel_clk_locked : std_logic := '0';
@@ -100,6 +103,7 @@ architecture videotest_impl of videotest is
 	signal char_to_write_stable : std_logic_vector(7 downto 0) := (others => '0');
 	signal write_char : std_logic := '0';
 
+
 begin
 
 	reset <= not key(0);
@@ -111,6 +115,7 @@ begin
 	ledr(3) <= test_clk;
 	ledr(4) <= vid_active;
 
+	ledg <= vid_status;
 
 	----------------------------------------------------------------------------
 	-- clocks
@@ -123,7 +128,7 @@ begin
 
 	-- 74.25 MHz clock via pll
 	pixclk_pll_inst : entity pixclk_pll.pixclk_pll
-		port map (refclk => clock50, rst => reset,
+		port map (refclk => clock_50_b7a, rst => reset,
 			outclk_0 => pixel_clk, locked => pixel_clk_locked);
 	----------------------------------------------------------------------------
 
@@ -131,25 +136,41 @@ begin
 	-- video configuration
 	----------------------------------------------------------------------------
 	-- serial bus
-	vid_serial : entity work.serial2wire_ctrl
-		generic map(MAIN_CLK => MAIN_HZ, SERIAL_CLK => SERIAL_HZ)
-		port map(clk => clock50, rst => reset, enable => serial_vid_enable,
-			addr => serial_vid_addr(7 downto 1), rw => serial_vid_addr(0),
-			data_rd => serial_vid_data_read, data_wr => serial_vid_data_write,
-			err => serial_vid_err, busy => serial_vid_busy,
-			scl => vid_scl, sda => vid_sda);
+	--vid_serial : entity work.serial2wire_ctrl
+	--	generic map(MAIN_CLK => MAIN_HZ, SERIAL_CLK => SERIAL_HZ)
+	--	port map(clk => clock_50_b7a, rst => reset, enable => serial_vid_enable,
+	--		addr => serial_vid_addr(7 downto 1), rw => serial_vid_addr(0),
+	--		data_rd => serial_vid_data_read, data_wr => serial_vid_data_write,
+	--		err => serial_vid_err, busy => serial_vid_busy,
+	--		scl => vid_scl, sda => vid_sda);
+
+	--serial_vid_byte_finished <= not serial_vid_busy;
+
+	vid_serial : entity work.serial_2wire
+		generic map(MAIN_HZ => MAIN_HZ, SERIAL_HZ => SERIAL_HZ)
+		port map(in_clk => clock_50_b7a, in_reset => reset,
+			in_enable => serial_vid_enable,
+			in_addr_write => SERIAL_VID_WRITE_ADDR,
+			in_addr_read => SERIAL_VID_READ_ADDR,
+			in_write => not serial_vid_addr(0),
+			in_parallel => serial_vid_data_write, out_parallel => serial_vid_data_read,
+			out_err => serial_vid_err, out_ready => serial_vid_ready,
+			out_word_finished => serial_vid_byte_finished,
+			inout_clk => vid_scl, inout_serial => vid_sda);
+
+	serial_vid_busy <= not serial_vid_ready;
 
 	-- configuration
 	vid_cfg : entity work.video_cfg
 		generic map(MAIN_CLK => MAIN_HZ,
 			BUS_WRITEADDR => SERIAL_VID_WRITE_ADDR, BUS_READADDR => SERIAL_VID_READ_ADDR)
-		port map(in_clk => clock50, in_reset => reset,
+		port map(in_clk => clock_50_b7a, in_reset => reset,
 			in_bus_busy => serial_vid_busy, in_bus_error => serial_vid_err,
 			in_int => vid_tx_int,
-			out_bus_enable => serial_vid_enable,
+			out_bus_enable => serial_vid_enable, in_bus_byte_finished => serial_vid_byte_finished,
 			out_bus_data => serial_vid_data_write, in_bus_data => serial_vid_data_read,
 			out_bus_addr => serial_vid_addr,
-			out_active => vid_active);
+			out_active => vid_active, out_status => vid_status);
 	----------------------------------------------------------------------------
 
 	----------------------------------------------------------------------------
@@ -172,7 +193,7 @@ begin
 	-- pixel clock
 	vid_tx_clk <= pixel_clk; --when pixel_clk_locked = '1' else '0';
 
-	-- --calculate character tiles for text output
+	-- calculate character tiles for text output
 	tile_ent : entity work.tile
 		generic map(SCREEN_WIDTH => SCREEN_WIDTH, SCREEN_HEIGHT => SCREEN_HEIGHT,
 			TILE_WIDTH => TEXT_TILE_WIDTH, TILE_HEIGHT => TEXT_TILE_HEIGHT)
@@ -201,6 +222,7 @@ begin
 
 	-- text foreground colour
 	txt_fgram : entity work.ram
+	--txt_fgram : entity work.textcolourram(textfgcolram_impl)
 		generic map(NUM_PORTS => 1, NUM_WORDS => NUM_TEXT_ROWS * NUM_TEXT_COLS,
 			ADDR_BITS => 12, WORD_BITS => 3*8)
 		port map(in_clk => pixel_clk, in_rst => reset,
@@ -210,6 +232,7 @@ begin
 
 	-- text background colour
 	txt_bgram : entity work.ram
+	--txt_bgram : entity work.textcolourram(textbgcolram_impl)
 		generic map(NUM_PORTS => 1, NUM_WORDS => NUM_TEXT_ROWS * NUM_TEXT_COLS,
 			ADDR_BITS => 12, WORD_BITS => 3*8)
 		port map(in_clk => pixel_clk, in_rst => reset,
@@ -237,7 +260,6 @@ begin
 
 	-- char to write to memory
 	char_to_write <= x"41";
-
 	----------------------------------------------------------------------------
 
 end videotest_impl;

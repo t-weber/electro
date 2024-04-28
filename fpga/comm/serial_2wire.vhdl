@@ -20,10 +20,8 @@ entity serial_2wire is
 		constant MAIN_HZ : natural := 50_000_000;
 		constant SERIAL_HZ : natural := 10_000;
 
-		-- target address length
+		-- target address and word lengths
 		constant ADDR_BITS : natural := 8;
-
-		-- word length
 		constant BITS : natural := 8;
 		constant LOWBIT_FIRST : std_logic := '0';
 
@@ -70,7 +68,7 @@ architecture serial_2wire_impl of serial_2wire is
 		Ready, Error,
 		TransmitWriteAddress, TransmitReadAddress,
 		Transmit, Receive,
-		SendStart, SendStart2,
+		SendStart, SendStart2, SendRepeatedStart,
 		SendStop, SendStop2,
 		ReceiveAck, SendAck, SendNoAck
 	);
@@ -119,8 +117,8 @@ begin
 	inout_clk <= serial_clk_z
 		when serial_state = Transmit or serial_state = Receive
 		  or serial_state = TransmitWriteAddress or serial_state = TransmitReadAddress
-		  or serial_state = ReceiveAck or serial_state = SendAck
-		  or serial_state = SendNoAck or serial_state = SendStop
+		  or serial_state = ReceiveAck or serial_state = SendAck or serial_state = SendNoAck
+		  or serial_state = SendStop or serial_state = SendRepeatedStart
 		else 'Z';
 
 
@@ -202,17 +200,14 @@ begin
 	--
 	-- input serial data (IC -> FPGA)
 	--
-	proc_tofpga : process(serial_state, inout_serial, parallel_tofpga,
-		actual_bit_ctr)
+	proc_tofpga : process(serial_state, inout_serial,
+		parallel_tofpga, actual_bit_ctr)
 	begin
 		next_parallel_tofpga <= parallel_tofpga;
 
-		case serial_state is
-			when Receive =>
-				next_parallel_tofpga(actual_bit_ctr) <= inout_serial;
-
-			when others => null;
-		end case;
+		if serial_state = Receive then
+			next_parallel_tofpga(actual_bit_ctr) <= inout_serial;
+		end if;
 	end process;
 
 
@@ -252,6 +247,10 @@ begin
 
 			when SendStart2 =>
 				inout_serial <= '0';
+
+			when SendRepeatedStart =>
+				-- same as SendStart, but with serial clock active
+				inout_serial <= 'Z';
 			-------------------------------------------------------
 
 			-------------------------------------------------------
@@ -355,7 +354,7 @@ begin
 					if in_write = '1' then
 						next_state_afterack <= Transmit;
 					else
-						next_state_afterack <= SendStart;
+						next_state_afterack <= SendRepeatedStart;
 						next_state_afterstart <= TransmitReadAddress;
 					end if;
 				else
@@ -411,6 +410,9 @@ begin
 
 			when SendStart2 =>
 				next_serial_state <= state_afterstart;
+
+			when SendRepeatedStart =>
+				next_serial_state <= SendStart2;
 			-------------------------------------------------------
 
 			-------------------------------------------------------

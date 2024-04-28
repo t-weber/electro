@@ -18,6 +18,7 @@ use ieee.std_logic_1164.all;
 use work.conv.all;
 
 
+
 entity video_cfg is
 	generic(
 		-- clock
@@ -37,6 +38,7 @@ entity video_cfg is
 		-- serial bus interface
 		in_bus_busy, in_bus_error : in std_logic;
 		in_bus_data : in std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+		in_bus_byte_finished : in std_logic;
 
 		-- video status interrupt
 		in_int : in std_logic;
@@ -46,6 +48,7 @@ entity video_cfg is
 		out_bus_data : out std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
 
 		-- is a monitor connected and the video output active?
+		out_status : out std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
 		out_active : out std_logic
 	);
 end entity;
@@ -58,17 +61,18 @@ architecture video_cfg_impl of video_cfg is
 		Status_SetAddr, Status_SetData, Status_Next,
 		ReadStatus_SetAddr, ReadStatus_SetReg, ReadStatus_GetData,
 		PowerUp_SetAddr, PowerUp_SetData, PowerUp_Next,
-		Wait_Int);
+		Wait_Int, Idle);
 	signal state, next_state : t_state := Wait_Reset;
 
 	-- serial bus busy signal
-	signal bus_last_busy, bus_cycle : std_logic := '0';
+	signal last_bus_byte_finished, bus_cycle : std_logic := '0';
 
 	-- reset delay and counter for busy wait
 	constant const_wait_reset : natural := MAIN_CLK/1000*200;  -- 200 ms [hw, p. 36]
 	signal wait_counter, wait_counter_max : natural range 0 to const_wait_reset := 0;
 
 	-- status register
+	constant CHECK_STATUS_REG : std_logic := '1';
 	signal status_reg, next_status_reg : std_logic_vector(BUS_NUM_DATABITS-1 downto 0) := (others => '0');
 	signal int_triggered, next_int_triggered : std_logic := '0';
 
@@ -136,11 +140,11 @@ begin
 
 	-- output status registers
 	out_active <= status_reg(5) and status_reg(6);
+	out_status <= status_reg;
 
 
-	-- rising edge of serial bus busy signal
-	bus_cycle <= in_bus_busy and (not bus_last_busy);
-
+	-- rising edge of serial bus finished signal
+	bus_cycle <= in_bus_byte_finished and (not last_bus_byte_finished);
 
 
 	--
@@ -168,7 +172,7 @@ begin
 			-- timer register
 			wait_counter <= 0;
 
-			bus_last_busy <= '0';
+			last_bus_byte_finished <= '0';
 
 		-- clock
 		elsif rising_edge(in_clk) then
@@ -197,7 +201,7 @@ begin
 				wait_counter <= wait_counter + 1;
 			end if;
 
-			bus_last_busy <= in_bus_busy;
+			last_bus_byte_finished <= in_bus_byte_finished;
 		end if;
 	end process;
 
@@ -240,7 +244,11 @@ begin
 			when Wait_Reset =>
 				wait_counter_max <= const_wait_reset;
 				if wait_counter = wait_counter_max then
-					next_state <= Status_SetAddr;
+					if CHECK_STATUS_REG = '1' then
+						next_state <= Status_SetAddr;
+					else
+						next_state <= PowerUp_SetAddr;
+				end if;
 				end if;
 
 
@@ -301,7 +309,8 @@ begin
 			----------------------------------------------------------------------
 			when ReadStatus_SetAddr =>
 				out_bus_addr <= BUS_WRITEADDR;
-				out_bus_data <= x"42";  -- status register address, [sw, p. 150]
+				-- status register address, [sw, p. 150]
+				out_bus_data <= x"42";
 				out_bus_enable <= '1';
 
 				if bus_cycle = '1' then
@@ -318,6 +327,8 @@ begin
 				end if;
 
 			when ReadStatus_GetData =>
+				out_bus_addr <= BUS_READADDR;
+
 				if in_bus_busy = '0' then
 					next_status_reg <= in_bus_data;
 					next_state <= CheckStatus;
@@ -373,10 +384,17 @@ begin
 				end if;
 
 			when PowerUp_Next =>
+				out_bus_addr <= BUS_WRITEADDR;
+
 				if in_bus_busy = '0' then
 					if powerup_cycle + 2 = powerup_arr'length then
 						-- at end of command list
-						next_state <= Wait_Int;
+						if CHECK_STATUS_REG = '1' then
+							next_state <= Wait_Int;
+						else
+							next_state <= Idle;
+							next_status_reg <= (5 => '1', 6 => '1', others => '0');
+						end if;
 						next_is_powered <= '1';
 						next_powerup_cycle <= 0;
 					else
@@ -385,6 +403,8 @@ begin
 						next_state <= PowerUp_SetAddr;
 					end if;
 				end if;
+
+			when Idle => null;
 			----------------------------------------------------------------------
 
 
