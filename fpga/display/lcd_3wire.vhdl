@@ -354,8 +354,7 @@ begin
 
 
 			when CheckBusyFlag =>
-				-- TODO: check why this is delayed by 1 bit
-				if busy_flag(6) = '0' then
+				if busy_flag(7) = '0' then
 					-- continue with next command
 					next_lcd_state <= cmd_after_busy_check;
 				else

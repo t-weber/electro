@@ -120,7 +120,7 @@ begin
 		when serial_state = Transmit or serial_state = Receive
 		  or serial_state = TransmitWriteAddress or serial_state = TransmitReadAddress
 		  or serial_state = ReceiveAck or serial_state = SendAck
-		  or serial_state = SendNoAck
+		  or serial_state = SendNoAck or serial_state = SendStop
 		else 'Z';
 
 
@@ -154,7 +154,7 @@ begin
 
 
 	--
-	-- state flip-flops for main clock
+	-- data flip-flops
 	--
 	main_ff : process(in_clk, in_reset) begin
 		-- reset
@@ -308,7 +308,7 @@ begin
 		out_ready <= '0';
 		out_err <= '0';
 
-		--report t_serial_state'image(serial_state);
+		report t_serial_state'image(serial_state);
 
 		-- state machine
 		case serial_state is

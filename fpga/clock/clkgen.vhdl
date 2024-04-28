@@ -17,7 +17,8 @@ entity clkgen is
 		constant CLK_HZ : natural := 10_000;
 
 		-- reset value of clock
-		constant CLK_INIT : std_logic := '0'
+		constant CLK_INIT : std_logic := '0';
+		constant SHIFT_CLK : std_logic := '0'
 	);
 
 	port(
@@ -37,30 +38,40 @@ architecture clkgen_impl of clkgen is
 
 begin
 	-- output clock
-	out_clk <= clk;
+	gen_clk : if MAIN_HZ = CLK_HZ generate
+		-- same frequency, just output main clock
+		out_clk <= in_clk;
+	end generate;
 
+	gen_clk_else : if MAIN_HZ /= CLK_HZ generate
+		out_clk <= clk;
 
-	--
-	-- generate clock
-	--
-	proc_clk : process(in_clk, in_reset)
-		constant clk_ctr_max : natural := MAIN_HZ / CLK_HZ / 2 - 1;
-		variable clk_ctr : natural range 0 to clk_ctr_max := 0;
-	begin
-		-- asynchronous reset
-		if in_reset = '1' then
-			clk_ctr := 0;
-			clk <= CLK_INIT;
-
-		-- clock
-		elsif rising_edge(in_clk) then
-			if clk_ctr = clk_ctr_max then
-				clk <= not clk;
+		--
+		-- generate clock
+		--
+		proc_clk : process(in_clk, in_reset)
+			constant clk_ctr_max : natural := MAIN_HZ / CLK_HZ / 2 - 1;
+			constant clk_ctr_shifted : natural :=  MAIN_HZ / CLK_HZ / 4;
+			variable clk_ctr : natural range 0 to clk_ctr_max := 0;
+		begin
+			-- asynchronous reset
+			if in_reset = '1' then
 				clk_ctr := 0;
-			else
-				clk_ctr := clk_ctr + 1;
+				if SHIFT_CLK = '1' then
+					clk_ctr := clk_ctr_shifted;
+				end if;
+				clk <= CLK_INIT;
+
+			-- clock
+			elsif rising_edge(in_clk) then
+				if clk_ctr = clk_ctr_max then
+					clk <= not clk;
+					clk_ctr := 0;
+				else
+					clk_ctr := clk_ctr + 1;
+				end if;
 			end if;
-		end if;
-	end process;
+		end process;
+	end generate;
 
 end architecture;

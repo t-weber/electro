@@ -22,7 +22,7 @@ architecture serial_tb_arch of serial_tb is
 	constant VERBOSE : std_logic := '0';
 
 	constant MAIN_HZ : natural := 40_000_000;
-	constant SERIAL_HZ : natural := 20_000_000;
+	constant SERIAL_HZ : natural := 10_000_000;
 	constant BITS : natural := 8;
 
 	constant CLK_DELAY : time := 20 ns;
@@ -110,6 +110,7 @@ begin
 
 	serial_proc : process(serial_clk)
 	begin
+		-- has to be opposite the edge triggers in the serial controller
 		--if rising_edge(serial_clk) then
 		if falling_edge(serial_clk) then
 			report "transmitted data: " & std_logic'image(serial_data) &

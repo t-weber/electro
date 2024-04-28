@@ -23,7 +23,7 @@ architecture serial_2wire_tb_arch of serial_2wire_tb is
 	constant VERBOSE : std_logic := '1';
 
 	constant MAIN_HZ : natural := 40_000_000;
-	constant SERIAL_HZ : natural := 20_000_000;
+	constant SERIAL_HZ : natural := 10_000_000;
 	constant BITS : natural := 8;
 
 	constant CLK_DELAY : time := 20 ns;
@@ -88,7 +88,7 @@ begin
 
 
 	-- combinatorics
-	comb : process(state, bus_cycle, byte_ctr)
+	comb : process(state, bus_cycle, byte_ctr, ready)
 	begin
 		next_state <= state;
 		next_byte_ctr <= byte_ctr;
@@ -119,11 +119,13 @@ begin
 				end if;
 
 			when NextAddr =>
-				if byte_ctr + 2 = data_arr'length then
-					next_state <= Idle;
-				else
-					next_byte_ctr <= byte_ctr + 2;
-					next_state <= WriteAddr;
+				if ready = '1' then
+					if byte_ctr + 2 = data_arr'length then
+						next_state <= Idle;
+					else
+						next_byte_ctr <= byte_ctr + 2;
+						next_state <= WriteAddr;
+					end if;
 				end if;
 
 			when Idle =>
@@ -144,13 +146,14 @@ begin
 				", state: " & t_state'image(state) &
 				--", reset: " & std_logic'image(rst) &
 				", start: " & std_logic'image(start) &
+				", ready: " & std_logic'image(ready) &
 				--", tx: " & integer'image(to_int(data)) &
 				--", rx: " & integer'image(to_int(received_data)) &
 				", next: " & std_logic'image(byte_finished) &
 				", cycle: " & std_logic'image(bus_cycle) &
 				", scl: " & std_logic'image(serial_clk) &
 				", sda: " & std_logic'image(serial_data) &
-				", err: " & std_logic'image(error) &
+				--", err: " & std_logic'image(error) &
 				", byte_ctr: " & integer'image(byte_ctr);
 		end if;
 	end process;

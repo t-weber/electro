@@ -70,7 +70,7 @@ module serial_tb;
 
 		// clock
 		enable <= 1;
-		data <= 8'b11001100;
+		data <= 8'hcd;
 		for(iter = 0; iter < ITERS; ++iter) begin
 			#1;
 			clk = !clk;
@@ -99,8 +99,7 @@ module serial_tb;
 
 
 	// output serial signal
-	//always@(posedge serial_clk) begin
-	always@(negedge serial_clk) begin
+	always@(posedge serial_clk) begin
 		$display("t=%0t: serial_out=%b, parallel_in=%x, next=%b, ready=%b",
 			$time, serial, parallel_in, next, ready);
 	end

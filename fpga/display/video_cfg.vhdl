@@ -78,7 +78,7 @@ architecture video_cfg_impl of video_cfg is
 	-- sequence to power down and enable status register monitoring
 	type t_status_arr is array(0 to 13*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
 	constant status_arr : t_status_arr := (
-	-- reg,   val
+		-- reg,   val
 		x"41", "01010000",    -- power off, [sw, p. 149]
 
 		x"98", x"03",         -- constants, [sw, p. 14, p. 25]
@@ -100,7 +100,7 @@ architecture video_cfg_impl of video_cfg is
 	-- power up sequence
 	type t_powerup_arr is array(0 to 21*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
 	constant powerup_arr : t_powerup_arr := (
-	-- reg,   val
+		-- reg,   val
 		x"41", "00010000",    -- power on, [sw, p. 149]
 
 		x"98", x"03",         -- constants, [sw, p. 14, p. 25]
