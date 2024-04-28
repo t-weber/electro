@@ -117,9 +117,8 @@ begin
 	serial_clk_z <= '0' when serial_clk = '0' else 'Z';
 
 	inout_clk <= serial_clk_z
-		when serial_state = Transmit
+		when serial_state = Transmit or serial_state = Receive
 		  or serial_state = TransmitWriteAddress or serial_state = TransmitReadAddress
-		  or serial_state = Receive
 		  or serial_state = ReceiveAck or serial_state = SendAck
 		  or serial_state = SendNoAck
 		else 'Z';
@@ -315,11 +314,12 @@ begin
 		case serial_state is
 			-- wait for enable signal
 			when Ready =>
-				out_ready <= '1';
 				next_bit_ctr <= 0;
 				if in_enable = '1' then
 					next_serial_state <= SendStart;
 					next_state_afterstart <= TransmitWriteAddress;
+				else
+					out_ready <= '1';
 				end if;
 
 			when Error =>
@@ -376,8 +376,12 @@ begin
 
 				-- enable signal not active anymore?
 				if in_enable = '0' then
-					next_serial_state <= ReceiveAck;
-					next_state_afterack <= SendStop;
+					if bit_ctr = BITS - 1 then
+						next_serial_state <= ReceiveAck;
+						next_state_afterack <= SendStop;
+					else
+						next_serial_state <= SendStop;
+					end if;
 					next_state_afterstop <= Ready;
 				end if;
 			-------------------------------------------------------
@@ -400,8 +404,12 @@ begin
 
 				-- enable signal not active anymore?
 				if in_enable = '0' then
-					next_serial_state <= SendNoAck;
-					next_state_afterack <= SendStop;
+					if bit_ctr = BITS - 1 then
+						next_serial_state <= SendNoAck;
+						next_state_afterack <= SendStop;
+					else
+						next_serial_state <= SendStop;
+					end if;
 					next_state_afterstop <= Ready;
 				end if;
 			-------------------------------------------------------
