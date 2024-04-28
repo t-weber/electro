@@ -14,11 +14,11 @@
 
 module serial_tb;
 	localparam VERBOSE    = 0;
-	localparam ITERS      = 64;
+	localparam ITERS      = 128;
 
 	localparam BITS       = 8;
 	localparam MAIN_CLK   = 1_000_000;
-	localparam SERIAL_CLK = 500_000;
+	localparam SERIAL_CLK = 250_000;
 
 	logic clk = 0, rst = 0;
 	logic [BITS-1 : 0] data;
@@ -37,7 +37,7 @@ module serial_tb;
 		serial_mod(
 		.in_clk(clk), .in_rst(rst),
 		.in_parallel(data), .in_enable(enable),
-		.out_serial(serial), .out_word_finished(next),
+		.out_serial(serial), .out_next_word(next),
 		.out_ready(ready), .out_clk(serial_clk),
 		.in_serial(serial), .out_parallel(parallel_in)
 	);
@@ -70,7 +70,7 @@ module serial_tb;
 
 		// clock
 		enable <= 1;
-		data <= 8'hcd;
+		data <= 8'hff;
 		for(iter = 0; iter < ITERS; ++iter) begin
 			#1;
 			clk = !clk;

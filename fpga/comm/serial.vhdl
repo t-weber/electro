@@ -22,7 +22,9 @@ entity serial is
 
 		-- word length
 		constant BITS : natural := 8;
-		constant LOWBIT_FIRST : std_logic := '1'
+		constant LOWBIT_FIRST : std_logic := '1';
+
+		constant SERIAL_CLK_SHIFT : std_logic := '0'
 	);
 
 	port(
@@ -32,8 +34,8 @@ entity serial is
 		-- serial clock
 		out_clk, out_ready : out std_logic;
 
-		-- current word transmitted or received?
-		out_word_finished : out std_logic;
+		-- request next word
+		out_next_word : out std_logic;
 
 		-- enable transmission
 		in_enable : in std_logic;
@@ -81,7 +83,7 @@ architecture serial_impl of serial is
 
 begin
 	--
-	-- generate serial clock
+	-- generate serial clocks
 	--
 	serial_clkgen : entity work.clkgen
 		generic map(MAIN_HZ => MAIN_HZ, CLK_HZ => SERIAL_HZ,
@@ -89,14 +91,22 @@ begin
 		port map(in_clk => in_clk, in_reset => in_reset,
 			out_clk => serial_clk);
 
-	serial_clkgen_shifted : entity work.clkgen
-		generic map(MAIN_HZ => MAIN_HZ, CLK_HZ => SERIAL_HZ,
-			CLK_INIT => '1', SHIFT_CLK => '1')
-		port map(in_clk => in_clk, in_reset => in_reset,
-			out_clk => serial_clk_shifted);
+	gen_clk : if SERIAL_CLK_SHIFT = '1' generate
+		serial_clkgen_shifted : entity work.clkgen
+			generic map(MAIN_HZ => MAIN_HZ, CLK_HZ => SERIAL_HZ,
+				CLK_INIT => '1', CLK_SHIFT => '1')
+			port map(in_clk => in_clk, in_reset => in_reset,
+				out_clk => serial_clk_shifted);
 
-	-- data clock with a falling edge in the middle of the inactive phase of the serial clock
-	serial_clk_data <= serial_clk_shifted when serial_clk = SERIAL_CLK_INACTIVE else SERIAL_CLK_INACTIVE;
+		-- data clock with a falling edge in the middle of the
+		-- inactive phase of the serial clock
+		serial_clk_data <= serial_clk_shifted
+			when serial_clk = SERIAL_CLK_INACTIVE
+			else SERIAL_CLK_INACTIVE;
+
+	else generate
+		serial_clk_data <= serial_clk;
+	end generate;
 
 
 	--
@@ -112,7 +122,7 @@ begin
 
 
 	--
-	-- state flip-flops for serial clock
+	-- state and data flip-flops for serial clock
 	--
 	serial_ff : process(serial_clk_data, in_reset) begin
 		-- reset
@@ -123,6 +133,10 @@ begin
 			-- counter register
 			bit_ctr <= 0;
 
+			-- parallel data register
+			parallel_fromfpga <= (others => '0');
+			parallel_tofpga <= (others => '0');
+
 		-- clock
 		elsif falling_edge(serial_clk_data) then
 		--elsif rising_edge(serial_clk_data) then
@@ -131,23 +145,7 @@ begin
 
 			-- counter register
 			bit_ctr <= next_bit_ctr;
-		end if;
-	end process;
 
-
-	--
-	-- data flip-flops
-	--
-	main_ff : process(serial_clk_data, in_reset) begin
-		-- reset
-		if in_reset = '1' then
-			-- parallel data register
-			parallel_fromfpga <= (others => '0');
-			parallel_tofpga <= (others => '0');
-
-		-- clock
-		elsif falling_edge(serial_clk_data) then
-		--elsif rising_edge(serial_clk_data) then
 			-- parallel data register
 			parallel_fromfpga <= next_parallel_fromfpga;
 			parallel_tofpga <= next_parallel_tofpga;
@@ -224,7 +222,7 @@ begin
 		next_serial_state <= serial_state;
 		next_bit_ctr <= bit_ctr;
 
-		out_word_finished <= '0';
+		out_next_word <= '0';
 		out_ready <= '0';
 
 		-- state machine
@@ -241,7 +239,7 @@ begin
 			when Transmit =>
 				-- end of word?
 				if bit_ctr = BITS - 1 then
-					out_word_finished <= '1';
+					out_next_word <= '1';
 					next_bit_ctr <= 0;
 				else
 					-- next bit of the word

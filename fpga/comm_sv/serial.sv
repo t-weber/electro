@@ -30,8 +30,8 @@ module serial
 	// enable transmission
 	input wire in_enable,
 
-	// current word transmitted or received?
-	output wire out_word_finished,
+	// request next word
+	output wire out_next_word,
 
 	// parallel input data (FPGA -> IC)
 	input wire [BITS-1 : 0] in_parallel,
@@ -81,8 +81,8 @@ assign out_serial = serial_fromfpga;
 reg [BITS-1 : 0] parallel_tofpga = 0, next_parallel_tofpga = 0;
 assign out_parallel = parallel_tofpga;
 
-reg word_finished = 0;
-assign out_word_finished = word_finished;
+reg request_word = 0;
+assign out_next_word = request_word;
 
 
 // generate serial clock
@@ -165,18 +165,10 @@ end
 always_ff@(posedge in_clk) begin
 	serial_fromfpga <= SERIAL_DATA_INACTIVE;
 
-	case(next_serial_state)
-		Ready: begin
-		end
-
-		Transmit: begin
-			// output current bit
-			serial_fromfpga <= parallel_fromfpga[actual_bit_ctr];
-		end
-
-		default: begin
-		end
-	endcase
+	if(next_serial_state == Transmit) begin
+		// output current bit
+		serial_fromfpga <= parallel_fromfpga[actual_bit_ctr];
+	end
 end
 
 
@@ -184,17 +176,9 @@ end
 always_comb begin
 	next_parallel_tofpga = parallel_tofpga;
 
-	case(serial_state)
-		Ready: begin
-		end
-
-		Transmit: begin
-			next_parallel_tofpga[actual_bit_ctr] = in_serial;
-		end
-
-		default: begin
-		end
-	endcase
+	if(serial_state == Transmit) begin
+		next_parallel_tofpga[actual_bit_ctr] = in_serial;
+	end
 end
 
 
@@ -203,7 +187,7 @@ always_comb begin
 	// defaults
 	next_serial_state = serial_state;
 	next_bit_ctr = bit_ctr;
-	word_finished = 0;
+	request_word = 0;
 
 	// state machine
 	case(serial_state)
@@ -219,7 +203,7 @@ always_comb begin
 		Transmit: begin
 			// end of word?
 			if(bit_ctr == BITS - 1) begin
-				word_finished = 1;
+				request_word = 1;
 				next_bit_ctr = 0;
 			end else begin
 				next_bit_ctr = bit_ctr + 1;

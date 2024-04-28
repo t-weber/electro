@@ -125,7 +125,7 @@ begin
 
 
 	--
-	-- state flip-flops for serial clock
+	-- state and data flip-flops for serial clock
 	--
 	serial_ff : process(serial_clk, in_reset) begin
 		-- reset
@@ -139,6 +139,10 @@ begin
 			-- counter register
 			bit_ctr <= 0;
 
+			-- parallel data register
+			parallel_fromfpga <= (others => '0');
+			parallel_tofpga <= (others => '0');
+
 		-- clock
 		elsif falling_edge(serial_clk) then
 			-- state register
@@ -149,22 +153,7 @@ begin
 
 			-- counter register
 			bit_ctr <= next_bit_ctr;
-		end if;
-	end process;
 
-
-	--
-	-- data flip-flops
-	--
-	main_ff : process(in_clk, in_reset) begin
-		-- reset
-		if in_reset = '1' then
-			-- parallel data register
-			parallel_fromfpga <= (others => '0');
-			parallel_tofpga <= (others => '0');
-
-		-- clock
-		elsif rising_edge(in_clk) then
 			-- parallel data register
 			parallel_fromfpga <= next_parallel_fromfpga;
 			parallel_tofpga <= next_parallel_tofpga;

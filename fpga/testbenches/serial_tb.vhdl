@@ -22,7 +22,7 @@ architecture serial_tb_arch of serial_tb is
 	constant VERBOSE : std_logic := '0';
 
 	constant MAIN_HZ : natural := 40_000_000;
-	constant SERIAL_HZ : natural := 10_000_000;
+	constant SERIAL_HZ : natural := 9_000_000;
 	constant BITS : natural := 8;
 
 	constant CLK_DELAY : time := 20 ns;
@@ -50,11 +50,11 @@ begin
 
 	-- instantiate modules
 	serial_ent : entity work.serial
-		generic map(BITS => BITS, SERIAL_CLK_INACTIVE => '1',
+		generic map(BITS => BITS, SERIAL_CLK_INACTIVE => '0',
 			MAIN_HZ => MAIN_HZ, SERIAL_HZ => SERIAL_HZ)
 		port map(in_clk => clk, in_reset => rst,
 			in_enable => start, out_ready => ready,
-			out_clk => serial_clk, out_word_finished => byte_finished,
+			out_clk => serial_clk, out_next_word => byte_finished,
 			in_parallel => data, out_serial => serial_data,
 			in_serial => serial_data, out_parallel => received_data);
 
@@ -99,7 +99,7 @@ begin
 				", start: " & std_logic'image(start) &
 				", data: " & integer'image(to_int(data)) &
 				", received_data: " & integer'image(to_int(received_data)) &
-				", byte_finished: " & std_logic'image(byte_finished) &
+				", next: " & std_logic'image(byte_finished) &
 				", cycle: " & std_logic'image(bus_cycle) &
 				", serial_clk: " & std_logic'image(serial_clk) &
 				", serial_data: " & std_logic'image(serial_data) &
@@ -115,7 +115,7 @@ begin
 		if falling_edge(serial_clk) then
 			report "transmitted data: " & std_logic'image(serial_data) &
 				", received data: " & to_hstring(received_data) &
-				", byte finished: " & std_logic'image(byte_finished);
+				", next: " & std_logic'image(byte_finished);
 		end if;
 	end process;
 

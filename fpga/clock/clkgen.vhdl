@@ -18,7 +18,7 @@ entity clkgen is
 
 		-- reset value of clock
 		constant CLK_INIT : std_logic := '0';
-		constant SHIFT_CLK : std_logic := '0'
+		constant CLK_SHIFT : std_logic := '0'
 	);
 
 	port(
@@ -41,9 +41,9 @@ begin
 	gen_clk : if MAIN_HZ = CLK_HZ generate
 		-- same frequency, just output main clock
 		out_clk <= in_clk;
-	end generate;
 
-	gen_clk_else : if MAIN_HZ /= CLK_HZ generate
+	else generate
+		-- output slower clock
 		out_clk <= clk;
 
 		--
@@ -51,13 +51,16 @@ begin
 		--
 		proc_clk : process(in_clk, in_reset)
 			constant clk_ctr_max : natural := MAIN_HZ / CLK_HZ / 2 - 1;
-			constant clk_ctr_shifted : natural :=  MAIN_HZ / CLK_HZ / 4;
+			constant clk_ctr_shifted : natural := MAIN_HZ / CLK_HZ / 4;
 			variable clk_ctr : natural range 0 to clk_ctr_max := 0;
 		begin
 			-- asynchronous reset
 			if in_reset = '1' then
+				--report "clk_ctr_max = " & natural'image(clk_ctr_max)
+				--	& ", clk_ctr_shifted = " & natural'image(clk_ctr_shifted);
+
 				clk_ctr := 0;
-				if SHIFT_CLK = '1' then
+				if CLK_SHIFT = '1' then
 					clk_ctr := clk_ctr_shifted;
 				end if;
 				clk <= CLK_INIT;
