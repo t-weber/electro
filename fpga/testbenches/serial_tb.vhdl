@@ -110,7 +110,6 @@ begin
 
 	serial_proc : process(serial_clk)
 	begin
-		-- has to be opposite the edge triggers in the serial controller
 		--if rising_edge(serial_clk) then
 		if falling_edge(serial_clk) then
 			report "transmitted data: " & std_logic'image(serial_data) &

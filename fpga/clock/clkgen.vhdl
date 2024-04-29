@@ -36,6 +36,18 @@ architecture clkgen_impl of clkgen is
 	-- generated clock
 	signal clk : std_logic := CLK_INIT;
 
+	pure function get_clk_shift(is_shifted : std_logic) return natural is
+		variable shifted_clk : natural := 0;
+	begin
+		if is_shifted = '1' then
+			shifted_clk := MAIN_HZ / CLK_HZ / 2 - MAIN_HZ / CLK_HZ / 4;
+		else
+			shifted_clk := 0;
+		end if;
+
+		return shifted_clk;
+	end function;
+
 begin
 	-- output clock
 	gen_clk : if MAIN_HZ = CLK_HZ generate
@@ -43,7 +55,8 @@ begin
 		out_clk <= in_clk;
 
 	else generate
-		-- output slower clock
+
+	-- output slower clock
 		out_clk <= clk;
 
 		--
@@ -51,7 +64,7 @@ begin
 		--
 		proc_clk : process(in_clk, in_reset)
 			constant clk_ctr_max : natural := MAIN_HZ / CLK_HZ / 2 - 1;
-			constant clk_ctr_shifted : natural := MAIN_HZ / CLK_HZ / 4;
+			constant clk_ctr_shifted : natural := get_clk_shift(is_shifted => CLK_SHIFT);
 			variable clk_ctr : natural range 0 to clk_ctr_max := 0;
 		begin
 			-- asynchronous reset
@@ -60,9 +73,6 @@ begin
 				--	& ", clk_ctr_shifted = " & natural'image(clk_ctr_shifted);
 
 				clk_ctr := 0;
-				if CLK_SHIFT = '1' then
-					clk_ctr := clk_ctr_shifted;
-				end if;
 				clk <= CLK_INIT;
 
 			-- clock
