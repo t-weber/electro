@@ -1,5 +1,5 @@
 --
--- serial controller for 2-wire protocol
+-- serial controller for 2-wire interface
 -- @author Tobias Weber <tobias.weber@tum.de>
 -- @date apr-2024
 -- @license see 'LICENSE' file
@@ -33,30 +33,30 @@ entity serial_2wire is
 		-- main clock and reset
 		in_clk, in_reset : in std_logic;
 
-		-- serial clock
+		-- serial clock and data
 		inout_clk : inout std_logic;
+		inout_serial : inout std_logic;
 
 		-- enable transmission
 		in_enable : in std_logic;
 		in_write : in std_logic;
+
+		-- ready and error flags
 		out_ready : out std_logic;
 		out_err : out std_logic;
+
+		-- current word transmitted or received?
+		out_next_word : out std_logic;
 
 		-- target addresses for writing and reading
 		in_addr_write : in std_logic_vector(ADDR_BITS-1 downto 0);
 		in_addr_read : in std_logic_vector(ADDR_BITS-1 downto 0);
 
-		-- current word transmitted or received?
-		out_word_finished : out std_logic;
-
 		-- parallel input data (FPGA -> IC)
 		in_parallel : in std_logic_vector(BITS-1 downto 0);
 
 		-- parallel output data (IC -> FPGA)
-		out_parallel : out std_logic_vector(BITS-1 downto 0);
-
-		-- serial i/o (IC -> FPGA and FPGA -> IC)
-		inout_serial : inout std_logic
+		out_parallel : out std_logic_vector(BITS-1 downto 0)
 	);
 end entity;
 
@@ -128,7 +128,7 @@ begin
 	serial_ff : process(serial_clk, in_reset) begin
 		-- reset
 		if in_reset = '1' then
-			-- state register
+			-- state registers
 			serial_state <= Ready;
 			state_afterstart <= Ready;
 			state_afterstop <= Ready;
@@ -137,13 +137,13 @@ begin
 			-- counter register
 			bit_ctr <= 0;
 
-			-- parallel data register
+			-- parallel data registers
 			parallel_fromfpga <= (others => '0');
 			parallel_tofpga <= (others => '0');
 
 		-- clock
 		elsif falling_edge(serial_clk) then
-			-- state register
+			-- state registers
 			serial_state <= next_serial_state;
 			state_afterstart <= next_state_afterstart;
 			state_afterstop <= next_state_afterstop;
@@ -152,7 +152,7 @@ begin
 			-- counter register
 			bit_ctr <= next_bit_ctr;
 
-			-- parallel data register
+			-- parallel data registers
 			parallel_fromfpga <= next_parallel_fromfpga;
 			parallel_tofpga <= next_parallel_tofpga;
 		end if;
@@ -292,11 +292,11 @@ begin
 		next_state_afterack <= state_afterack;
 		next_bit_ctr <= bit_ctr;
 
-		out_word_finished <= '0';
+		out_next_word <= '0';
 		out_ready <= '0';
 		out_err <= '0';
 
-		report t_serial_state'image(serial_state);
+		report "serial_2wire: " & t_serial_state'image(serial_state);
 
 		-- state machine
 		case serial_state is
@@ -347,7 +347,7 @@ begin
 			when Transmit =>
 				-- end of word?
 				if bit_ctr = BITS - 1 then
-					out_word_finished <= '1';
+					out_next_word <= '1';
 					next_bit_ctr <= 0;
 
 					next_serial_state <= ReceiveAck;
@@ -380,7 +380,7 @@ begin
 			when Receive =>
 				-- end of word?
 				if bit_ctr = BITS - 1 then
-					out_word_finished <= '1';
+					out_next_word <= '1';
 					next_bit_ctr <= 0;
 
 					next_serial_state <= SendAck;

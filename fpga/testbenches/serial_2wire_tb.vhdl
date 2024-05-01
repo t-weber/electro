@@ -69,7 +69,7 @@ begin
 		port map(in_clk => clk, in_reset => rst, out_err => error,
 			in_enable => start, in_write => '1',
 			in_addr_write => "10101010", in_addr_read => "10101011",
-			out_ready => ready, out_word_finished => byte_finished,
+			out_ready => ready, out_next_word => byte_finished,
 			inout_clk => serial_clk, inout_serial => serial_data,
 			in_parallel => data, out_parallel => received_data);
 

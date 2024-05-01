@@ -1,5 +1,5 @@
 /**
- * serial controller for 3-wire protocol
+ * serial controller for 3-wire interface
  * @author Tobias Weber
  * @date 22-dec-2023
  * @license see 'LICENSE' file

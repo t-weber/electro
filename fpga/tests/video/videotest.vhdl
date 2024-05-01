@@ -155,7 +155,7 @@ begin
 			in_write => not serial_vid_addr(0),
 			in_parallel => serial_vid_data_write, out_parallel => serial_vid_data_read,
 			out_err => serial_vid_err, out_ready => serial_vid_ready,
-			out_word_finished => serial_vid_byte_finished,
+			out_next_word => serial_vid_byte_finished,
 			inout_clk => vid_scl, inout_serial => vid_sda);
 
 	serial_vid_busy <= not serial_vid_ready;
