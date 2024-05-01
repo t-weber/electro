@@ -29,7 +29,7 @@ entity lcd_3wire is
 		constant LCD_NUM_ADDRBITS : natural := 7;
 		constant LCD_NUM_DATABITS : natural := BUS_NUM_DATABITS;
 
-		-- read lcd busy flag
+		-- use the lcd busy flag for waiting instead of the timers
 		constant READ_BUSY_FLAG : std_logic := '1'
 	);
 
@@ -65,7 +65,8 @@ architecture lcd_3wire_impl of lcd_3wire is
 	type t_lcd_state is (
 		Wait_Reset, Reset, Resetted,
 		ReadInitSeq, Wait_Init,
-		ReadBusyFlag_Cmd, ReadBusyFlag_Wait, ReadBusyFlag, CheckBusyFlag,
+		ReadBusyFlag_Cmd, ReadBusyFlag, ReadBusyFlag2,
+		CheckBusyFlag,
 		Wait_PreUpdateDisplay, Pre_UpdateDisplay,
 		UpdateDisplay_Setup1, UpdateDisplay_Setup2,
 		UpdateDisplay_Setup3, UpdateDisplay_Setup4,
@@ -85,7 +86,6 @@ architecture lcd_3wire_impl of lcd_3wire is
 	constant const_wait_reset : natural := MAIN_CLK/1000_000*500;  -- 500 us
 	constant const_wait_resetted : natural := MAIN_CLK/1000*1;     -- 1 ms
 	constant const_wait_init : natural := MAIN_CLK/1000_000*100;   -- 100 us
-	constant const_wait_read : natural := MAIN_CLK/1000_000*100;   -- 100 us
 	constant const_wait_update : natural := MAIN_CLK/1000*100;     -- 100 ms
 
 	-- the maximum of the above delays
@@ -101,7 +101,7 @@ architecture lcd_3wire_impl of lcd_3wire is
 
 	-- lcd init commands
 	-- see p. 5 in https://www.lcd-module.de/fileadmin/pdf/doma/dogm204.pdf
-	constant init_num_commands : natural := 21;
+	constant init_num_commands : natural := 22;
 	type t_init_arr is array(0 to init_num_commands*3 - 1)
 		of std_logic_vector(LCD_NUM_DATABITS/2 - 1 downto 0);
 	constant init_arr : t_init_arr := (
@@ -139,7 +139,8 @@ architecture lcd_3wire_impl of lcd_3wire is
 		--ctrl_data, "0001", "0001",   -- define character 0 line 5
 		--ctrl_data, "0001", "0001",   -- define character 0 line 6
 		--ctrl_data, "0000", "0000",   -- define character 0 line 7
-		ctrl_command, "0001", "0000"   -- clear
+		ctrl_command, "0001", "0000",  -- clear
+		ctrl_command, "0010", "0000"   -- return
 
 		--ctrl_data, "0010", "0011",   -- test data -> 0x32 = '2'
 		--ctrl_data, "0011", "0011"    -- test data -> 0x33 = '3'
@@ -308,12 +309,14 @@ begin
 
 
 			when Wait_Init =>
-				wait_counter_max <= const_wait_init;
-				if wait_counter = wait_counter_max then
-					if READ_BUSY_FLAG = '1' then
-						next_lcd_state <= ReadBusyFlag_Cmd;
-						next_cmd_after_busy_check <= ReadInitSeq;
-					else
+				if READ_BUSY_FLAG = '1' then
+					-- wait until the busy flag is clear
+					next_lcd_state <= ReadBusyFlag_Cmd;
+					next_cmd_after_busy_check <= ReadInitSeq;
+				else
+					-- wait for the timer
+					wait_counter_max <= const_wait_init;
+					if wait_counter = wait_counter_max then
 						-- continue with init sequence
 						next_lcd_state <= ReadInitSeq;
 					end if;
@@ -329,16 +332,6 @@ begin
 				out_bus_enable <= '1';
 
 				if next_byte_cycle = '1' then
-					next_lcd_state <= ReadBusyFlag_Wait;
-				end if;
-
-
-			when ReadBusyFlag_Wait =>
-				out_bus_data <= (others => '0');
-				out_bus_enable <= '0';
-
-				wait_counter_max <= const_wait_read;
-				if wait_counter = wait_counter_max then
 					next_lcd_state <= ReadBusyFlag;
 				end if;
 
@@ -348,6 +341,12 @@ begin
 				out_bus_enable <= '1';
 
 				if next_byte_cycle = '1' then
+					next_lcd_state <= ReadBusyFlag2;
+				end if;
+
+
+			when ReadBusyFlag2 =>
+				if in_bus_ready = '1' then
 					next_busy_flag <= in_bus_data;
 					next_lcd_state <= CheckBusyFlag;
 				end if;
@@ -377,6 +376,7 @@ begin
 			when Pre_UpdateDisplay =>
 				if in_update = '1' then
 					if READ_BUSY_FLAG = '1' then
+						-- wait until the busy flag is clear
 						next_lcd_state <= ReadBusyFlag_Cmd;
 						next_cmd_after_busy_check <= UpdateDisplay_Setup1;
 					else

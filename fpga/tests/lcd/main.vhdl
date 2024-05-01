@@ -63,10 +63,10 @@ begin
 
 	-- serial bus for lcd
 	serial_lcd : entity work.serial
-		generic map(MAIN_HZ => MAIN_CLK, SERIAL_HZ => SERIAL_CLK)
+		generic map(MAIN_HZ => MAIN_CLK, SERIAL_HZ => SERIAL_CLK, LOWBIT_FIRST => '1')
 		port map(in_clk => clock_50_b7a, in_reset => reset,
 			in_enable => serial_enable, in_parallel => serial_data,
-			out_word_finished => serial_next, out_ready => serial_ready,
+			out_next_word => serial_next, out_ready => serial_ready,
 			out_clk => lcd_scl, out_serial => lcd_sda,
 			in_serial => lcd_sda_in, out_parallel => serial_data_in);
 

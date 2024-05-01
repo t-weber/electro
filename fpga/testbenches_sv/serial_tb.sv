@@ -99,7 +99,7 @@ module serial_tb;
 
 
 	// output serial signal
-	always@(posedge serial_clk) begin
+	always@(negedge serial_clk) begin
 		$display("t=%0t: serial_out=%b, parallel_in=%x, next=%b, ready=%b",
 			$time, serial, parallel_in, next, ready);
 	end

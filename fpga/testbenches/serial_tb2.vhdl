@@ -40,16 +40,14 @@ architecture serial_tb2_arch of serial_tb2 is
 	signal serial_data, serial_clk : std_logic := '0';
 
 	signal byte_finished, last_byte_finished : std_logic := '0';
-	signal bus_cycle : std_logic := '0';
+	signal bus_cycle, bus_cycle_next : std_logic := '0';
 
 	signal received_data : std_logic_vector(BITS-1 downto 0);
-	signal saved_data, next_saved_data : std_logic_vector(BITS-1 downto 0);
+	--signal saved_data, next_saved_data : std_logic_vector(BITS-1 downto 0);
+	signal saved_data : std_logic_vector(BITS-1 downto 0);
 
 	type t_data_arr is array(0 to 4 - 1) of std_logic_vector(BITS-1 downto 0);
-	constant data_arr : t_data_arr := (
-		x"ff", x"11",
-		x"01", x"10"
-	);
+	constant data_arr : t_data_arr := ( x"ff", x"11", x"01", x"10" );
 
 	signal byte_ctr, next_byte_ctr : natural range 0 to data_arr'length := 0;
 
@@ -59,6 +57,7 @@ begin
 	--
 	clk <= not clk after CLK_DELAY;
 	bus_cycle <= byte_finished and (not last_byte_finished);
+	bus_cycle_next <= (not byte_finished) and last_byte_finished;
 
 
 	--
@@ -83,7 +82,12 @@ begin
 			state <= next_state;
 			byte_ctr <= next_byte_ctr;
 			last_byte_finished <= byte_finished;
-			saved_data <= next_saved_data;
+			--saved_data <= next_saved_data;
+
+			if bus_cycle_next = '1' then
+				-- the data ready one serial clock cycle after bus_cycle
+				saved_data <= received_data;
+			end if;
 		end if;
 	end process;
 
@@ -94,7 +98,7 @@ begin
 	begin
 		next_state <= state;
 		next_byte_ctr <= byte_ctr;
-		next_saved_data <= saved_data;
+		--next_saved_data <= saved_data;
 
 		start <= '0';
 		rst <= '0';
@@ -114,15 +118,16 @@ begin
 				end if;
 
 			when NextData =>
-				if ready = '1' then
+				--if ready = '1' then
+					--next_saved_data <= received_data;
+
 					if byte_ctr + 1 = data_arr'length then
 						next_state <= Idle;
 					else
 						next_byte_ctr <= byte_ctr + 1;
 						next_state <= WriteData;
-						next_saved_data <= received_data;
 					end if;
-				end if;
+				--end if;
 
 			when Idle =>
 				null;

@@ -52,8 +52,6 @@ typedef enum bit [1 : 0] { Ready, Transmit } t_serial_state;
 t_serial_state serial_state      = Ready;
 t_serial_state next_serial_state = Ready;
 
-// serial clock
-reg serial_clk;
 
 // bit counter
 reg [$clog2(BITS) : 0] bit_ctr = 0, next_bit_ctr = 0;
@@ -86,6 +84,8 @@ assign out_next_word = request_word;
 
 
 // generate serial clock
+reg serial_clk;
+
 clkgen #(
 		.MAIN_CLK_HZ(MAIN_CLK_HZ), .CLK_HZ(SERIAL_CLK_HZ),
 		.CLK_INIT(1)
@@ -97,13 +97,13 @@ clkgen #(
 	);
 
 
-// output serial clock
+// generate serial clock output
 generate
 	if(SERIAL_CLK_INACTIVE == 1) begin
-		// inactive '1' and trigger on falling edge
+		// inactive '1' and trigger on rising edge
 		assign out_clk = serial_state == Transmit ? serial_clk : 1;
 	end else begin
-		// inactive '0' and trigger on rising edge
+		// inactive '0' and trigger on falling edge
 		assign out_clk = serial_state == Transmit ? ~serial_clk : 0;
 	end
 endgenerate
@@ -111,8 +111,8 @@ endgenerate
 assign out_ready = serial_state == Ready;
 
 
-// state flip-flops for serial clock
-always_ff@(posedge serial_clk, posedge in_rst) begin
+// state and data flip-flops for serial clock
+always_ff@(negedge serial_clk, posedge in_rst) begin
 	// reset
 	if(in_rst == 1) begin
 		// state register
@@ -120,31 +120,21 @@ always_ff@(posedge serial_clk, posedge in_rst) begin
 
 		// counter register
 		bit_ctr <= 0;
-	end
 
-	// clock
-	else if(serial_clk == 1) begin
-		// state register
-		serial_state <= next_serial_state;
-
-		// counter register
-		bit_ctr <= next_bit_ctr;
-	end
-end
-
-
-// state flip-flops for main clock
-always_ff@(posedge in_clk, posedge in_rst) begin
-	// reset
-	if(in_rst == 1) begin
 		// parallel data register
 		parallel_fromfpga <= 0;
 		parallel_tofpga <= 0;
 	end
 
 	// clock
-	else if(in_clk == 1) begin
-		// parallel data register
+	else if(serial_clk == 0) begin
+		// state register
+		serial_state <= next_serial_state;
+
+		// counter register
+		bit_ctr <= next_bit_ctr;
+
+		// parallel data registers
 		parallel_fromfpga <= next_parallel_fromfpga;
 		parallel_tofpga <= next_parallel_tofpga;
 	end
@@ -165,7 +155,7 @@ end
 always_ff@(posedge in_clk) begin
 	serial_fromfpga <= SERIAL_DATA_INACTIVE;
 
-	if(next_serial_state == Transmit) begin
+	if(serial_state == Transmit) begin
 		// output current bit
 		serial_fromfpga <= parallel_fromfpga[actual_bit_ctr];
 	end
