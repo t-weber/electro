@@ -12,8 +12,8 @@ module serial
 	parameter SERIAL_CLK_HZ = 10_000,
 
 	// inactive signals
-	parameter SERIAL_CLK_INACTIVE  = 1,
-	parameter SERIAL_DATA_INACTIVE = 1,
+	parameter SERIAL_CLK_INACTIVE  = 1'b1,
+	parameter SERIAL_DATA_INACTIVE = 1'b1,
 
 	// word length
 	parameter BITS         = 8,
@@ -72,8 +72,10 @@ endgenerate
 reg [BITS-1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
 
 // serial output buffer (FPGA -> IC)
-reg serial_fromfpga = SERIAL_DATA_INACTIVE;
-assign out_serial = serial_fromfpga;
+//reg serial_fromfpga = SERIAL_DATA_INACTIVE;
+//assign out_serial = serial_fromfpga;
+assign out_serial = serial_state == Transmit ? parallel_fromfpga[actual_bit_ctr] : SERIAL_DATA_INACTIVE;
+
 
 // parallel output buffer (IC -> FPGA)
 reg [BITS-1 : 0] parallel_tofpga = 0, next_parallel_tofpga = 0;
@@ -127,7 +129,7 @@ always_ff@(negedge serial_clk, posedge in_rst) begin
 	end
 
 	// clock
-	else if(serial_clk == 0) begin
+	else begin
 		// state register
 		serial_state <= next_serial_state;
 
@@ -152,14 +154,14 @@ end
 
 
 // registered output (FPGA -> IC)
-always_ff@(posedge in_clk) begin
+/*always_ff@(posedge in_clk) begin
 	serial_fromfpga <= SERIAL_DATA_INACTIVE;
 
 	if(serial_state == Transmit) begin
 		// output current bit
 		serial_fromfpga <= parallel_fromfpga[actual_bit_ctr];
 	end
-end
+end*/
 
 
 // buffer serial input (IC -> FPGA)
@@ -178,6 +180,8 @@ always_comb begin
 	next_serial_state = serial_state;
 	next_bit_ctr = bit_ctr;
 	request_word = 0;
+
+	$display("** serial: %s, bit %d. **", serial_state.name(), bit_ctr);
 
 	// state machine
 	case(serial_state)

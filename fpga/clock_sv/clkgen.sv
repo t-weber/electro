@@ -13,8 +13,8 @@ module clkgen
 	parameter CLK_HZ      = 10_000,
 
 	// reset value of clock
-	parameter CLK_INIT    = 0,
-	parameter CLK_SHIFT   = 0
+	parameter CLK_INIT    = 1'b0,
+	parameter CLK_SHIFT   = 1'b0
  )
 (
 	// main clock and reset
@@ -26,40 +26,60 @@ module clkgen
 );
 
 
+generate
+if(MAIN_CLK_HZ == CLK_HZ) begin
 
-// clock counter
-localparam CLK_CTR_MAX     = MAIN_CLK_HZ / CLK_HZ / 2 - 1;
-localparam CLK_CTR_SHIFTED = MAIN_CLK_HZ / CLK_HZ / 4;
-int clk_ctr = 0;
-
-
-// output clock
-reg clk = CLK_INIT;
-assign out_clk = clk;
-
-
-
-always_ff@(posedge in_clk, posedge in_rst) begin
-	// asynchronous reset
-	if(in_rst == 1) begin
-		if(CLK_SHIFT == 1) begin
-			clk_ctr <= CLK_CTR_SHIFTED;
+	// same frequency -> just output main clock
+	if(CLK_INIT == 1'b1) begin
+		if(CLK_SHIFT == 1'b1) begin
+			assign out_clk = ~in_clk;
 		end else begin
-			clk_ctr <= 0;
+			assign out_clk = in_clk;
 		end
-		clk <= CLK_INIT;
+	end else begin
+		if(CLK_SHIFT == 1'b1) begin
+			assign out_clk = in_clk;
+		end else begin
+			assign out_clk = ~in_clk;
+		end
 	end
 
-	// clock
-	else if(in_clk == 1) begin
-		if(clk_ctr == CLK_CTR_MAX) begin
-			clk_ctr <= 0;
-			clk <= !clk;
+end else begin
+
+	// clock counter
+	localparam CLK_CTR_MAX     = MAIN_CLK_HZ / CLK_HZ / 2 - 1;
+	localparam CLK_CTR_SHIFTED = MAIN_CLK_HZ / CLK_HZ / 2 - MAIN_CLK_HZ / CLK_HZ / 4;
+	int clk_ctr = 0;
+
+
+	// output clock
+	reg clk = CLK_INIT;
+	assign out_clk = clk;
+
+	always_ff@(posedge in_clk, posedge in_rst) begin
+		// asynchronous reset
+		if(in_rst == 1'b1) begin
+			if(CLK_SHIFT == 1'b1) begin
+				clk_ctr <= CLK_CTR_SHIFTED;
+			end else begin
+				clk_ctr <= 0;
+			end
+			clk <= CLK_INIT;
 		end
+
+		// clock
 		else begin
-			clk_ctr <= clk_ctr + 1;
+			if(clk_ctr == CLK_CTR_MAX) begin
+				clk_ctr <= 1'b0;
+				clk <= !clk;
+			end
+			else begin
+				clk_ctr <= clk_ctr + 1;
+			end
 		end
 	end
+
 end
+endgenerate
 
 endmodule
