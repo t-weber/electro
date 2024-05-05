@@ -1,5 +1,5 @@
 /**
- * video
+ * video with parallel interface
  * @author Tobias Weber <tobias.weber@tum.de>
  * @date jan-2021, mar-2024
  * @license see 'LICENSE' file

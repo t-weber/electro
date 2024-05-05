@@ -248,7 +248,7 @@ begin
 						next_state <= Status_SetAddr;
 					else
 						next_state <= PowerUp_SetAddr;
-				end if;
+					end if;
 				end if;
 
 

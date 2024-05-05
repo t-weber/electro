@@ -71,10 +71,10 @@ endgenerate
 // parallel input buffer (FPGA -> IC)
 reg [BITS-1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
 
-// serial output buffer (FPGA -> IC)
-//reg serial_fromfpga = SERIAL_DATA_INACTIVE;
-//assign out_serial = serial_fromfpga;
-assign out_serial = serial_state == Transmit ? parallel_fromfpga[actual_bit_ctr] : SERIAL_DATA_INACTIVE;
+// serial output (FPGA -> IC)
+assign out_serial = serial_state == Transmit
+	? parallel_fromfpga[actual_bit_ctr]
+	: SERIAL_DATA_INACTIVE;
 
 
 // parallel output buffer (IC -> FPGA)
@@ -151,17 +151,6 @@ always@(in_enable, in_parallel, parallel_fromfpga) begin
 		next_parallel_fromfpga <= in_parallel;
 	end
 end
-
-
-// registered output (FPGA -> IC)
-/*always_ff@(posedge in_clk) begin
-	serial_fromfpga <= SERIAL_DATA_INACTIVE;
-
-	if(serial_state == Transmit) begin
-		// output current bit
-		serial_fromfpga <= parallel_fromfpga[actual_bit_ctr];
-	end
-end*/
 
 
 // buffer serial input (IC -> FPGA)

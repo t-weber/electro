@@ -19,8 +19,7 @@ module video_serial
 	 )
 	(
 		// clock and reset
-		input wire in_clk,
-		input wire in_rst,
+		input wire in_clk, in_rst,
 
 		// pixel data
 		input wire [PIXEL_BITS-1 : 0] in_pixel,
@@ -41,6 +40,11 @@ module video_serial
 		Idle
 	} t_state;
 	t_state state = Reset, next_state = Reset;
+
+
+	// wait timer register
+	localparam WAIT_RESET = MAIN_CLK/1000*100;  // 100 ms
+	logic [$clog2(WAIT_RESET) : 0] wait_ctr = 0, wait_ctr_max = 0;
 
 
 	// init data
@@ -92,18 +96,34 @@ module video_serial
 		// reset
 		if(in_rst == 1) begin
 			state <= Reset;
+
 			init_ctr <= 0;
 			x_ctr <= 0;
 			y_ctr <= 0;
+
+			// timer register
+			wait_ctr <= 0;
+
 			last_byte_finished <= 0;
 		end
 
 		// clock
 		else begin
 			state <= next_state;
+
 			init_ctr <= next_init_ctr;
 			x_ctr <= next_x_ctr;
 			y_ctr <= next_y_ctr;
+
+			// timer register
+			if(wait_ctr == wait_ctr_max) begin
+				// reset timer counter
+				wait_ctr <= 0;
+			end else begin
+				// next timer counter
+				wait_ctr <= wait_ctr + 1;
+			end
+
 			last_byte_finished <= byte_finished;
 		end
 	end
@@ -116,6 +136,7 @@ module video_serial
 		next_init_ctr = init_ctr;
 		next_x_ctr = x_ctr;
 		next_y_ctr = y_ctr;
+		wait_ctr_max = WAIT_RESET;
 
 		enable = 0;
 		vid_rst = 0;
@@ -126,7 +147,10 @@ module video_serial
 		case(state)
 			Reset: begin
 				vid_rst = 1;
-				next_state = WriteInit;
+
+				wait_ctr_max = WAIT_RESET;
+				if(wait_ctr == wait_ctr_max)
+					next_state = WriteInit;
 			end
 
 			// ----------------------------------------------------
