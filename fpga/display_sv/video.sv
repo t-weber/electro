@@ -14,9 +14,9 @@ module video
 #(
 	// colour channels
 	// number of bits in one colour channel
-	parameter NUM_COLOUR_BITS = 8,
+	parameter COLOUR_BITS = 8,
 	// number of bits in all colour channels
-	parameter NUM_PIXEL_BITS = 3 * NUM_COLOUR_BITS,
+	parameter PIXEL_BITS = 3 * COLOUR_BITS,
 
 	// rows
 	parameter HSYNC_START  = 88,
@@ -33,32 +33,34 @@ module video
 	parameter VPIX_TOTAL   = VPIX_VISIBLE + VSYNC_DELAY,
 
 	// counter bits
-	parameter NUM_HCTR_BITS = $clog2(HPIX_TOTAL),
-	parameter NUM_VCTR_BITS = $clog2(VPIX_TOTAL),
+	parameter HCTR_BITS = $clog2(HPIX_TOTAL),
+	parameter VCTR_BITS = $clog2(VPIX_TOTAL),
 
 	// start address of the display buffer in memory
 	parameter MEM_START_ADDR = 0,
 
 	// memory address length
-	parameter NUM_PIXADDR_BITS = $clog2(VPIX_VISIBLE*HPIX_VISIBLE + MEM_START_ADDR)
+	parameter PIXADDR_BITS = $clog2(VPIX_VISIBLE*HPIX_VISIBLE + MEM_START_ADDR),
+
+	parameter USE_TESTPATTERN = 1
  )
 (
 	// pixel clock, reset
 	// pixel clock frequency = HPIX_TOTAL * VPIX_TOTAL * 60 Hz
 	input wire in_clk, in_rst,
 
-	// TODO: show test pattern?
+	// show test pattern?
 	input wire in_testpattern,
 
 	// video interface
-	output wire [NUM_HCTR_BITS - 1 : 0] out_hpix, out_hpix_raw,
-	output wire [NUM_VCTR_BITS - 1 : 0] out_vpix, out_vpix_raw,
+	output wire [HCTR_BITS - 1 : 0] out_hpix, out_hpix_raw,
+	output wire [VCTR_BITS - 1 : 0] out_vpix, out_vpix_raw,
 	output wire out_hsync, out_vsync, out_pixel_enable,
-	output wire [NUM_PIXEL_BITS - 1 : 0] out_pixel,
+	output wire [PIXEL_BITS - 1 : 0] out_pixel,
 
 	// memory interface
-	output wire [NUM_PIXADDR_BITS - 1 : 0] out_mem_addr,
-	input wire [NUM_PIXEL_BITS - 1 : 0] in_mem
+	output wire [PIXADDR_BITS - 1 : 0] out_mem_addr,
+	input wire [PIXEL_BITS - 1 : 0] in_mem
 );
 
 
@@ -75,7 +77,7 @@ reg [$clog2(VPIX_VISIBLE) : 0] vpix;
 logic visible_range = 1'b0;
 
 // test pattern values
-reg [NUM_PIXEL_BITS - 1 : 0] pattern = 0;
+reg [PIXEL_BITS - 1 : 0] pattern;
 
 
 // row / column counters
@@ -101,17 +103,6 @@ always_comb begin
 		h_ctr >= HSYNC_DELAY && h_ctr < HPIX_VISIBLE + HSYNC_DELAY &&
 		v_ctr >= VSYNC_DELAY && v_ctr < VPIX_VISIBLE + VSYNC_DELAY)
 		? 1'b1 : 1'b0;
-end
-
-
-// generate test pattern
-always_comb begin
-	pattern = 0;
-
-	if(visible_range == 1) begin
-		pattern = {NUM_PIXEL_BITS{  // repeat to fill pixel bits
-			NUM_COLOUR_BITS'(hpix * vpix + 1'b1)}};
-	end
 end
 
 
@@ -143,5 +134,25 @@ assign out_pixel = in_testpattern ? pattern : in_mem;
 assign out_mem_addr = (visible_range == 1 && in_testpattern == 0)
 	? vpix*HPIX_VISIBLE + hpix + MEM_START_ADDR
 	: 0;
+
+
+// generate test pattern
+generate
+if(USE_TESTPATTERN) begin
+	testpattern
+	#(
+		.HPIX(HPIX_VISIBLE), .VPIX(VPIX_VISIBLE),
+		.COLOUR_BITS(COLOUR_BITS), .PIXEL_BITS(PIXEL_BITS),
+		.HCTR_BITS(HCTR_BITS), .VCTR_BITS(VCTR_BITS)
+	 )
+	testpattern_mod
+	(
+		.in_hpix(hpix), .in_vpix(vpix),
+		.out_pattern(pattern)
+	);
+end else begin
+	assign pattern = 0;
+end
+endgenerate
 
 endmodule

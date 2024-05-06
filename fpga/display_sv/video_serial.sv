@@ -11,20 +11,28 @@ module video_serial
 		parameter SERIAL_BITS   = 8,
 		parameter PIXEL_BITS    = 16,
 
-		parameter SCREEN_HEIGHT = 64,
 		parameter SCREEN_WIDTH  = 128,
+		parameter SCREEN_HEIGHT = 64,
 
 		parameter MAIN_CLK      = 50_000_000,
-		parameter SERIAL_CLK    = 1_000_000
+		parameter SERIAL_CLK    = 1_000_000,
+
+		parameter HCTR_BITS     = $clog2(SCREEN_WIDTH),
+		parameter VCTR_BITS     = $clog2(SCREEN_HEIGHT),
+
+		parameter USE_TESTPATTERN = 1
 	 )
 	(
 		// clock and reset
 		input wire in_clk, in_rst,
 
+		// show test pattern?
+		input wire in_testpattern,
+
 		// pixel data
-		input wire [PIXEL_BITS-1 : 0] in_pixel,
-		output wire [$clog2(SCREEN_WIDTH) : 0] out_hpix,
-		output wire [$clog2(SCREEN_HEIGHT) : 0] out_vpix,
+		input wire [PIXEL_BITS - 1 : 0] in_pixel,
+		output wire [HCTR_BITS - 1 : 0] out_hpix,
+		output wire [VCTR_BITS - 1 : 0] out_vpix,
 
 		// serial video interface
 		output wire out_vid_rst,
@@ -48,13 +56,13 @@ module video_serial
 
 
 	// init data
-	localparam NUM_INIT_BYTES = 2;
-	logic [NUM_INIT_BYTES][SERIAL_BITS-1 : 0] init_data = {
+	localparam INIT_BYTES = 2;
+	logic [INIT_BYTES][SERIAL_BITS-1 : 0] init_data = {
 		8'hff, 8'h00  // TODO
 	};
 
 	// init data byte counter
-	reg [$clog2(NUM_INIT_BYTES) : 0] init_ctr = 0, next_init_ctr = 0;
+	reg [$clog2(INIT_BYTES) : 0] init_ctr = 0, next_init_ctr = 0;
 
 
 	logic enable, ready;
@@ -71,9 +79,14 @@ module video_serial
 	wire bus_cycle_next = ~byte_finished && last_byte_finished;
 
 
-	// pixel counter
-	reg [$clog2(SCREEN_HEIGHT) : 0] y_ctr = 0, next_y_ctr = 0;
-	reg [$clog2(SCREEN_WIDTH) : 0] x_ctr = 0, next_x_ctr = 0;
+	// pixel counters
+	reg [HCTR_BITS - 1 : 0] x_ctr = 0, next_x_ctr = 0;
+	reg [VCTR_BITS - 1 : 0] y_ctr = 0, next_y_ctr = 0;
+	assign out_hpix = x_ctr;
+	assign out_vpix = y_ctr;
+
+	// test pattern values
+	reg [PIXEL_BITS - 1 : 0] pattern;
 
 
 	// instantiate serial module
@@ -166,7 +179,7 @@ module video_serial
 			// next init data byte
 			NextInit: begin
 				enable = 1;
-				if(init_ctr + 1 == NUM_INIT_BYTES) begin
+				if(init_ctr + 1 == INIT_BYTES) begin
 					next_state = WriteData;
 				end else begin
 					next_init_ctr = init_ctr + 1;
@@ -179,7 +192,10 @@ module video_serial
 			// write first byte of the pixel data
 			WriteData: begin
 				enable = 1;
-				data = in_pixel[PIXEL_BITS - 1 : PIXEL_BITS/2];
+				if(in_testpattern)
+					data = pattern[PIXEL_BITS - 1 : PIXEL_BITS/2];
+				else
+					data = in_pixel[PIXEL_BITS - 1 : PIXEL_BITS/2];
 
 				if(bus_cycle == 1)
 					next_state = WriteData2;
@@ -188,7 +204,10 @@ module video_serial
 			// write second byte of the pixel data
 			WriteData2: begin
 				enable = 1;
-				data = in_pixel[PIXEL_BITS/2 - 1 : 0];
+				if(in_testpattern)
+					data = pattern[PIXEL_BITS/2 - 1 : 0];
+				else
+					data = in_pixel[PIXEL_BITS/2 - 1 : 0];
 
 				if(bus_cycle == 1)
 					next_state = NextData;
@@ -224,5 +243,25 @@ module video_serial
 			end
 		endcase
 	end
+
+
+// generate test pattern
+generate
+if(USE_TESTPATTERN) begin
+	testpattern
+	#(
+		.HPIX(SCREEN_WIDTH), .VPIX(SCREEN_HEIGHT),
+		.PIXEL_BITS(PIXEL_BITS),
+		.HCTR_BITS(HCTR_BITS), .VCTR_BITS(VCTR_BITS)
+	 )
+	testpattern_mod
+	(
+		.in_hpix(x_ctr), .in_vpix(y_ctr),
+		.out_pattern(pattern)
+	);
+end else begin
+	assign pattern = 0;
+end
+endgenerate
 
 endmodule
