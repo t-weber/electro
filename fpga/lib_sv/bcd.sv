@@ -70,38 +70,38 @@ end
 //always@(state, bitidx, bcdidx, bcdnum, in_start, in_num) begin
 always_comb begin
 	// save registers
-	state_next <= state;
-	bcdnum_next <= bcdnum;
-	bitidx_next <= bitidx;
-	bcdidx_next <= bcdidx;
+	state_next = state;
+	bcdnum_next = bcdnum;
+	bitidx_next = bitidx;
+	bcdidx_next = bcdidx;
 
 	case(state)
 		// wait for the start signal
 		Idle:
 			if(in_start == 1) begin
-				state_next <= Reset;
+				state_next = Reset;
 			end
 
 		// reset
 		Reset:
 			begin
-				bcdnum_next <= 0;
-				bitidx_next <= IN_BITS[IN_BITS-1 : 0] - 1'b1;
-				bcdidx_next <= NUM_BCD_DIGITS[NUM_BCD_DIGITS-1 : 0] - 1'b1;
-				state_next <= Shift;
+				bcdnum_next = 0;
+				bitidx_next = IN_BITS[IN_BITS-1 : 0] - 1'b1;
+				bcdidx_next = NUM_BCD_DIGITS[NUM_BCD_DIGITS-1 : 0] - 1'b1;
+				state_next = Shift;
 			end
 
 		// shift left
 		Shift:
 			begin
-				bcdnum_next[OUT_BITS-1 : 1] <= bcdnum[OUT_BITS-2 : 0];
-				bcdnum_next[0] <= in_num[bitidx];
+				bcdnum_next[OUT_BITS-1 : 1] = bcdnum[OUT_BITS-2 : 0];
+				bcdnum_next[0] = in_num[bitidx];
 
 				// no addition for last index
 				if(bitidx != 0)
-					state_next <= Add;
+					state_next = Add;
 				else
-					state_next <= Idle;
+					state_next = Idle;
 			end
 
 		// add 3 if bcd digit >= 5
@@ -109,21 +109,21 @@ always_comb begin
 			begin
 				// check if the bcd digit is >= 5, if so, add 3
 				if(bcdnum[bcdidx*4+3 -: 4] >= 5)
-					bcdnum_next <= bcdnum + (2'd3 << (bcdidx*3'd4));
+					bcdnum_next = bcdnum + (2'd3 << (bcdidx*3'd4));
 
 				if(bcdidx != 0)
-					bcdidx_next <= bcdidx - 1'b1;
+					bcdidx_next = bcdidx - 1'b1;
 				else begin
-					bcdidx_next <= NUM_BCD_DIGITS[NUM_BCD_DIGITS-1 : 0] - 1'b1;
-					state_next <= NextIndex;
+					bcdidx_next = NUM_BCD_DIGITS[NUM_BCD_DIGITS-1 : 0] - 1'b1;
+					state_next = NextIndex;
 				end
 			end
 
 		// next bit
 		NextIndex:
 			begin
-				bitidx_next <= bitidx - 1'b1;
-				state_next <= Shift;
+				bitidx_next = bitidx - 1'b1;
+				state_next = Shift;
 			end
 	endcase
 end

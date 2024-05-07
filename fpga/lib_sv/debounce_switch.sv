@@ -43,17 +43,17 @@ end
 
 
 // clock process
-integer shift_idx;
+/*bit [$clog2(NUM_STEPS) : 0]*/ int shift_idx;
 always_ff@(posedge in_clk, posedge in_rst) begin
 	if(in_rst == 1) begin
 		shiftreg <= 0;
 		debounced <= 0;
 		stable_counter <= 0;
 	end
-	else if(in_clk == 1) begin
+	else begin
 		// write signal in shift register
 		shiftreg[0] <= in_signal;
-		for(shift_idx=1; shift_idx<NUM_STEPS; ++shift_idx) begin
+		for(shift_idx = 1; shift_idx < NUM_STEPS; ++shift_idx) begin
 			shiftreg[shift_idx] <= shiftreg[shift_idx-1];
 		end
 
@@ -73,11 +73,11 @@ end
 //always@(stable_counter, debounced, shiftreg[NUM_STEPS-1]) begin
 always_comb begin
 	// keep value
-	debounced_next <= debounced;
+	debounced_next = debounced;
 
 	// if the signal has been stable, sample a new value
 	if(stable_counter == STABLE_TICKS) begin
-		debounced_next <= shiftreg[NUM_STEPS-1];
+		debounced_next = shiftreg[NUM_STEPS-1];
 	end;
 end
 

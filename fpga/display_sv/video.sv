@@ -20,15 +20,15 @@ module video
 
 	// rows
 	parameter HSYNC_START  = 88,
-	parameter HSYNC_STOP   = 88 + 44,
-	parameter HSYNC_DELAY  = 88 + 44 + 148,
+	parameter HSYNC_STOP   = HSYNC_START + 44,
+	parameter HSYNC_DELAY  = HSYNC_STOP + 148,
 	parameter HPIX_VISIBLE = 1920,
 	parameter HPIX_TOTAL   = HPIX_VISIBLE + HSYNC_DELAY,
 
 	// columns
 	parameter VSYNC_START  = 4,
-	parameter VSYNC_STOP   = 4 + 5,
-	parameter VSYNC_DELAY  = 4 + 5 + 36,
+	parameter VSYNC_STOP   = VSYNC_START + 5,
+	parameter VSYNC_DELAY  = VSYNC_STOP + 36,
 	parameter VPIX_VISIBLE = 1080,
 	parameter VPIX_TOTAL   = VPIX_VISIBLE + VSYNC_DELAY,
 
@@ -64,20 +64,12 @@ module video
 );
 
 
-
+// ----------------------------------------------------------------------------
+// total row / column counters
+// ----------------------------------------------------------------------------
 // current pixel counter in total range
 reg [$clog2(HPIX_TOTAL) : 0] h_ctr, h_ctr_next;
 reg [$clog2(VPIX_TOTAL) : 0] v_ctr, v_ctr_next;
-
-// current pixel counter in visible range
-reg [$clog2(HPIX_VISIBLE) : 0] hpix;
-reg [$clog2(VPIX_VISIBLE) : 0] vpix;
-
-// in visible range?
-logic visible_range = 1'b0;
-
-// test pattern values
-reg [PIXEL_BITS - 1 : 0] pattern;
 
 
 // row / column counters
@@ -97,23 +89,66 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 end
 
 
+// next column / row
+assign h_ctr_next = (h_ctr == HPIX_TOTAL - 1) ? 0 : h_ctr + 1;
+assign v_ctr_next = (v_ctr == VPIX_TOTAL - 1) ? 0 : v_ctr + 1;
+
+
+// pixel counters in visible range?
 always_comb begin
-	// pixel counters in visible range?
 	visible_range = (
 		h_ctr >= HSYNC_DELAY && h_ctr < HPIX_VISIBLE + HSYNC_DELAY &&
 		v_ctr >= VSYNC_DELAY && v_ctr < VPIX_VISIBLE + VSYNC_DELAY)
 		? 1'b1 : 1'b0;
 end
+// ----------------------------------------------------------------------------
 
 
-// next column / row
-assign h_ctr_next = (h_ctr == HPIX_TOTAL - 1) ? 0 : h_ctr + 1;
-assign v_ctr_next = (v_ctr == VPIX_TOTAL - 1) ? 0 : v_ctr + 1;
+// ----------------------------------------------------------------------------
+// visible pixel counters
+// ----------------------------------------------------------------------------
+reg [$clog2(HPIX_VISIBLE) : 0] hpix;
+reg [$clog2(VPIX_VISIBLE) : 0] vpix;
+
+// in visible range?
+logic visible_range = 1'b0;
 
 // current pixel counters
 assign hpix = visible_range ? h_ctr - HSYNC_DELAY : 0;
 assign vpix = visible_range ? v_ctr - VSYNC_DELAY : 0;
+// ----------------------------------------------------------------------------
 
+
+// ----------------------------------------------------------------------------
+// test pattern
+// ----------------------------------------------------------------------------
+// test pattern values
+reg [PIXEL_BITS - 1 : 0] pattern;
+
+// generate test pattern
+generate
+if(USE_TESTPATTERN) begin
+	testpattern
+	#(
+		.HPIX(HPIX_VISIBLE), .VPIX(VPIX_VISIBLE),
+		.COLOUR_BITS(COLOUR_BITS), .PIXEL_BITS(PIXEL_BITS),
+		.HCTR_BITS(HCTR_BITS), .VCTR_BITS(VCTR_BITS)
+	 )
+	testpattern_mod
+	(
+		.in_hpix(hpix), .in_vpix(vpix),
+		.out_pattern(pattern)
+	);
+end else begin
+	assign pattern = 0;
+end
+endgenerate
+// ----------------------------------------------------------------------------
+
+
+// ----------------------------------------------------------------------------
+// outputs
+// ----------------------------------------------------------------------------
 // output pixel counter
 assign out_hpix = hpix;
 assign out_vpix = vpix;
@@ -134,25 +169,7 @@ assign out_pixel = in_testpattern ? pattern : in_mem;
 assign out_mem_addr = (visible_range == 1 && in_testpattern == 0)
 	? vpix*HPIX_VISIBLE + hpix + MEM_START_ADDR
 	: 0;
+// ----------------------------------------------------------------------------
 
-
-// generate test pattern
-generate
-if(USE_TESTPATTERN) begin
-	testpattern
-	#(
-		.HPIX(HPIX_VISIBLE), .VPIX(VPIX_VISIBLE),
-		.COLOUR_BITS(COLOUR_BITS), .PIXEL_BITS(PIXEL_BITS),
-		.HCTR_BITS(HCTR_BITS), .VCTR_BITS(VCTR_BITS)
-	 )
-	testpattern_mod
-	(
-		.in_hpix(hpix), .in_vpix(vpix),
-		.out_pattern(pattern)
-	);
-end else begin
-	assign pattern = 0;
-end
-endgenerate
 
 endmodule

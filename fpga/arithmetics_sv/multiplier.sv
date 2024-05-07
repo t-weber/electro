@@ -42,10 +42,10 @@ typedef enum
 t_state state = Reset, state_next = Reset;
 
 
-logic [OUT_BITS-1 : 0] prod, prod_next;           // current product value
-logic [OUT_BITS-1 : 0] b_shifted;                 // shifted b_value
-logic [OUT_BITS-1 : 0] b_sum;                     // prod * b_shifted
-int unsigned bitidx, bitidx_next;                 // in_a bit index (TODO: range 0 to IN_BITS-1)
+logic [OUT_BITS-1 : 0] prod, prod_next;          // current product value
+logic [OUT_BITS-1 : 0] b_shifted;                // shifted b_value
+logic [OUT_BITS-1 : 0] b_sum;                    // prod * b_shifted
+bit [$clog2(IN_BITS) : 0] bitidx, bitidx_next;   // in_a bit index (range 0 to IN_BITS-1)
 
 
 // use adder module

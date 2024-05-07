@@ -49,7 +49,7 @@ end else begin
 	// clock counter
 	localparam CLK_CTR_MAX     = MAIN_CLK_HZ / CLK_HZ / 2 - 1;
 	localparam CLK_CTR_SHIFTED = MAIN_CLK_HZ / CLK_HZ / 2 - MAIN_CLK_HZ / CLK_HZ / 4;
-	int clk_ctr = 0;
+	bit [$clog2(CLK_CTR_MAX) : 0] clk_ctr = 0;
 
 
 	// output clock

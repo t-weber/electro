@@ -18,7 +18,7 @@ module edgedet
 
 
 logic [0 : NUM_STEPS-1] shiftreg;
-integer shift_idx;
+/*bit [$clog2(NUM_STEPS) : 0]*/ int shift_idx;
 
 
 // output edge
@@ -38,7 +38,7 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 	else if(in_clk == 1) begin
 		shiftreg[0] <= in_signal;
 
-		for(shift_idx=1; shift_idx<NUM_STEPS; ++shift_idx) begin
+		for(shift_idx = 1; shift_idx < NUM_STEPS; ++shift_idx) begin
 			shiftreg[shift_idx] <= shiftreg[shift_idx-1];
 		end
 	end

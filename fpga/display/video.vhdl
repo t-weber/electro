@@ -116,17 +116,8 @@ begin
 	-- =========================================================================
 	-- visible pixel counters
 	-- =========================================================================
-	hpix <= h_ctr - HSYNC_DELAY
-		when visible_range = '1'
-			and h_ctr - HSYNC_DELAY >= 0
-			and h_ctr - HSYNC_DELAY < HPIX_VISIBLE
-		else 0;
-
-	vpix <= v_ctr - VSYNC_DELAY
-		when visible_range = '1'
-			and v_ctr - VSYNC_DELAY >= 0
-			and v_ctr - VSYNC_DELAY < VPIX_VISIBLE
-		else 0;
+	hpix <= h_ctr - HSYNC_DELAY when visible_range = '1' else 0;
+	vpix <= v_ctr - VSYNC_DELAY when visible_range = '1' else 0;
 
 	-- pixel counters in visible range?
 	visible_range <= '1' when

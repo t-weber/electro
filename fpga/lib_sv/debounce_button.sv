@@ -53,22 +53,22 @@ end
 // debouncing process
 always_comb begin
 	// keep values
-	btnstate_next <= btnstate;
-	stable_counter_next <= stable_counter;
-	debounced_next <= 0;
+	btnstate_next = btnstate;
+	stable_counter_next = stable_counter;
+	debounced_next = 0;
 
 	case(btnstate)
 		NotPressed:
 			begin
 				// button being pressed?
 				if(in_signal)
-					stable_counter_next <= stable_counter + 1'b1;
+					stable_counter_next = stable_counter + 1'b1;
 				else
-					stable_counter_next <= 0;
+					stable_counter_next = 0;
 
 				if(stable_counter == STABLE_TICKS) begin
-					stable_counter_next <= 0;
-					btnstate_next <= Pressed;
+					stable_counter_next = 0;
+					btnstate_next = Pressed;
 				end
 			end
 
@@ -76,21 +76,21 @@ always_comb begin
 			begin
 				// button being released?
 				if(!in_signal)
-					stable_counter_next <= stable_counter + 1'b1;
+					stable_counter_next = stable_counter + 1'b1;
 				else
-					stable_counter_next <= 0;
+					stable_counter_next = 0;
 
 				if(stable_counter == STABLE_TICKS) begin
-					stable_counter_next <= 0;
-					btnstate_next <= Released;
+					stable_counter_next = 0;
+					btnstate_next = Released;
 				end
 			end
 
 		Released:
 			begin
-				stable_counter_next <= 0;
-				btnstate_next <= NotPressed;
-				debounced_next <= 1;
+				stable_counter_next = 0;
+				btnstate_next = NotPressed;
+				debounced_next = 1;
 			end
 	endcase
 end

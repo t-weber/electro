@@ -41,21 +41,22 @@ module video_serial
 	);
 
 
-	typedef enum bit [$clog2(7) : 0] {
-		Reset,
-		WriteInit, NextInit,
-		WriteData, WriteData2, NextData,
-		Idle
-	} t_state;
-	t_state state = Reset, next_state = Reset;
-
-
+	// --------------------------------------------------------------------
 	// wait timer register
+	// --------------------------------------------------------------------
+`ifdef __IN_SIMULATION__
+	localparam WAIT_RESET = 1;
+`else
 	localparam WAIT_RESET = MAIN_CLK/1000*100;  // 100 ms
+`endif
+
 	logic [$clog2(WAIT_RESET) : 0] wait_ctr = 0, wait_ctr_max = 0;
+	// --------------------------------------------------------------------
 
 
+	// --------------------------------------------------------------------
 	// init data
+	// --------------------------------------------------------------------
 	localparam INIT_BYTES = 2;
 	logic [INIT_BYTES][SERIAL_BITS-1 : 0] init_data = {
 		8'hff, 8'h00  // TODO
@@ -63,33 +64,29 @@ module video_serial
 
 	// init data byte counter
 	reg [$clog2(INIT_BYTES) : 0] init_ctr = 0, next_init_ctr = 0;
+	// --------------------------------------------------------------------
 
 
-	logic enable, ready;
-	logic vid_rst, serial, serial_clk;
+	// pixel counters
+	reg [HCTR_BITS - 1 : 0] x_ctr = 0, next_x_ctr = 0;
+	reg [VCTR_BITS - 1 : 0] y_ctr = 0, next_y_ctr = 0;
 
-	assign out_vid_rst = vid_rst;
-	assign out_vid_serial = serial;
-	assign out_vid_serial_clk = serial_clk;
 
+	// video interface
+	logic vid_rst;
+
+
+	// --------------------------------------------------------------------
+	// serial interface
+	// --------------------------------------------------------------------
+	logic serial_enable, serial_ready;
+	logic serial, serial_clk;
 	logic [SERIAL_BITS-1 : 0] data;
 
 	logic byte_finished, last_byte_finished = 0;
 	wire bus_cycle = byte_finished && ~last_byte_finished;
 	wire bus_cycle_next = ~byte_finished && last_byte_finished;
 
-
-	// pixel counters
-	reg [HCTR_BITS - 1 : 0] x_ctr = 0, next_x_ctr = 0;
-	reg [VCTR_BITS - 1 : 0] y_ctr = 0, next_y_ctr = 0;
-	assign out_hpix = x_ctr;
-	assign out_vpix = y_ctr;
-
-	// test pattern values
-	reg [PIXEL_BITS - 1 : 0] pattern;
-
-
-	// instantiate serial module
 	serial #(
 		.BITS(SERIAL_BITS), .LOWBIT_FIRST(0),
 		.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SERIAL_CLK),
@@ -97,11 +94,63 @@ module video_serial
 	)
 	serial_mod(
 		.in_clk(in_clk), .in_rst(in_rst),
-		.in_parallel(data), .in_enable(enable),
+		.in_parallel(data), .in_enable(serial_enable),
 		.out_serial(serial), .out_next_word(byte_finished),
-		.out_ready(ready), .out_clk(serial_clk),
+		.out_ready(serial_ready), .out_clk(serial_clk),
 		.in_serial(serial)
 	);
+	// --------------------------------------------------------------------
+
+
+	// --------------------------------------------------------------------
+	// generate test pattern
+	// --------------------------------------------------------------------
+	// test pattern values
+	reg [PIXEL_BITS - 1 : 0] pattern;
+
+
+	generate
+	if(USE_TESTPATTERN) begin
+		testpattern
+		#(
+			.HPIX(SCREEN_WIDTH), .VPIX(SCREEN_HEIGHT),
+			.PIXEL_BITS(PIXEL_BITS),
+			.HCTR_BITS(HCTR_BITS), .VCTR_BITS(VCTR_BITS)
+		 )
+		testpattern_mod
+		(
+			.in_hpix(x_ctr), .in_vpix(y_ctr),
+			.out_pattern(pattern)
+		);
+	end else begin
+		assign pattern = 0;
+	end
+	endgenerate
+	// --------------------------------------------------------------------
+
+
+	// --------------------------------------------------------------------
+	// outputs
+	// --------------------------------------------------------------------
+	assign out_hpix = x_ctr;
+	assign out_vpix = y_ctr;
+
+	assign out_vid_rst = vid_rst;
+	assign out_vid_serial = serial;
+	assign out_vid_serial_clk = serial_clk;
+	// --------------------------------------------------------------------
+
+
+	// --------------------------------------------------------------------
+	// states
+	// --------------------------------------------------------------------
+	typedef enum bit [$clog2(7) : 0] {
+		Reset,
+		WriteInit, NextInit,
+		WriteData, WriteData2, NextData,
+		Idle
+	} t_state;
+	t_state state = Reset, next_state = Reset;
 
 
 	// state flip-flops
@@ -151,7 +200,7 @@ module video_serial
 		next_y_ctr = y_ctr;
 		wait_ctr_max = WAIT_RESET;
 
-		enable = 0;
+		serial_enable = 0;
 		vid_rst = 0;
 		data = 0;
 
@@ -169,7 +218,7 @@ module video_serial
 			// ----------------------------------------------------
 			// write init data
 			WriteInit: begin
-				enable = 1;
+				serial_enable = 1;
 				data = init_data[init_ctr];
 
 				if(bus_cycle == 1)
@@ -178,7 +227,7 @@ module video_serial
 
 			// next init data byte
 			NextInit: begin
-				enable = 1;
+				serial_enable = 1;
 				if(init_ctr + 1 == INIT_BYTES) begin
 					next_state = WriteData;
 				end else begin
@@ -191,7 +240,7 @@ module video_serial
 			// ----------------------------------------------------
 			// write first byte of the pixel data
 			WriteData: begin
-				enable = 1;
+				serial_enable = 1;
 				if(in_testpattern)
 					data = pattern[PIXEL_BITS - 1 : PIXEL_BITS/2];
 				else
@@ -203,7 +252,7 @@ module video_serial
 
 			// write second byte of the pixel data
 			WriteData2: begin
-				enable = 1;
+				serial_enable = 1;
 				if(in_testpattern)
 					data = pattern[PIXEL_BITS/2 - 1 : 0];
 				else
@@ -217,21 +266,21 @@ module video_serial
 			NextData: begin
 				if(y_ctr + 1 == SCREEN_HEIGHT) begin
 					if(x_ctr + 1 == SCREEN_WIDTH) begin
-						enable = 0;
+						serial_enable = 0;
 						next_state = Idle;
 					end else begin
-						enable = 1;
+						serial_enable = 1;
 						next_x_ctr = x_ctr + 1;
 						next_state = WriteData;
 					end
 				end else begin
 					if(x_ctr + 1 == SCREEN_WIDTH) begin
-						enable = 1;
+						serial_enable = 1;
 						next_x_ctr = 0;
 						next_y_ctr = y_ctr + 1;
 						next_state = WriteData;
 					end else begin
-						enable = 1;
+						serial_enable = 1;
 						next_x_ctr = x_ctr + 1;
 						next_state = WriteData;
 					end
@@ -243,25 +292,6 @@ module video_serial
 			end
 		endcase
 	end
-
-
-// generate test pattern
-generate
-if(USE_TESTPATTERN) begin
-	testpattern
-	#(
-		.HPIX(SCREEN_WIDTH), .VPIX(SCREEN_HEIGHT),
-		.PIXEL_BITS(PIXEL_BITS),
-		.HCTR_BITS(HCTR_BITS), .VCTR_BITS(VCTR_BITS)
-	 )
-	testpattern_mod
-	(
-		.in_hpix(x_ctr), .in_vpix(y_ctr),
-		.out_pattern(pattern)
-	);
-end else begin
-	assign pattern = 0;
-end
-endgenerate
+	// --------------------------------------------------------------------
 
 endmodule
