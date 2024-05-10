@@ -14,6 +14,7 @@ module serial
 	// inactive signals
 	parameter SERIAL_CLK_INACTIVE  = 1'b1,
 	parameter SERIAL_DATA_INACTIVE = 1'b1,
+	parameter KEEP_SERIAL_CLK_RUNNING = 1'b0,
 
 	// word length
 	parameter BITS         = 8,
@@ -24,7 +25,10 @@ module serial
 	input wire in_clk,
 	input wire in_rst,
 
+	// serial clock
 	output wire out_clk,
+
+	// not currently transmitting
 	output wire out_ready,
 
 	// enable transmission
@@ -60,7 +64,7 @@ reg [$clog2(BITS) : 0] bit_ctr = 0, next_bit_ctr = 0;
 wire [$clog2(BITS) : 0] actual_bit_ctr;
 
 generate
-	if(LOWBIT_FIRST == 1) begin
+	if(LOWBIT_FIRST == 1'b1) begin
 		assign actual_bit_ctr = bit_ctr;
 	end else begin
 		assign actual_bit_ctr = BITS - bit_ctr - 1;
@@ -101,13 +105,26 @@ clkgen #(
 
 // generate serial clock output
 generate
-	if(SERIAL_CLK_INACTIVE == 1) begin
+if(KEEP_SERIAL_CLK_RUNNING == 1'b1) begin
+	// keep serial clock running when not transmitting:
+	// have to use the out_ready signal manually
+	if(SERIAL_CLK_INACTIVE == 1'b1) begin
+		// inactive '1' and trigger on rising edge
+		assign out_clk = serial_clk;
+	end else begin
+		// inactive '0' and trigger on falling edge
+		assign out_clk = ~serial_clk;
+	end
+end else begin
+	// stop serial clock when not transmitting
+	if(SERIAL_CLK_INACTIVE == 1'b1) begin
 		// inactive '1' and trigger on rising edge
 		assign out_clk = serial_state == Transmit ? serial_clk : 1;
 	end else begin
 		// inactive '0' and trigger on falling edge
 		assign out_clk = serial_state == Transmit ? ~serial_clk : 0;
 	end
+end
 endgenerate
 
 assign out_ready = serial_state == Ready;
@@ -116,7 +133,7 @@ assign out_ready = serial_state == Ready;
 // state and data flip-flops for serial clock
 always_ff@(negedge serial_clk, posedge in_rst) begin
 	// reset
-	if(in_rst == 1) begin
+	if(in_rst == 1'b1) begin
 		// state register
 		serial_state <= Ready;
 
@@ -147,7 +164,7 @@ end
 always@(in_enable, in_parallel, parallel_fromfpga) begin
 	next_parallel_fromfpga <= parallel_fromfpga;
 
-	if(in_enable == 1) begin
+	if(in_enable == 1'b1) begin
 		next_parallel_fromfpga <= in_parallel;
 	end
 end
@@ -170,14 +187,16 @@ always_comb begin
 	next_bit_ctr = bit_ctr;
 	request_word = 0;
 
-	$display("** serial: %s, bit %d. **", serial_state.name(), bit_ctr);
+`ifdef __IN_SIMULATION__
+	$display("** serial: %s, bit %d. **", serial_state.name(), actual_bit_ctr);
+`endif
 
 	// state machine
 	case(serial_state)
 		// wait for enable signal
 		Ready: begin
 			next_bit_ctr = 0;
-			if(in_enable == 1) begin
+			if(in_enable == 1'b1) begin
 				next_serial_state = Transmit;
 			end
 		end
@@ -193,7 +212,7 @@ always_comb begin
 			end
 
 			// enable signal not active any more?
-			if(in_enable == 0) begin
+			if(in_enable == 1'b0) begin
 				next_serial_state = Ready;
 			end
 		end

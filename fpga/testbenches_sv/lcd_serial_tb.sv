@@ -1,5 +1,5 @@
 /**
- * serial controller testbench
+ * serial lcd testbench
  * @author Tobias Weber
  * @date 4-may-2024
  * @license see 'LICENSE' file
@@ -17,8 +17,8 @@ module lcd_serial_tb;
 	localparam ITERS         = 300;
 	localparam MAIN_CLK      = 1_000_000;
 	//localparam SERIAL_CLK    = 0_250_000;
-	//localparam SERIAL_CLK    = 0_500_000;
-	localparam SERIAL_CLK    = 1_000_000;
+	localparam SERIAL_CLK    = 0_500_000;
+	//localparam SERIAL_CLK    = 1_000_000;
 	localparam SCREEN_WIDTH  = 4;
 	localparam SCREEN_HEIGHT = 4;
 

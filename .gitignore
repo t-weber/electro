@@ -42,6 +42,13 @@
 
 # temporary files
 *.c_
+*.json
+*.pack
+*.log
+*.svg
+*.png
+
+# generated files
 micro_proc/lib/characters.c
 
 fpga/cpu/build/**
