@@ -27,7 +27,10 @@ entity debounce is
 		in_signal : in std_logic;
 
 		-- debounced signal
-		out_debounced : out std_logic
+		out_debounced : out std_logic;
+
+		-- toggled state
+		out_toggled : out std_logic
 	);
 end entity;
 
@@ -52,6 +55,7 @@ begin
 
 	-- output the debounced signal
 	out_debounced <= debounced;
+	out_toggled <= debounced;   -- not used / the same
 
 	-- count the cycles the signal has been stable
 	stable_counter_next <= inc_logvec(stable_counter, 1);
@@ -106,12 +110,17 @@ architecture debounce_button_impl of debounce is
 	signal btnstate, btnstate_next : t_btnstate := NotPressed;
 
 	signal debounced, debounced_next : std_logic := '0';
+	signal toggled, toggled_next : std_logic := '0';
+
 	signal stable_counter, stable_counter_next
 		: std_logic_vector(STABLE_TICKS_BITS-1 downto 0) := (others => '0');
 begin
 
-	-- output the debounced signal
+	-- output the debounced single pulse
 	out_debounced <= debounced;
+
+	-- output the toggled state
+	out_toggled <= toggled;
 
 
 	-- clock process
@@ -120,12 +129,14 @@ begin
 		if in_rst = '1' then
 			btnstate <= NotPressed;
 			debounced <= '0';
+			toggled <= '0';
 			stable_counter <= (others => '0');
 
 		elsif rising_edge(in_clk) then
 			btnstate <= btnstate_next;
-			stable_counter <= stable_counter_next;
 			debounced <= debounced_next;
+			toggled <= toggled_next;
+			stable_counter <= stable_counter_next;
 		end if;
 	end process;
 
@@ -134,8 +145,9 @@ begin
 	debounce_proc : process(btnstate, stable_counter, in_signal)
 	begin
 		btnstate_next <= btnstate;
-		stable_counter_next <= stable_counter;
 		debounced_next <= '0';
+		toggled_next <= toggled;
+		stable_counter_next <= stable_counter;
 
 		case btnstate is
 			when NotPressed =>
@@ -168,6 +180,7 @@ begin
 				stable_counter_next <= (others => '0');
 				btnstate_next <= NotPressed;
 				debounced_next <= '1';
+				toggled_next <= not toggled;
 		end case;
 	end process;
 

@@ -145,7 +145,7 @@ int main(int argc, char **argv)
 		("module,m", args::value<decltype(cfg.entity_name)>(&cfg.entity_name),
 			("module name, default: " + cfg.entity_name).c_str())
 		("type,t", args::value<decltype(rom_type)>(&rom_type),
-			("output type (c/vhdl/sv), default: " + rom_type).c_str())
+			("output type (c/vhdl/sv/v), default: " + rom_type).c_str())
 		("first_char,c", args::value<decltype(cfg.ch_first)>(&cfg.ch_first),
 			("first char, default: " + std::to_string(cfg.ch_first)).c_str())
 		("last_char,l", args::value<decltype(cfg.ch_last)>(&cfg.ch_last),
@@ -214,6 +214,8 @@ int main(int argc, char **argv)
 		ok = create_font_vhdl(fontbits, cfg);
 	else if(boost::to_lower_copy(rom_type) == "sv")
 		ok = create_font_sv(fontbits, cfg);
+	else if(boost::to_lower_copy(rom_type) == "v")
+		ok = create_font_v(fontbits, cfg);
 
 	if(ok)
 	{

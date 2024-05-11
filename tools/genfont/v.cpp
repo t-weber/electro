@@ -1,7 +1,7 @@
 /**
  * create a font rom
  * @author Tobias Weber
- * @date jan-2022, apr-2024
+ * @date jan-2022, apr-2024, 11-may-2024
  * @license see 'LICENSE' file
  */
 
@@ -14,9 +14,9 @@
 
 
 /**
- * output an sv file
+ * output a v file
  */
-bool create_font_sv(const FontBits& fontbits, const Config& cfg)
+bool create_font_v(const FontBits& fontbits, const Config& cfg)
 {
 	std::ofstream *ofstr = nullptr;
 	std::ostream *ostr = &std::cout;
@@ -42,15 +42,15 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 		<< "\toutput wire out_pixel\n"
 		<< ");\n\n";
 
-	//(*ostr) << "\nlogic [LAST_CHAR - FIRST_CHAR][CHAR_HEIGHT][CHAR_WIDTH - 1 : 0] chars ="
-	(*ostr) << "\nlogic [(LAST_CHAR - FIRST_CHAR) * CHAR_HEIGHT][0 : CHAR_WIDTH - 1] chars ="
-		<< "\n{";
+	(*ostr) << "\nwire [0 : CHAR_WIDTH - 1] chars [0 : (LAST_CHAR - FIRST_CHAR) * CHAR_HEIGHT - 1];\n\n";
 
 
 	// iterate characters
-	for(const CharBits& charbits : fontbits.charbits)
+	for(std::size_t charidx = 0; charidx < fontbits.charbits.size(); ++charidx)
 	{
-		(*ostr) << "\n\t// char number " << charbits.ch_num
+		const CharBits& charbits = fontbits.charbits[charidx];
+
+		(*ostr) << "\n// char number " << charbits.ch_num
 			<< ": '" << static_cast<char>(charbits.ch_num) << "'"
 			<< ", height: " << charbits.height
 			<< ", width: " << charbits.width
@@ -61,34 +61,24 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 			<< ", top: " << charbits.top
 			<< "\n";
 
-		//(*ostr) << "\t{\n";
-
 		// iterate lines
 		for(std::size_t line = 0; line < charbits.lines.size(); ++line)
 		{
 			const std::vector<boost::dynamic_bitset<>>& linebits = charbits.lines[line];
-			(*ostr) << "\t" << linebits.size()*cfg.pitch_bits << "'b";
+			(*ostr) << "assign chars[" << std::setw(3) << charidx
+				<< "*CHAR_HEIGHT + " << std::setw(3) << line << "] = ";
+			(*ostr) << linebits.size()*cfg.pitch_bits << "'b";
 
 			// iterate pitch
 			for(std::size_t x = 0; x < linebits.size(); ++x)
 				(*ostr) << linebits[x];
 
-			//if(line < charbits.lines.size() - 1)
-			if(line < charbits.lines.size() - 1 || charbits.ch_num < cfg.ch_last - 1)
-				(*ostr) << ",";
-			(*ostr) << "\n";
+			(*ostr) << ";\n";
 		}
-
-		/*(*ostr) << "\t}";
-		if(charbits.ch_num < cfg.ch_last - 1)
-			(*ostr) << ",";
-		(*ostr) << "\n";*/
 	}
 
 
-	(*ostr) << "\n};\n";
-
-	(*ostr) << "\nwire [0 : CHAR_WIDTH - 1] line;\n"
+	(*ostr) << "\n\nwire [0 : CHAR_WIDTH - 1] line;\n"
 		<< "assign line = chars[in_char*CHAR_HEIGHT + in_y];\n"
 		<< "assign out_pixel = line[in_x];\n";
 

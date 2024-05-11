@@ -81,4 +81,10 @@ extern bool create_font_vhdl(const FontBits& fontbits, const Config& cfg);
 extern bool create_font_sv(const FontBits& fontbits, const Config& cfg);
 
 
+/**
+ * output an v file
+ */
+extern bool create_font_v(const FontBits& fontbits, const Config& cfg);
+
+
 #endif

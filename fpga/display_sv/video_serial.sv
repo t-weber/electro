@@ -103,6 +103,7 @@ module video_serial
 		1'b0, 1'b1   // pixel format [ctrl, p. 224]
 	};
 
+
 	// init data byte counter
 	reg [$clog2(INIT_BYTES) : 0] init_ctr = 0, next_init_ctr = 0;
 	// --------------------------------------------------------------------
@@ -155,7 +156,7 @@ module video_serial
 		testpattern
 		#(
 			.HPIX(SCREEN_WIDTH), .VPIX(SCREEN_HEIGHT),
-			.PIXEL_BITS(PIXEL_BITS),
+			.PIXEL_BITS(PIXEL_BITS), .RED_BITS(5), .GREEN_BITS(6), .BLUE_BITS(5),
 			.HCTR_BITS(HCTR_BITS), .VCTR_BITS(VCTR_BITS)
 		 )
 		testpattern_mod

@@ -1,17 +1,19 @@
 /**
  * video testpattern
  * @author Tobias Weber <tobias.weber@tum.de>
- * @date jan-2021, mar-2024
+ * @date may-2024
  * @license see 'LICENSE' file
  */
 
 module testpattern
 #(
-	// colour channels
-	// number of bits in one colour channel
-	parameter COLOUR_BITS = 8,
+	// number of bits in the colour channels
+	parameter RED_BITS   = 5,
+	parameter GREEN_BITS = 6,
+	parameter BLUE_BITS  = 5,
+
 	// number of bits in all colour channels
-	parameter PIXEL_BITS = 3 * COLOUR_BITS,
+	parameter PIXEL_BITS = RED_BITS + GREEN_BITS + BLUE_BITS,
 
 	// rows and columns
 	parameter HPIX = 1920,
@@ -29,8 +31,41 @@ module testpattern
 );
 
 
-assign out_pattern = {PIXEL_BITS{  // repeat to fill pixel bits
-	COLOUR_BITS'(in_hpix * in_vpix + 1'b1)}};
+wire [RED_BITS-1 : 0] red;
+wire [GREEN_BITS-1 : 0] green;
+wire [BLUE_BITS-1 : 0] blue;
+
+
+assign red =
+	in_vpix <= VPIX/2 && in_hpix <= HPIX/3                       ? {RED_BITS{1'b1}} :
+	in_vpix <= VPIX/2 && in_hpix > HPIX/3 && in_hpix <= HPIX*2/3 ? {RED_BITS{1'b0}} :
+	in_vpix <= VPIX/2 && in_hpix > HPIX*2/3                      ? {RED_BITS{1'b0}} :
+	in_vpix > VPIX/2 && in_hpix <= HPIX/3                        ? {RED_BITS{1'b1}} :
+	in_vpix > VPIX/2 && in_hpix > HPIX/3 && in_hpix <= HPIX*2/3  ? {RED_BITS{1'b0}} :
+	in_vpix > VPIX/2 && in_hpix > HPIX*2/3                       ? {RED_BITS{1'b1}}
+		: {RED_BITS{1'b0}};
+
+assign green =
+	in_vpix <= VPIX/2 && in_hpix <= HPIX/3                       ? {GREEN_BITS{1'b0}} :
+	in_vpix <= VPIX/2 && in_hpix > HPIX/3 && in_hpix <= HPIX*2/3 ? {GREEN_BITS{1'b1}} :
+	in_vpix <= VPIX/2 && in_hpix > HPIX*2/3                      ? {GREEN_BITS{1'b0}} :
+	in_vpix > VPIX/2 && in_hpix <= HPIX/3                        ? {GREEN_BITS{1'b0}} :
+	in_vpix > VPIX/2 && in_hpix > HPIX/3 && in_hpix <= HPIX*2/3  ? {GREEN_BITS{1'b1}} :
+	in_vpix > VPIX/2 && in_hpix > HPIX*2/3                       ? {GREEN_BITS{1'b1}}
+		: {GREEN_BITS{1'b0}};
+
+assign blue =
+	in_vpix <= VPIX/2 && in_hpix <= HPIX/3                       ? {BLUE_BITS{1'b0}} :
+	in_vpix <= VPIX/2 && in_hpix > HPIX/3 && in_hpix <= HPIX*2/3 ? {BLUE_BITS{1'b0}} :
+	in_vpix <= VPIX/2 && in_hpix > HPIX*2/3                      ? {BLUE_BITS{1'b1}} :
+	in_vpix > VPIX/2 && in_hpix <= HPIX/3                        ? {BLUE_BITS{1'b1}} :
+	in_vpix > VPIX/2 && in_hpix > HPIX/3 && in_hpix <= HPIX*2/3  ? {BLUE_BITS{1'b1}} :
+	in_vpix > VPIX/2 && in_hpix > HPIX*2/3                       ? {BLUE_BITS{1'b1}}
+		: {BLUE_BITS{1'b0}};
+
+
+// pixel output
+assign out_pattern = { red, green, blue };
 
 
 endmodule

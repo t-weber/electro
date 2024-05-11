@@ -24,7 +24,9 @@ pnr_file=output/pnr.json
 pack_file=output/${top_module}.fs
 pack_cst_file=output/${top_module}.cst
 pack_png_file=output/${top_module}.png
-src_files="../../clock_sv/clkgen.sv \
+src_files="../../lib_sv/debounce_button.sv \
+	../../lib_sv/debounce_switch.sv \
+	../../clock_sv/clkgen.sv \
 	../../comm_sv/serial.sv \
 	../../display_sv/video_serial.sv \
 	../../display_sv/testpattern.sv \

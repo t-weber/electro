@@ -70,7 +70,6 @@ end
 
 
 // output sampling process
-//always@(stable_counter, debounced, shiftreg[NUM_STEPS-1]) begin
 always_comb begin
 	// keep value
 	debounced_next = debounced;
