@@ -16,7 +16,6 @@ run_pnr=1
 run_pack=1
 num_threads=$(($(nproc)/2+1))
 
-pins_file=pins9k.cst
 top_module=lcd_serial
 
 synth_file=output/synth.json
@@ -30,14 +29,23 @@ src_files="../../lib_sv/debounce_button.sv \
 	../../comm_sv/serial.sv \
 	../../display_sv/video_serial.sv \
 	../../display_sv/testpattern.sv \
+	../../display_sv/tile.sv \
 	main.sv"
 
 synth_log=output/synth.log
 pnr_log=output/pnr.log
 
+# 9k board
 target_board=GW1NR-LV9QN88PC6/I5
 target_fpga=GW1N-9C
 target_freq=27
+target_pins_file=pins9k.cst
+
+# 1k board
+#target_board=GW1NZ-LV1QN48C6/I5
+#target_fpga=GW1NZ-1
+#target_freq=27
+#target_pins_file=pins1k.cst
 
 
 if [ ! -e output ]; then
@@ -61,7 +69,7 @@ if [ $run_pnr -ne 0 ]; then
 	echo -e "Running P&R: $synth_file -> $pnr_file..."
 	if ! nextpnr-gowin --threads $num_threads -q --detailed-timing-report -l $pnr_log \
 		--family $target_fpga --device $target_board --freq $target_freq \
-		--cst $pins_file --json $synth_file --write $pnr_file --top $top_module \
+		--cst $target_pins_file --json $synth_file --write $pnr_file --top $top_module \
 		--placed-svg output/placed.svg --routed-svg output/routed.svg
 	then
 		echo -e "P&R failed!"
