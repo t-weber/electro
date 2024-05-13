@@ -163,7 +163,9 @@ int main(int argc, char **argv)
 		("target_pitch", args::value<decltype(cfg.target_pitch)>(&cfg.target_pitch),
 			("target pitch, default: " + std::to_string(cfg.target_pitch)).c_str())
 		("pitch_bits", args::value<decltype(cfg.pitch_bits)>(&cfg.pitch_bits),
-			("bits per pitch, default: " + std::to_string(cfg.pitch_bits)).c_str());
+			("bits per pitch, default: " + std::to_string(cfg.pitch_bits)).c_str())
+		("local_params", args::value<decltype(cfg.local_params)>(&cfg.local_params),
+			("use local parameters, default: " + std::to_string(cfg.local_params)).c_str());
 
 	auto argparser = args::command_line_parser{argc, argv};
 	argparser.style(args::command_line_style::default_style);

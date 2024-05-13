@@ -37,6 +37,8 @@ struct Config
 
 	unsigned int ch_first = 0x20;
 	unsigned int ch_last = 0x7f;
+
+	bool local_params = true;
 };
 
 

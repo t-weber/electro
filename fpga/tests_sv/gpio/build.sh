@@ -16,7 +16,7 @@ run_pnr=1
 run_pack=1
 num_threads=$(($(nproc)/2+1))
 
-top_module=lcd_serial
+top_module=gpio
 
 synth_file=output/synth.json
 pnr_file=output/pnr.json
@@ -26,26 +26,22 @@ pack_png_file=output/${top_module}.png
 src_files="../../lib_sv/debounce_button.sv \
 	../../lib_sv/debounce_switch.sv \
 	../../clock_sv/clkgen.sv \
-	../../comm_sv/serial.sv \
-	../../display_sv/video_serial.sv \
-	../../display_sv/testpattern.sv \
-	../../display_sv/tile.sv \
-	font.sv main.sv"
+	main.sv"
 
 synth_log=output/synth.log
 pnr_log=output/pnr.log
 
 # 9k board
-target_board=GW1NR-LV9QN88PC6/I5
-target_fpga=GW1N-9C
-target_freq=27
-target_pins_file=pins9k.cst
+#target_board=GW1NR-LV9QN88PC6/I5
+#target_fpga=GW1N-9C
+#target_freq=27
+#target_pins_file=pins9k.cst
 
 # 1k board
-#target_board=GW1NZ-LV1QN48C6/I5
-#target_fpga=GW1NZ-1
-#target_freq=27
-#target_pins_file=pins1k.cst
+target_board=GW1NZ-LV1QN48C6/I5
+target_fpga=GW1NZ-1
+target_freq=27
+target_pins_file=pins1k.cst
 
 
 if [ ! -e output ]; then

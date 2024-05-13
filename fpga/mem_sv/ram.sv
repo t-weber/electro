@@ -61,7 +61,7 @@ begin : gen_ports
 			end
 		end
 
-		else if(in_clk == 1) begin
+		else begin
 			// write data to ram
 			if(in_write_ena == 1) begin
 				//$display("write to addr %h", in_addr[port_idx]);

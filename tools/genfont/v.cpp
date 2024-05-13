@@ -27,20 +27,36 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 	}
 
 
-	(*ostr) << "module " << cfg.entity_name << "\n"
-		<< "#(\n"
-		<< "\tparameter FIRST_CHAR = " << cfg.ch_first << ",\n"
-		<< "\tparameter LAST_CHAR = " << cfg.ch_last << ",\n"
-		<< "\tparameter CHAR_PITCH = " << cfg.target_pitch << ",\n"
-		<< "\tparameter CHAR_WIDTH = " << cfg.target_pitch * cfg.pitch_bits << ",\n"
-		<< "\tparameter CHAR_HEIGHT = " << cfg.target_height << "\n"
-		<< ")\n"
-		<< "(\n"
+	(*ostr) << "module " << cfg.entity_name << "\n";
+
+	if(!cfg.local_params)
+	{
+		(*ostr) << "#(\n"
+			<< "\tparameter FIRST_CHAR  = " << cfg.ch_first << ",\n"
+			<< "\tparameter LAST_CHAR   = " << cfg.ch_last << ",\n"
+			<< "\tparameter CHAR_PITCH  = " << cfg.target_pitch << ",\n"
+			<< "\tparameter CHAR_WIDTH  = " << cfg.target_pitch * cfg.pitch_bits << ",\n"
+			<< "\tparameter CHAR_HEIGHT = " << cfg.target_height << "\n"
+			<< ")\n";
+	}
+
+	(*ostr) << "(\n"
 		<< "\tinput wire [" << std::ceil(std::log2(cfg.ch_last)) - 1 << " : 0] in_char,\n"
 		<< "\tinput wire [" << std::ceil(std::log2(cfg.target_pitch * cfg.pitch_bits)) - 1 << " : 0] in_x,\n"
 		<< "\tinput wire [" << std::ceil(std::log2(cfg.target_height)) - 1 << " : 0] in_y,\n"
 		<< "\toutput wire out_pixel\n"
 		<< ");\n\n";
+
+	if(cfg.local_params)
+	{
+		(*ostr) << "\n"
+			<< "localparam FIRST_CHAR  = " << cfg.ch_first << ";\n"
+			<< "localparam LAST_CHAR   = " << cfg.ch_last << ";\n"
+			<< "localparam CHAR_PITCH  = " << cfg.target_pitch << ";\n"
+			<< "localparam CHAR_WIDTH  = " << cfg.target_pitch * cfg.pitch_bits << ";\n"
+			<< "localparam CHAR_HEIGHT = " << cfg.target_height << ";\n"
+			<< "\n";
+	}
 
 	(*ostr) << "\nwire [0 : CHAR_WIDTH - 1] chars [0 : (LAST_CHAR - FIRST_CHAR) * CHAR_HEIGHT - 1];\n\n";
 

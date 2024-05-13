@@ -30,9 +30,10 @@ localparam SCREEN_WIDTH  = 240;
 localparam SCREEN_HEIGHT = 135;
 localparam SCREEN_HOFFS  = 40;
 localparam SCREEN_VOFFS  = 53;
+localparam PIXEL_BITS    = 16;
 
-localparam TILE_WIDTH    = 16;
-localparam TILE_HEIGHT   = 8;
+localparam TILE_WIDTH    = 8;
+localparam TILE_HEIGHT   = 16;
 
 localparam SCREEN_WIDTH_BITS  = $clog2(SCREEN_WIDTH);
 localparam SCREEN_HEIGHT_BITS = $clog2(SCREEN_HEIGHT);
@@ -64,16 +65,17 @@ debounce_button debounce_key1(.in_clk(clk27), .in_rst(rst),
 logic lcd_rst, lcd_sel;
 logic [SCREEN_WIDTH_BITS - 1 : 0] pixel_x;
 logic [SCREEN_HEIGHT_BITS - 1 : 0] pixel_y;
+logic [PIXEL_BITS - 1 : 0] cur_pixel_col;
 
 assign serlcd_ena = ~lcd_rst;
 assign serlcd_sel = ~lcd_sel;
 
-video_serial #(.SERIAL_BITS(8), .PIXEL_BITS(16),
+video_serial #(.SERIAL_BITS(8), .PIXEL_BITS(PIXEL_BITS),
 	.SCREEN_WIDTH(SCREEN_WIDTH), .SCREEN_HEIGHT(SCREEN_HEIGHT),
 	.SCREEN_HOFFS(SCREEN_HOFFS), .SCREEN_VOFFS(SCREEN_VOFFS),
 	.MAIN_CLK(MAIN_CLK), .SERIAL_CLK(SERIAL_CLK))
 lcd_mod (.in_clk(clk27), .in_rst(rst),
-	.in_pixel(16'b11111_000000_00000), .in_testpattern(show_tp), .in_update(update),
+	.in_pixel(cur_pixel_col), .in_testpattern(show_tp), .in_update(update),
 	.out_vid_rst(lcd_rst), .out_vid_select(lcd_sel), .out_vid_cmd(serlcd_cmd),
 	.out_vid_serial_clk(serlcd_clk), .out_vid_serial(serlcd_out),
 	.out_hpix(pixel_x), .out_vpix(pixel_y));
@@ -88,12 +90,23 @@ logic [TILE_Y_BITS - 1 : 0] tile_y;
 logic [TILE_NUM_BITS - 1 : 0] tile_num;
 logic [TILE_WIDTH_BITS - 1 : 0] tile_pix_x;
 logic [TILE_HEIGHT_BITS - 1 : 0] tile_pix_y;
+logic font_pixel;
 
 tile #(.SCREEN_WIDTH(SCREEN_WIDTH), .SCREEN_HEIGHT(SCREEN_HEIGHT),
 	.TILE_WIDTH(TILE_WIDTH), .TILE_HEIGHT(TILE_HEIGHT))
 tile_mod (.in_x(pixel_x), .in_y(pixel_y),
 	.out_tile_x(tile_x), .out_tile_y(tile_y), .out_tile_num(tile_num),
 	.out_tile_pix_x(tile_pix_x), .out_tile_pix_y(tile_pix_y));
+
+logic [6 : 0] cur_char = 7'd33;
+
+// font rom; generate with: ./genfont -t sv -o font.sv
+font font_rom(.in_char(cur_char),
+	.in_x(tile_pix_x), .in_y(tile_pix_y),
+	.out_pixel(font_pixel));
+
+// set current pixel colour
+assign cur_pixel_col = font_pixel==1'b1 ? {PIXEL_BITS{1'b1}} : {PIXEL_BITS{1'b0}};
 
 // TODO
 // ----------------------------------------------------------------------------

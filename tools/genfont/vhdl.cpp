@@ -31,15 +31,20 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 		<< "use ieee.std_logic_1164.all;\n"
 		<< "use work.conv.all;\n\n";
 
-	(*ostr) << "\nentity " << cfg.entity_name << " is\n"
-		<< "\tgeneric(\n"
-		<< "\t\tconstant FIRST_CHAR : natural := " << cfg.ch_first << ";\n"
-		<< "\t\tconstant LAST_CHAR : natural := " << cfg.ch_last << ";\n"
-		<< "\t\tconstant CHAR_PITCH : natural := " << cfg.target_pitch << ";\n"
-		<< "\t\tconstant CHAR_WIDTH : natural := " << cfg.target_pitch * cfg.pitch_bits << ";\n"
-		<< "\t\tconstant CHAR_HEIGHT : natural := " << cfg.target_height << "\n"
-		<< "\t);\n\n"
-		<< "\tport(\n"
+	(*ostr) << "\nentity " << cfg.entity_name << " is\n";
+
+	if(!cfg.local_params)
+	{
+		(*ostr) << "\tgeneric(\n"
+			<< "\t\tconstant FIRST_CHAR  : natural := " << cfg.ch_first << ";\n"
+			<< "\t\tconstant LAST_CHAR   : natural := " << cfg.ch_last << ";\n"
+			<< "\t\tconstant CHAR_PITCH  : natural := " << cfg.target_pitch << ";\n"
+			<< "\t\tconstant CHAR_WIDTH  : natural := " << cfg.target_pitch * cfg.pitch_bits << ";\n"
+			<< "\t\tconstant CHAR_HEIGHT : natural := " << cfg.target_height << "\n"
+			<< "\t);\n\n";
+	}
+
+	(*ostr) << "\tport(\n"
 		<< "\t\tin_char : in std_logic_vector(" << std::ceil(std::log2(cfg.ch_last)) - 1 << " downto 0);\n"
 		<< "\t\tin_x : in std_logic_vector(" << std::ceil(std::log2(cfg.target_pitch * cfg.pitch_bits)) - 1 << " downto 0);\n"
 		<< "\t\tin_y : in std_logic_vector(" << std::ceil(std::log2(cfg.target_height)) - 1 << " downto 0);\n"
@@ -48,6 +53,17 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 		<< "end entity;\n\n";
 
 	(*ostr) << "\narchitecture " << cfg.entity_name << "_impl of " << cfg.entity_name << " is\n";
+
+	if(cfg.local_params)
+	{
+		(*ostr) << "\n"
+			<< "\tconstant FIRST_CHAR  : natural := " << cfg.ch_first << ";\n"
+			<< "\tconstant LAST_CHAR   : natural := " << cfg.ch_last << ";\n"
+			<< "\tconstant CHAR_PITCH  : natural := " << cfg.target_pitch << ";\n"
+			<< "\tconstant CHAR_WIDTH  : natural := " << cfg.target_pitch * cfg.pitch_bits << ";\n"
+			<< "\tconstant CHAR_HEIGHT : natural := " << cfg.target_height << ";\n"
+			<< "\n";
+	}
 
 	(*ostr) << "\tsubtype t_line is std_logic_vector(0 to CHAR_WIDTH-1);\n"
 		<< "\ttype t_char is array(0 to CHAR_HEIGHT-1) of t_line;\n"
