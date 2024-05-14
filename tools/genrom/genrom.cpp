@@ -16,6 +16,7 @@ namespace args = boost::program_options;
 #include "defs.h"
 #include "vhdl.h"
 #include "sv.h"
+#include "v.h"
 #include "hex.h"
 #include "img.h"
 
@@ -45,7 +46,7 @@ int main(int argc, char** argv)
 				("print characters, default: "
 					+ std::to_string(print_chars)).c_str())
 			("type,t", args::value<decltype(rom_type)>(&rom_type),
-				("output rom type (vhdl/sv/hex), default: "
+				("output rom type (vhdl/sv/v/hex), default: "
 					+ rom_type).c_str())
 			("ports,p", args::value<decltype(num_ports)>(&num_ports),
 				("number of memory ports, default: "
@@ -160,6 +161,8 @@ int main(int argc, char** argv)
 			gen_rom_fkt = &gen_rom_vhdl;
 		else if(boost::to_lower_copy(rom_type) == "sv")
 			gen_rom_fkt = &gen_rom_sv;
+		else if(boost::to_lower_copy(rom_type) == "v")
+			gen_rom_fkt = &gen_rom_v;
 		else if(boost::to_lower_copy(rom_type) == "hex")
 			gen_rom_fkt = &gen_rom_hex;
 

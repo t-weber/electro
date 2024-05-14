@@ -103,7 +103,6 @@ module video_serial
 		1'b0, 1'b1   // pixel format [ctrl, p. 224]
 	};
 
-
 	// init data byte counter
 	reg [$clog2(INIT_BYTES) : 0] init_ctr = 0, next_init_ctr = 0;
 	// --------------------------------------------------------------------

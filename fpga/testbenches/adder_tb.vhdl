@@ -4,7 +4,7 @@
 -- @date 30-apr-2023
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../lib/conv.vhdl  &&  ghdl -a --std=08 ../arithmetics/adder.vhdl  &&  ghdl -a --std=08 adder_tb.vhdl  &&  ghdl -e --std=08 adder_tb adder_tb_arch
+-- ghdl -a --std=08 ../conv/conv.vhdl  &&  ghdl -a --std=08 ../arithmetics/adder.vhdl  &&  ghdl -a --std=08 adder_tb.vhdl  &&  ghdl -e --std=08 adder_tb adder_tb_arch
 -- ghdl -r --std=08 adder_tb adder_tb_arch --vcd=adder_tb.vcd --stop-time=50ns
 -- gtkwave adder_tb.vcd
 --

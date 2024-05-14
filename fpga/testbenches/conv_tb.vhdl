@@ -4,7 +4,7 @@
 -- @date 24 March 2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../lib/conv.vhdl  &&  ghdl -a --std=08 conv_tb.vhdl  &&  ghdl -e --std=08 conv_tb conv_tb_arch
+-- ghdl -a --std=08 ../conv/conv.vhdl  &&  ghdl -a --std=08 conv_tb.vhdl  &&  ghdl -e --std=08 conv_tb conv_tb_arch
 -- ghdl -r --std=08 conv_tb conv_tb_arch --vcd=conv_tb.vcd --stop-time=1000ns
 -- gtkwave conv_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --
@@ -36,7 +36,7 @@ begin
 	begin
 		if rising_edge(clk) then
 			data <= data_next;
-		end if;	
+		end if;
 	end process;
 
 

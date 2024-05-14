@@ -15,10 +15,10 @@ module gpio
 	output [2:0] led,
 
 	// gpios
-	//output [5:0]  gpiol,
+	//output [5:0] gpiol,
 	//output [6:0] gpior
-	output [8:0]  gpiol,
-	output [11:0] gpior
+	output [3:0] gpiol,
+	output [9:0] gpior
 );
 
 

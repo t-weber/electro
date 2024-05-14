@@ -10,3 +10,6 @@ find . \(  -name "*.vcd" \
 	-o -name "*.cf" \
 	-o -name "*.o" \) \
 	-exec rm -fv {} \;
+
+rm -rfv tests/lcd_serial/output
+rm -rfv tests/gpio/output

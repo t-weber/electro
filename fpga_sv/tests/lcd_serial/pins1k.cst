@@ -35,26 +35,23 @@ IO_PORT "clk27"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 
 
 // available gpios on the left side
-IO_LOC "gpiol[0]"   24;
-IO_LOC "gpiol[1]"   23;
-IO_LOC "gpiol[2]"   22;
-IO_LOC "gpiol[3]"   18;
-IO_LOC "gpiol[4]"   17;
-IO_LOC "gpiol[5]"   16;
-IO_LOC "gpiol[6]"   15;
-IO_LOC "gpiol[7]"   27;
-IO_LOC "gpiol[8]"   28;
+IO_LOC "gpiol[0]"   23;
+IO_LOC "gpiol[1]"   18;
+IO_LOC "gpiol[2]"   17;
+IO_LOC "gpiol[3]"   16;
+
+// these also seem to be internally used
+//IO_LOC "gpiol[4]"   24;
+//IO_LOC "gpiol[5]"   22;
+//IO_LOC "gpiol[6]"   15;
+//IO_LOC "gpiol[7]"   27;
+//IO_LOC "gpiol[8]"   28;
 
 
 IO_PORT "gpiol[0]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 IO_PORT "gpiol[1]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 IO_PORT "gpiol[2]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 IO_PORT "gpiol[3]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpiol[4]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpiol[5]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpiol[6]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpiol[7]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpiol[8]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 
 
 
@@ -69,8 +66,10 @@ IO_LOC "gpior[6]"   34;
 IO_LOC "gpior[7]"   20;
 IO_LOC "gpior[8]"   19;
 IO_LOC "gpior[9]"   29;
-IO_LOC "gpior[10]"  30;
-IO_LOC "gpior[11]"  31;
+
+// these also seem to be internally used
+//IO_LOC "gpior[10]"  30;
+//IO_LOC "gpior[11]"  31;
 
 
 IO_PORT "gpior[0]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
@@ -83,5 +82,3 @@ IO_PORT "gpior[6]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 IO_PORT "gpior[7]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 IO_PORT "gpior[8]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 IO_PORT "gpior[9]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpior[10]" PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpior[11]" PULL_MODE=NONE  IO_TYPE=LVCMOS33;

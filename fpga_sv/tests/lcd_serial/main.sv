@@ -32,12 +32,16 @@ localparam SCREEN_HOFFS  = 40;
 localparam SCREEN_VOFFS  = 53;
 localparam PIXEL_BITS    = 16;
 
-localparam TILE_WIDTH    = 8;
-localparam TILE_HEIGHT   = 16;
+localparam TILE_WIDTH    = 12;
+localparam TILE_HEIGHT   = 20;
+
+localparam TEXT_ROWS     = $floor(SCREEN_HEIGHT / TILE_HEIGHT);
+localparam TEXT_COLS     = $floor(SCREEN_WIDTH / TILE_WIDTH);
+
+localparam FIRST_CHAR    = 32;
 
 localparam SCREEN_WIDTH_BITS  = $clog2(SCREEN_WIDTH);
 localparam SCREEN_HEIGHT_BITS = $clog2(SCREEN_HEIGHT);
-
 localparam TILE_WIDTH_BITS    = $clog2(TILE_WIDTH);
 localparam TILE_HEIGHT_BITS   = $clog2(TILE_HEIGHT);
 localparam TILE_X_BITS        = $clog2(SCREEN_WIDTH / TILE_WIDTH);
@@ -100,7 +104,8 @@ tile_mod (.in_x(pixel_x), .in_y(pixel_y),
 
 logic [6 : 0] cur_char = 7'd33;
 
-// font rom; generate with: ./genfont -t sv -o font.sv
+// font rom; generate with:
+// ./genfont -h 20 -w 24 --target_height 20 --target_pitch 2 --target_left 1 --pitch_bits 6 -t sv -o font.sv
 font font_rom(.in_char(cur_char),
 	.in_x(tile_pix_x), .in_y(tile_pix_y),
 	.out_pixel(font_pixel));
@@ -109,6 +114,9 @@ font font_rom(.in_char(cur_char),
 assign cur_pixel_col = font_pixel==1'b1 ? {PIXEL_BITS{1'b1}} : {PIXEL_BITS{1'b0}};
 
 // TODO
+
+// text buffer in rom
+// ./genrom -l 20 -t sv -p 1 -d 1 -f 0 -m textrom 0.txt -o textrom.sv
 // ----------------------------------------------------------------------------
 
 

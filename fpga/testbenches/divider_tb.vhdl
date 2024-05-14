@@ -4,7 +4,7 @@
 -- @date 7-January-2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../lib/conv.vhdl  &&  ghdl -a --std=08 ../arithmetics/adder.vhdl  &&ghdl -a --std=08 ../arithmetics/divider.vhdl  &&  ghdl -a --std=08 divider_tb.vhdl  &&  ghdl -e --std=08 divider_tb divider_tb_arch
+-- ghdl -a --std=08 ../conv/conv.vhdl  &&  ghdl -a --std=08 ../arithmetics/adder.vhdl  &&ghdl -a --std=08 ../arithmetics/divider.vhdl  &&  ghdl -a --std=08 divider_tb.vhdl  &&  ghdl -e --std=08 divider_tb divider_tb_arch
 -- ghdl -r --std=08 divider_tb divider_tb_arch --vcd=divider_tb.vcd --stop-time=1000ns
 -- gtkwave divider_tb.vcd
 --

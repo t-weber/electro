@@ -50,8 +50,8 @@
 
 # generated files
 micro_proc/lib/characters.c
-fpga/tests_sv/lcd_serial/font.sv
-fpga/tests_sv/lcd_serial/font.v
+fpga_sv/tests/lcd_serial/font.sv
+fpga_sv/tests/lcd_serial/font.v
 
 fpga/cpu/build/**
 tools/float/build/**

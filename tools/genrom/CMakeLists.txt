@@ -34,6 +34,7 @@ add_executable(genrom
 	genrom.cpp
 	vhdl.cpp vhdl.h
 	sv.cpp sv.h
+	v.cpp v.h
 	hex.cpp hex.h
 	img.cpp img.h
 )

@@ -4,7 +4,7 @@
 // @date 13-May-2023
 // @license see 'LICENSE' file
 //
-// iverilog -g2012 -o subtractor_tb ../arithmetics_sv/subtractor.sv subtractor_tb.sv
+// iverilog -g2012 -o subtractor_tb ../arithmetics/subtractor.sv subtractor_tb.sv
 // ./subtractor_tb
 //
 

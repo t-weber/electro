@@ -1,11 +1,11 @@
 /**
- * generates sv rom files
+ * generates .v rom files
  * @author Tobias Weber
  * @date 17-Jan-2024
  * @license see 'LICENSE' file
  */
 
-#include "sv.h"
+#include "v.h"
 
 #include <string>
 #include <iomanip>
@@ -16,13 +16,13 @@
 
 
 /**
- * generates an SV rom
+ * generates a .v rom
  */
-std::string gen_rom_sv(const t_words& data, int max_line_len, int num_ports,
+std::string gen_rom_v(const t_words& data, int max_line_len, int num_ports,
 	bool direct_ports, bool fill_rom, bool print_chars, const std::string& module_name)
 {
 	// rom file
-	std::string rom_sv = R"raw(module %%MODULE_NAME%%
+	std::string rom_v = R"raw(module %%MODULE_NAME%%
 #(
 	parameter NUM_PORTS = %%NUM_PORTS%%,
 	parameter ADDR_BITS = %%ADDR_BITS%%,
@@ -31,10 +31,11 @@ std::string gen_rom_sv(const t_words& data, int max_line_len, int num_ports,
 )
 (%%PORTS_DEF%%);
 
-logic [NUM_WORDS][WORD_BITS-1 : 0] words =
-{
+localparam LINE_LEN = %%LINE_LEN%%;
+
+wire [WORD_BITS-1 : 0] words [0 : NUM_WORDS - 1];
+
 %%ROM_DATA%%
-};
 
 %%PORTS_ASSIGN%%
 endmodule)raw";
@@ -59,6 +60,7 @@ endgenerate
 	// create data block
 	std::size_t rom_len = 0;
 	int cur_line_len = 0;
+	int cur_line = 0;
 
 	// get word size
 	typename t_word::size_type word_bits = 8;
@@ -66,8 +68,6 @@ endgenerate
 		word_bits = data[0].size();
 
 	std::ostringstream ostr_data;
-	ostr_data << "\t";
-	bool first_data = true;
 	std::vector<char> chs;
 	bool has_printables = false;
 
@@ -94,9 +94,10 @@ endgenerate
 	{
 		if(has_printables)
 		{
-			ostr_data << " // ";
+			ostr_data << "// ";
 			for(char c : chs)
 				ostr_data << c;
+			ostr_data << "\n";
 
 			has_printables = false;
 		}
@@ -106,17 +107,19 @@ endgenerate
 
 	for(const t_word& dat : data)
 	{
-		if(!first_data)
-			ostr_data << ", ";
-
 		if(cur_line_len >= max_line_len)
 		{
 			if(print_chars)
 				write_chars();
 
-			ostr_data << "\n\t";
+			ostr_data << "\n";
 			cur_line_len = 0;
+			++cur_line;
 		}
+
+		ostr_data << std::setfill(' ') << std::dec << "assign words [ "
+			<< std::setw(3) << cur_line << "*LINE_LEN + "
+			<< std::setw(3) << cur_line_len << " ] = ";
 
 		if(word_bits % 4 == 0)
 		{
@@ -125,7 +128,8 @@ endgenerate
 				//<< "WORD_BITS'('h"
 				<< "%%WORD_BITS%%'h"
 				<< std::hex << std::setfill('0') << std::setw(word_bits/4)
-				<< dat.to_ulong() /*<< ")"*/;
+				<< dat.to_ulong();
+				//<< ")";
 		}
 		else
 		{
@@ -133,13 +137,15 @@ endgenerate
 			ostr_data
 				//<< "WORD_BITS'('b"
 				<< "%%WORD_BITS%%'b"
-				<< dat /*<< ")"*/;
+				<< dat;
+				//<< ")";
 		}
+
+		ostr_data << ";\n";
 
 		if(print_chars)
 			add_char(static_cast<int>(dat.to_ulong()));
 
-		first_data = false;
 		++rom_len;
 		++cur_line_len;
 	}
@@ -154,9 +160,6 @@ endgenerate
 		t_word fill_data(word_bits, 0x00);
 		for(; rom_len < max_rom_len; ++rom_len)
 		{
-			if(!first_data)
-				ostr_data << ", ";
-
 			if(cur_line_len >= max_line_len)
 			{
 				if(print_chars)
@@ -164,7 +167,12 @@ endgenerate
 
 				ostr_data << "\n\t";
 				cur_line_len = 0;
+				++cur_line;
 			}
+
+			ostr_data << std::setfill(' ') << std::dec << "assign words [ "
+				<< std::setw(3) << cur_line << "*LINE_LEN + "
+				<< std::setw(3) << cur_line_len << " ] = ";
 
 			if(word_bits % 4 == 0)
 			{
@@ -173,7 +181,8 @@ endgenerate
 					//<< "WORD_BITS'('h"
 					<< "%%WORD_BITS%%'h"
 					<< std::hex << std::setfill('0') << std::setw(word_bits/4)
-					<< fill_data.to_ulong() /*<< ")"*/;
+					<< fill_data.to_ulong();
+					//<< ")";
 			}
 			else
 			{
@@ -181,10 +190,12 @@ endgenerate
 				ostr_data
 					//<< "WORD_BITS'('b"
 					<< "%%WORD_BITS%%'b"
-					<< fill_data /*<< ")"*/;
+					<< fill_data;
+					//<< ")";
 			}
 
-			first_data = false;
+			ostr_data << ";\n";
+
 			++cur_line_len;
 		}
 	}
@@ -193,15 +204,16 @@ endgenerate
 		write_chars();
 
 	// fill in missing rom data fields
-	boost::replace_all(rom_sv, "%%MODULE_NAME%%", module_name);
+	boost::replace_all(rom_v, "%%MODULE_NAME%%", module_name);
 	if(fill_rom)
-		boost::replace_all(rom_sv, "%%NUM_WORDS%%", "2**" + std::to_string(addr_bits));
+		boost::replace_all(rom_v, "%%NUM_WORDS%%", "2**" + std::to_string(addr_bits));
 	else
-		boost::replace_all(rom_sv, "%%NUM_WORDS%%", std::to_string(rom_len));
-	boost::replace_all(rom_sv, "%%ROM_DATA%%", ostr_data.str());
-	boost::replace_all(rom_sv, "%%WORD_BITS%%", std::to_string(word_bits));
-	boost::replace_all(rom_sv, "%%ADDR_BITS%%", std::to_string(addr_bits));
-	boost::replace_all(rom_sv, "%%NUM_PORTS%%", std::to_string(num_ports));
+		boost::replace_all(rom_v, "%%NUM_WORDS%%", std::to_string(rom_len));
+	boost::replace_all(rom_v, "%%ROM_DATA%%", ostr_data.str());
+	boost::replace_all(rom_v, "%%WORD_BITS%%", std::to_string(word_bits));
+	boost::replace_all(rom_v, "%%ADDR_BITS%%", std::to_string(addr_bits));
+	boost::replace_all(rom_v, "%%NUM_PORTS%%", std::to_string(num_ports));
+	boost::replace_all(rom_v, "%%LINE_LEN%%", std::to_string(max_line_len));
 
 	if(direct_ports && num_ports == 1)
 	{
@@ -213,8 +225,8 @@ endgenerate
 		ostrPorts << "\tinput  wire[ADDR_BITS-1 : 0] in_addr,\n";
 		ostrPorts << "\toutput wire[WORD_BITS-1 : 0] out_data\n";
 
-		boost::replace_all(rom_sv, "%%PORTS_DEF%%", ostrPorts.str());
-		boost::replace_all(rom_sv, "%%PORTS_ASSIGN%%", "assign out_data = words[in_addr];\n");
+		boost::replace_all(rom_v, "%%PORTS_DEF%%", ostrPorts.str());
+		boost::replace_all(rom_v, "%%PORTS_ASSIGN%%", "assign out_data = words[in_addr];\n");
 	}
 	else if(direct_ports && num_ports > 1)
 	{
@@ -239,15 +251,15 @@ endgenerate
 		}
 		ostrAssign << "\n";
 
-		boost::replace_all(rom_sv, "%%PORTS_DEF%%", ostrPorts.str());
-		boost::replace_all(rom_sv, "%%PORTS_ASSIGN%%", ostrAssign.str());
+		boost::replace_all(rom_v, "%%PORTS_DEF%%", ostrPorts.str());
+		boost::replace_all(rom_v, "%%PORTS_ASSIGN%%", ostrAssign.str());
 	}
 	else
 	{
 		// generate generic ports array
-		boost::replace_all(rom_sv, "%%PORTS_DEF%%", rom_ports_sv);
-		boost::replace_all(rom_sv, "%%PORTS_ASSIGN%%", rom_ports_assign_sv);
+		boost::replace_all(rom_v, "%%PORTS_DEF%%", rom_ports_sv);
+		boost::replace_all(rom_v, "%%PORTS_ASSIGN%%", rom_ports_assign_sv);
 	}
 
-	return rom_sv;
+	return rom_v;
 }

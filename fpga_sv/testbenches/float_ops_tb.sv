@@ -4,7 +4,7 @@
 // @date 10-June-2023
 // @license see 'LICENSE' file
 //
-// iverilog -g2012 -o float_ops_tb ../arithmetics_sv/float_ops.sv float_ops_tb.sv
+// iverilog -g2012 -o float_ops_tb ../arithmetics/float_ops.sv float_ops_tb.sv
 // ./float_ops_tb
 //
 
