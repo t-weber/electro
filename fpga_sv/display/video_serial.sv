@@ -22,13 +22,18 @@ module video_serial
 		parameter SCREEN_WIDTH    = 128,
 		parameter SCREEN_HEIGHT   = 64,
 
+		parameter SCREEN_HINV     = 1'b1,
+		parameter SCREEN_VINV     = 1'b0,
+		parameter SCREEN_HVINV    = 1'b1,
+		parameter SCREEN_RGBINV   = 1'b0,
+
 		parameter MAIN_CLK        = 50_000_000,
 		parameter SERIAL_CLK      = 10_000_000,
 
 		parameter HCTR_BITS       = $clog2(SCREEN_WIDTH),
 		parameter VCTR_BITS       = $clog2(SCREEN_HEIGHT),
 
-		parameter USE_TESTPATTERN = 1
+		parameter USE_TESTPATTERN = 1'b1
 	 )
 	(
 		// clock and reset
@@ -67,15 +72,15 @@ module video_serial
 	localparam WAIT_UPDATE      = MAIN_CLK/1000*50;      // 50 us, 20 Hz
 `endif
 
-	logic [$clog2(WAIT_AFTER_RESET /*largest value*/) : 0] wait_ctr = 0, wait_ctr_max = 0;
+	logic [$clog2(WAIT_AFTER_RESET /*largest value*/) : 0] wait_ctr = 1'b0, wait_ctr_max = 1'b0;
 	// --------------------------------------------------------------------
 
 
 	// --------------------------------------------------------------------
 	// init data
 	// --------------------------------------------------------------------
-	localparam [15 : 0] x_start = SCREEN_HOFFS, x_end = x_start + SCREEN_WIDTH - 1;
-	localparam [15 : 0] y_start = SCREEN_VOFFS, y_end = y_start + SCREEN_HEIGHT - 1;
+	localparam [15 : 0] x_start = 16'(SCREEN_HOFFS), x_end = 16'(x_start + SCREEN_WIDTH - 1'b1);
+	localparam [15 : 0] y_start = 16'(SCREEN_VOFFS), y_end = 16'(y_start + SCREEN_HEIGHT - 1'b1);
 
 	// start display [ctrl, pp. 156ff]
 	localparam INIT_BYTES = 17;
@@ -88,8 +93,8 @@ module video_serial
 		8'h29,  // output data ram [ctrl, p. 196]
 		8'h2a, x_start[15:8], x_start[7:0], x_end[15:8], x_end[7:0],  // set width [ctrl, p. 198]
 		8'h2b, y_start[15:8], y_start[7:0], y_end[15:8], y_end[7:0],  // set height [ctrl, p. 200]
-		8'h36, 8'b0110_0000,  // data ram access [ctrl, p. 215]
-		8'h3a, 8'b0101_0101   // 16 bit pixel format [ctrl, p. 224]
+		8'h36, { SCREEN_HINV, SCREEN_VINV, SCREEN_HVINV, 1'b0, SCREEN_RGBINV, 3'b000 },  // data ram access [ctrl, p. 215]
+		8'h3a, 8'b0101_0101  // 16 bit pixel format [ctrl, p. 224]
 	};
 
 	logic [INIT_BYTES] init_cmd = {
@@ -204,14 +209,14 @@ module video_serial
 		if(in_rst == 1'b1) begin
 			state <= Reset;
 
-			init_ctr <= 0;
-			x_ctr <= 0;
-			y_ctr <= 0;
+			init_ctr <= 1'b0;
+			x_ctr <= 1'b0;
+			y_ctr <= 1'b0;
 
 			// timer register
-			wait_ctr <= 0;
+			wait_ctr <= 1'b0;
 
-			last_byte_finished <= 0;
+			last_byte_finished <= 1'b0;
 		end
 
 		// clock
@@ -225,10 +230,10 @@ module video_serial
 			// timer register
 			if(wait_ctr == wait_ctr_max) begin
 				// reset timer counter
-				wait_ctr <= 0;
+				wait_ctr <= $size(wait_ctr)'(1'b0);
 			end else begin
 				// next timer counter
-				wait_ctr <= wait_ctr + 1;
+				wait_ctr <= $size(wait_ctr)'(wait_ctr + 1'b1);
 			end
 
 			last_byte_finished <= byte_finished;
@@ -283,20 +288,20 @@ module video_serial
 			// next init data byte
 			NextInit: begin
 				if(serial_ready == 1'b1) begin
-					if(init_ctr == 0) begin
+					if(init_ctr == 1'b0) begin
 						// next byte with wait
 						wait_ctr_max = WAIT_AFTER_RESET;
 						if(wait_ctr == wait_ctr_max) begin
-							next_init_ctr = init_ctr + 1;
+							next_init_ctr = $size(init_ctr)'(init_ctr + 1'b1);
 							next_state = WriteInit;
 						end
-					end else if(init_ctr + 1 == INIT_BYTES) begin
+					end else if(init_ctr + 1'b1 == INIT_BYTES) begin
 						// last byte
-						next_init_ctr = 0;
+						next_init_ctr = 1'b0;
 						next_state = WaitUpdate;
 					end else begin
 						// next byte without wait
-						next_init_ctr = init_ctr + 1;
+						next_init_ctr = $size(init_ctr)'(init_ctr + 1'b1);
 						next_state = WriteInit;
 					end
 				end
@@ -376,22 +381,22 @@ module video_serial
 						// at last line
 						if(x_ctr + 1 == SCREEN_WIDTH) begin
 							// all finished
-							next_x_ctr = 0;
-							next_y_ctr = 0;
+							next_x_ctr = 1'b0;
+							next_y_ctr = 1'b0;
 							next_state = WaitUpdate;
 						end else begin
-							next_x_ctr = x_ctr + 1;
+							next_x_ctr = $size(x_ctr)'(x_ctr + 1'b1);
 							next_state = WriteData;
 						end
 					end else begin
 						// before last line
 						if(x_ctr + 1 == SCREEN_WIDTH) begin
 							// at last column
-							next_x_ctr = 0;
-							next_y_ctr = y_ctr + 1;
+							next_x_ctr = 1'b0;
+							next_y_ctr = $size(y_ctr)'(y_ctr + 1'b1);
 							next_state = WriteData;
 						end else begin
-							next_x_ctr = x_ctr + 1;
+							next_x_ctr = $size(x_ctr)'(x_ctr + 1'b1);
 							next_state = WriteData;
 						end
 					end
@@ -402,7 +407,8 @@ module video_serial
 
 `ifdef __IN_SIMULATION__
 		$display("*** video_serial: %s, x=%d, y=%d, init=%d, rst=%b, cmd=%b, ena=%b, rdy=%b, dat=%x. ***",
-			state.name(), x_ctr, y_ctr, init_ctr, vid_rst, vid_cmd, serial_enable, serial_ready, init_data[init_ctr]);
+			state.name(), x_ctr, y_ctr, init_ctr, vid_rst, vid_cmd,
+				serial_enable, serial_ready, init_data[init_ctr]);
 `endif
 	end
 	// --------------------------------------------------------------------

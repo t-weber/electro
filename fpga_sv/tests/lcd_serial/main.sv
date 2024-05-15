@@ -24,19 +24,19 @@ module lcd_serial
 
 
 localparam MAIN_CLK      = 27_000_000;
-localparam SERIAL_CLK    = MAIN_CLK;
+localparam SERIAL_CLK    = 10_000_000;
 
 localparam SCREEN_WIDTH  = 240;
 localparam SCREEN_HEIGHT = 135;
 localparam SCREEN_HOFFS  = 40;
-localparam SCREEN_VOFFS  = 53;
+localparam SCREEN_VOFFS  = 55;
 localparam PIXEL_BITS    = 16;
 
 localparam TILE_WIDTH    = 12;
 localparam TILE_HEIGHT   = 20;
 
-localparam TEXT_ROWS     = $floor(SCREEN_HEIGHT / TILE_HEIGHT);
-localparam TEXT_COLS     = $floor(SCREEN_WIDTH / TILE_WIDTH);
+localparam TEXT_ROWS     = SCREEN_HEIGHT / TILE_HEIGHT;
+localparam TEXT_COLS     = SCREEN_WIDTH / TILE_WIDTH;
 
 localparam FIRST_CHAR    = 32;
 
@@ -77,6 +77,7 @@ assign serlcd_sel = ~lcd_sel;
 video_serial #(.SERIAL_BITS(8), .PIXEL_BITS(PIXEL_BITS),
 	.SCREEN_WIDTH(SCREEN_WIDTH), .SCREEN_HEIGHT(SCREEN_HEIGHT),
 	.SCREEN_HOFFS(SCREEN_HOFFS), .SCREEN_VOFFS(SCREEN_VOFFS),
+	.SCREEN_HINV(1'b1), .SCREEN_VINV(1'b0),
 	.MAIN_CLK(MAIN_CLK), .SERIAL_CLK(SERIAL_CLK))
 lcd_mod (.in_clk(clk27), .in_rst(rst),
 	.in_pixel(cur_pixel_col), .in_testpattern(show_tp), .in_update(update),
@@ -102,21 +103,23 @@ tile_mod (.in_x(pixel_x), .in_y(pixel_y),
 	.out_tile_x(tile_x), .out_tile_y(tile_y), .out_tile_num(tile_num),
 	.out_tile_pix_x(tile_pix_x), .out_tile_pix_y(tile_pix_y));
 
-logic [6 : 0] cur_char = 7'd33;
+logic [7 : 0] cur_char; //= 8'h31;
+logic [6 : 0] cur_char_idx = tile_num < TEXT_ROWS*TEXT_COLS
+	? 7'(cur_char - FIRST_CHAR)
+	: 7'(8'h20 - FIRST_CHAR);
 
 // font rom; generate with:
-// ./genfont -h 20 -w 24 --target_height 20 --target_pitch 2 --target_left 1 --pitch_bits 6 -t sv -o font.sv
-font font_rom(.in_char(cur_char),
+//   ./genfont -h 20 -w 24 --target_height 20 --target_pitch 2 --target_left 1 --pitch_bits 6 -t sv -o font.sv
+font font_rom(.in_char(cur_char_idx),
 	.in_x(tile_pix_x), .in_y(tile_pix_y),
 	.out_pixel(font_pixel));
 
 // set current pixel colour
 assign cur_pixel_col = font_pixel==1'b1 ? {PIXEL_BITS{1'b1}} : {PIXEL_BITS{1'b0}};
 
-// TODO
-
-// text buffer in rom
-// ./genrom -l 20 -t sv -p 1 -d 1 -f 0 -m textrom 0.txt -o textrom.sv
+// text buffer in rom; generate with:
+//   ./genrom -l 20 -t sv -p 1 -d 1 -f 0 -m textmem 0.txt -o textmem.sv
+textmem text_mem(.in_addr(tile_num), .out_data(cur_char));
 // ----------------------------------------------------------------------------
 
 

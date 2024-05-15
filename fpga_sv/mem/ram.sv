@@ -22,22 +22,22 @@ module ram
 	input  wire in_clk, in_rst,
 
 	// enable signals
-	input  wire [NUM_PORTS] in_read_ena, in_write_ena,
+	input  wire [0 : NUM_PORTS - 1] in_read_ena, in_write_ena,
 
 	// address and data
-	input  wire [NUM_PORTS][ADDR_BITS-1 : 0] in_addr,
-	input  wire [NUM_PORTS][WORD_BITS-1 : 0] in_data,
-	output wire [NUM_PORTS][WORD_BITS-1 : 0] out_data
+	input  wire [0 : NUM_PORTS - 1][ADDR_BITS - 1 : 0] in_addr,
+	input  wire [0 : NUM_PORTS - 1][WORD_BITS - 1 : 0] in_data,
+	output wire [0 : NUM_PORTS - 1][WORD_BITS - 1 : 0] out_data
 );
 
 
 
-// memory flip-flops
-logic [NUM_WORDS][WORD_BITS-1 : 0] words;
-	//= { 8'h31, 8'h32, 8'h33, 8'h34, 8'h35, 8'h36, 8'h37, 8'h38 };
+// memory flip-flops (packed array)
+logic [0 : NUM_WORDS - 1][WORD_BITS - 1 : 0] words;
+//	= { 8'h31, 8'h32, 8'h33, 8'h34, 8'h35, 8'h36, 8'h37, 8'h38 };
 
 // output data register
-logic [NUM_PORTS][WORD_BITS-1 : 0] data;
+logic [0 : NUM_PORTS - 1][WORD_BITS - 1 : 0] data;
 
 
 genvar port_idx;

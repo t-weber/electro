@@ -27,11 +27,10 @@ std::string gen_rom_v(const t_words& data, int max_line_len, int num_ports,
 	parameter NUM_PORTS = %%NUM_PORTS%%,
 	parameter ADDR_BITS = %%ADDR_BITS%%,
 	parameter WORD_BITS = %%WORD_BITS%%,
-	parameter NUM_WORDS = %%NUM_WORDS%%
+	parameter NUM_WORDS = %%NUM_WORDS%%,
+	parameter LINE_LEN  = %%LINE_LEN%%
 )
 (%%PORTS_DEF%%);
-
-localparam LINE_LEN = %%LINE_LEN%%;
 
 wire [WORD_BITS-1 : 0] words [0 : NUM_WORDS - 1];
 

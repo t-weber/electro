@@ -30,7 +30,7 @@ src_files="../../sync/debounce_button.sv \
 	../../display/video_serial.sv \
 	../../display/testpattern.sv \
 	../../display/tile.sv \
-	font.sv textrom.sv \
+	font.sv textmem.sv \
 	main.sv"
 #	../../mem/ram.sv \
 

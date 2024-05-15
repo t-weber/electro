@@ -32,29 +32,29 @@ module tile
  )
 (
 	// screen (x, y) coordinates
-	input wire [SCREEN_WIDTH_BITS-1 : 0] in_x,
-	input wire [SCREEN_HEIGHT_BITS-1 : 0] in_y,
+	input wire [SCREEN_WIDTH_BITS - 1 : 0] in_x,
+	input wire [SCREEN_HEIGHT_BITS - 1 : 0] in_y,
 
 	// tile number
-	output wire [TILE_X_BITS-1 : 0] out_tile_x,
-	output wire [TILE_Y_BITS-1 : 0] out_tile_y,
-	output wire [TILE_NUM_BITS-1 : 0] out_tile_num,
+	output wire [TILE_X_BITS - 1 : 0] out_tile_x,
+	output wire [TILE_Y_BITS - 1 : 0] out_tile_y,
+	output wire [TILE_NUM_BITS - 1 : 0] out_tile_num,
 
 	// pixel number in tile
-	output wire [TILE_WIDTH_BITS-1 : 0] out_tile_pix_x,
-	output wire [TILE_HEIGHT_BITS-1 : 0] out_tile_pix_y
+	output wire [TILE_WIDTH_BITS - 1 : 0] out_tile_pix_x,
+	output wire [TILE_HEIGHT_BITS - 1 : 0] out_tile_pix_y
 );
 
 
-logic [TILE_X_BITS : 0] tile_x = in_x / TILE_WIDTH;
-logic [TILE_Y_BITS : 0] tile_y = in_y / TILE_HEIGHT;
+logic [TILE_X_BITS - 1 : 0] tile_x = TILE_X_BITS'(in_x / TILE_WIDTH);
+logic [TILE_Y_BITS - 1 : 0] tile_y = TILE_Y_BITS'(in_y / TILE_HEIGHT);
 
 assign out_tile_x = tile_x;
 assign out_tile_y = tile_y;
-assign out_tile_num = tile_y * TILES_X + tile_x;
+assign out_tile_num = TILE_NUM_BITS'(tile_y * TILES_X + tile_x);
 
-assign out_tile_pix_x = in_x % TILE_WIDTH;
-assign out_tile_pix_y = in_y % TILE_HEIGHT;
+assign out_tile_pix_x = TILE_WIDTH_BITS'(in_x % TILE_WIDTH);
+assign out_tile_pix_y = TILE_HEIGHT_BITS'(in_y % TILE_HEIGHT);
 
 
 endmodule

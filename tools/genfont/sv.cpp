@@ -58,8 +58,7 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 			<< "\n";
 	}
 
-	//(*ostr) << "\nlogic [LAST_CHAR - FIRST_CHAR][CHAR_HEIGHT][CHAR_WIDTH - 1 : 0] chars ="
-	(*ostr) << "\nlogic [(LAST_CHAR - FIRST_CHAR) * CHAR_HEIGHT][0 : CHAR_WIDTH - 1] chars ="
+	(*ostr) << "\nlogic [0 : (LAST_CHAR - FIRST_CHAR) * CHAR_HEIGHT - 1][0 : CHAR_WIDTH - 1] chars ="
 		<< "\n{";
 
 

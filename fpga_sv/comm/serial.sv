@@ -208,7 +208,7 @@ always_comb begin
 				request_word = 1;
 				next_bit_ctr = 0;
 			end else begin
-				next_bit_ctr = bit_ctr + 1;
+				next_bit_ctr = BITS'(bit_ctr + 1'b1);
 			end
 
 			// enable signal not active any more?
