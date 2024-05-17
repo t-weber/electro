@@ -59,7 +59,7 @@ debounce_switch debounce_key0(.in_clk(clk27), .in_rst(1'b0),
 	.in_signal(~key[0]), .out_debounced(rst));
 
 debounce_button debounce_key1(.in_clk(clk27), .in_rst(rst),
-	.in_signal(~key[1]), .out_toggled(show_tp));
+	.in_signal(~key[1]), .out_toggled(show_tp), .out_debounced());
 // ----------------------------------------------------------------------------
 
 

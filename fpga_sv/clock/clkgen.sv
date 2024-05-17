@@ -74,7 +74,7 @@ end else begin
 				clk <= !clk;
 			end
 			else begin
-				clk_ctr <= clk_ctr + 1;
+				clk_ctr <= $size(clk_ctr)'(clk_ctr + 1);
 			end
 		end
 	end

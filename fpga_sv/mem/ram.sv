@@ -63,13 +63,13 @@ begin : gen_ports
 
 		else begin
 			// write data to ram
-			if(in_write_ena == 1) begin
+			if(in_write_ena == 1'b1) begin
 				//$display("write to addr %h", in_addr[port_idx]);
 				words[in_addr[port_idx]] <= in_data[port_idx];
 			end
 
 			// read data from ram into buffer
-			if(in_read_ena == 1) begin
+			if(in_read_ena == 1'b1) begin
 				data[port_idx] <= words[in_addr[port_idx]];
 			end else begin
 				data[port_idx] <= {WORD_BITS{1'b0}};

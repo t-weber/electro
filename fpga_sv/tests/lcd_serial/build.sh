@@ -11,6 +11,7 @@
 #   - https://learn.lushaylabs.com/os-toolchain-manual-installation
 #
 
+build_roms=0
 run_synth=1
 run_pnr=1
 run_pack=1
@@ -48,6 +49,18 @@ target_pins_file=pins9k.cst
 #target_fpga=GW1NZ-1
 #target_freq=27
 #target_pins_file=pins1k.cst
+
+
+if [ $build_roms -ne 0 ]; then
+	echo -e "Creating font rom..."
+	../../../tools/genfont/build/genfont -h 20 -w 24 \
+		--target_height 20 --target_pitch 2 --target_left 1 \
+		--pitch_bits 6 -t sv -o font.sv
+
+	echo -e "Creating text buffer..."
+	echo -en "--------------------|      Line 1      ||      Line 2      ||      Line 3      ||      Line 4      |--------------------" > textmem.txt
+	../../../tools/genrom/build/genrom -l 20 -t sv -p 1 -d 1 -f 0 -m textmem textmem.txt -o textmem.sv
+fi
 
 
 if [ ! -e output ]; then

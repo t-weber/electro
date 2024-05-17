@@ -85,7 +85,7 @@ module video_serial
 	// start display [ctrl, pp. 156ff]
 	localparam INIT_BYTES = 17;
 
-	logic [INIT_BYTES][SERIAL_BITS-1 : 0] init_data = {
+	logic [0 : INIT_BYTES - 1][SERIAL_BITS - 1 : 0] init_data = {
 		//8'h01,  // reset [ctrl, p. 163]
 		8'h11,  // enable [ctrl, p. 184]
 		//8'h20,  // no colour inversion [ctrl, p. 188]
@@ -97,7 +97,7 @@ module video_serial
 		8'h3a, 8'b0101_0101  // 16 bit pixel format [ctrl, p. 224]
 	};
 
-	logic [INIT_BYTES] init_cmd = {
+	logic [0 : INIT_BYTES - 1] init_cmd = {
 		//1'b0,  // reset [ctrl, p. 163]
 		1'b0,  // enable [ctrl, p. 184]
 		1'b0,  // colour inversion [ctrl, p. 190]
@@ -143,7 +143,7 @@ module video_serial
 		.in_parallel(data), .in_enable(serial_enable),
 		.out_serial(serial), .out_next_word(byte_finished),
 		.out_ready(serial_ready), .out_clk(serial_clk),
-		.in_serial(serial)
+		.in_serial(serial), .out_parallel()
 	);
 	// --------------------------------------------------------------------
 
@@ -408,7 +408,7 @@ module video_serial
 `ifdef __IN_SIMULATION__
 		$display("*** video_serial: %s, x=%d, y=%d, init=%d, rst=%b, cmd=%b, ena=%b, rdy=%b, dat=%x. ***",
 			state.name(), x_ctr, y_ctr, init_ctr, vid_rst, vid_cmd,
-				serial_enable, serial_ready, init_data[init_ctr]);
+			serial_enable, serial_ready, init_data[init_ctr]);
 `endif
 	end
 	// --------------------------------------------------------------------

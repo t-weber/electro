@@ -329,7 +329,7 @@ always_comb begin
 				next_state_afterack = Transmit;
 			end else begin
 				// next bit of the word
-				next_bit_ctr = bit_ctr + 1;
+				next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1);
 			end
 		end
 
@@ -342,7 +342,7 @@ always_comb begin
 				next_state_afterack = Receive;
 			end else begin
 				// next bit of the word
-				next_bit_ctr = bit_ctr + 1;
+				next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1);
 			end
 		end
 		// ------------------------------------------------------------
@@ -365,7 +365,7 @@ always_comb begin
 				end
 			end else begin
 				// next bit of the word
-				next_bit_ctr = bit_ctr + 1;
+				next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1);
 			end
 
 			// enable signal not active any more?
@@ -394,7 +394,7 @@ always_comb begin
 				next_state_afterack = Receive;
 			end else begin
 				// next bit of the word
-				next_bit_ctr = bit_ctr + 1;
+				next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1);
 			end
 
 			// enable signal not active any more?

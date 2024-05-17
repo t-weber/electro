@@ -67,7 +67,7 @@ generate
 	if(LOWBIT_FIRST == 1'b1) begin
 		assign actual_bit_ctr = bit_ctr;
 	end else begin
-		assign actual_bit_ctr = BITS - bit_ctr - 1;
+		assign actual_bit_ctr = $size(bit_ctr)'(BITS - bit_ctr - 1);
 	end
 endgenerate
 
@@ -208,7 +208,7 @@ always_comb begin
 				request_word = 1;
 				next_bit_ctr = 0;
 			end else begin
-				next_bit_ctr = BITS'(bit_ctr + 1'b1);
+				next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1'b1);
 			end
 
 			// enable signal not active any more?
