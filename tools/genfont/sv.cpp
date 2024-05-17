@@ -34,6 +34,7 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 		(*ostr) << "#(\n"
 			<< "\tparameter FIRST_CHAR  = " << cfg.ch_first << ",\n"
 			<< "\tparameter LAST_CHAR   = " << cfg.ch_last << ",\n"
+			<< "\tparameter NUM_CHARS   = " << cfg.ch_last - cfg.ch_first << ",\n"
 			<< "\tparameter CHAR_PITCH  = " << cfg.target_pitch << ",\n"
 			<< "\tparameter CHAR_WIDTH  = " << cfg.target_pitch * cfg.pitch_bits << ",\n"
 			<< "\tparameter CHAR_HEIGHT = " << cfg.target_height << "\n"
@@ -52,13 +53,14 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 		(*ostr) << "\n"
 			<< "localparam FIRST_CHAR  = " << cfg.ch_first << ";\n"
 			<< "localparam LAST_CHAR   = " << cfg.ch_last << ";\n"
+			<< "localparam NUM_CHARS   = LAST_CHAR - FIRST_CHAR;\n"
 			<< "localparam CHAR_PITCH  = " << cfg.target_pitch << ";\n"
 			<< "localparam CHAR_WIDTH  = " << cfg.target_pitch * cfg.pitch_bits << ";\n"
 			<< "localparam CHAR_HEIGHT = " << cfg.target_height << ";\n"
 			<< "\n";
 	}
 
-	(*ostr) << "\nlogic [0 : (LAST_CHAR - FIRST_CHAR) * CHAR_HEIGHT - 1][0 : CHAR_WIDTH - 1] chars ="
+	(*ostr) << "\nlogic [0 : NUM_CHARS*CHAR_HEIGHT - 1][0 : CHAR_WIDTH - 1] chars ="
 		<< "\n{";
 
 
@@ -103,9 +105,21 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 
 	(*ostr) << "\n};\n";
 
-	(*ostr) << "\nwire [0 : CHAR_WIDTH - 1] line;\n"
-		<< "assign line = chars[in_char*CHAR_HEIGHT + in_y];\n"
-		<< "assign out_pixel = line[in_x];\n";
+	(*ostr) << "\nwire [0 : CHAR_WIDTH - 1] line;\n";
+
+	if(cfg.check_bounds)
+	{
+		(*ostr) << "\nassign line = in_char < NUM_CHARS\n"
+			<< "\t? chars[in_char*CHAR_HEIGHT + in_y]\n"
+			<< "\t: CHAR_WIDTH'(0);\n";
+
+		(*ostr) << "\nassign out_pixel = in_x < CHAR_WIDTH ? line[in_x] : 1'b0;\n";
+	}
+	else
+	{
+		(*ostr) << "assign line = chars[in_char*CHAR_HEIGHT + in_y];\n"
+			<< "assign out_pixel = line[in_x];\n";
+	}
 
 	(*ostr) << "\nendmodule" << std::endl;
 

@@ -20,7 +20,8 @@
  */
 std::string gen_rom_hex(const t_words& data, int max_line_len,
 	[[__maybe_unused__]] int num_ports, [[__maybe_unused__]] bool direct_ports,
-	bool fill_rom, bool print_chars, [[__maybe_unused__]] const std::string& module_name)
+	bool fill_rom, bool print_chars, [[__maybe_unused__]] bool check_bounds,
+	[[__maybe_unused__]] const std::string& module_name)
 {
 	// create data block
 	std::size_t rom_len = 0;

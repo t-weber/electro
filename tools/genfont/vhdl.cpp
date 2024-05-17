@@ -38,6 +38,7 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 		(*ostr) << "\tgeneric(\n"
 			<< "\t\tconstant FIRST_CHAR  : natural := " << cfg.ch_first << ";\n"
 			<< "\t\tconstant LAST_CHAR   : natural := " << cfg.ch_last << ";\n"
+			//<< "\t\tconstant NUM_CHARS   : natural := " << cfg.ch_last - cfg.ch_first << ";\n"
 			<< "\t\tconstant CHAR_PITCH  : natural := " << cfg.target_pitch << ";\n"
 			<< "\t\tconstant CHAR_WIDTH  : natural := " << cfg.target_pitch * cfg.pitch_bits << ";\n"
 			<< "\t\tconstant CHAR_HEIGHT : natural := " << cfg.target_height << "\n"
@@ -59,6 +60,7 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 		(*ostr) << "\n"
 			<< "\tconstant FIRST_CHAR  : natural := " << cfg.ch_first << ";\n"
 			<< "\tconstant LAST_CHAR   : natural := " << cfg.ch_last << ";\n"
+			//<< "\tconstant NUM_CHARS   : natural := LAST_CHAR - FIRST_CHAR;\n"
 			<< "\tconstant CHAR_PITCH  : natural := " << cfg.target_pitch << ";\n"
 			<< "\tconstant CHAR_WIDTH  : natural := " << cfg.target_pitch * cfg.pitch_bits << ";\n"
 			<< "\tconstant CHAR_HEIGHT : natural := " << cfg.target_height << ";\n"
@@ -114,9 +116,18 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 	(*ostr) << "\n\t);\n";
 
 	(*ostr) << "\nbegin\n";
-	(*ostr) << "\n\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x))\n"
-		<< "\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR\n"
-		<< "\t\telse '0';\n";
+
+	if(cfg.check_bounds)
+	{
+		(*ostr) << "\n\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x))\n"
+			<< "\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR\n"
+			<< "\t\telse '0';\n";
+	}
+	else
+	{
+		(*ostr) << "\n\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x));\n";
+	}
+
 	(*ostr) << "\nend architecture;" << std::endl;
 
 

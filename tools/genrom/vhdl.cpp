@@ -19,7 +19,8 @@
  * generates a vhdl rom
  */
 std::string gen_rom_vhdl(const t_words& data, int max_line_len, int num_ports,
-	bool direct_ports, bool fill_rom, bool print_chars, const std::string& module_name)
+	bool direct_ports, bool fill_rom, bool print_chars, bool check_bounds,
+	const std::string& module_name)
 {
 	// rom file
 	std::string rom_vhdl = R"raw(library ieee;
@@ -58,11 +59,26 @@ end architecture;)raw";
 	)raw";
 
 	// rom generic port assignment
-	std::string rom_ports_assign_vhdl = R"raw(
+	std::string rom_ports_assign_vhdl;
+
+	if(check_bounds)
+	{
+		rom_ports_assign_vhdl = R"raw(
+	gen_ports : for portidx in 0 to NUM_PORTS-1 generate
+	begin
+		out_data(portidx) <= words(to_int(in_addr(portidx)))
+			when to_int(in_addr(portidx)) < NUM_WORDS
+			else (others => '0');
+	end generate;)raw";
+	}
+	else
+	{
+		rom_ports_assign_vhdl = R"raw(
 	gen_ports : for portidx in 0 to NUM_PORTS-1 generate
 	begin
 		out_data(portidx) <= words(to_int(in_addr(portidx)));
 	end generate;)raw";
+	}
 
 
 	// create data block
@@ -209,7 +225,6 @@ end architecture;)raw";
 	if(direct_ports && num_ports == 1)
 	{
 		// only one port
-
 		std::ostringstream ostrPorts;
 
 		ostrPorts << "\n";
@@ -218,7 +233,9 @@ end architecture;)raw";
 		ostrPorts << "\t";
 
 		boost::replace_all(rom_vhdl, "%%PORTS_DEF%%", ostrPorts.str());
-		boost::replace_all(rom_vhdl, "%%PORTS_ASSIGN%%", "\tout_data <= words(to_int(in_addr));");
+		boost::replace_all(rom_vhdl, "%%PORTS_ASSIGN%%", check_bounds
+			? "\tout_data <= words(to_int(in_addr)) when to_int(in_addr) < NUM_WORDS else (others => '0');"
+			: "\tout_data <= words(to_int(in_addr));");
 	}
 	else if(direct_ports && num_ports > 1)
 	{
@@ -231,7 +248,18 @@ end architecture;)raw";
 			ostrPorts << "\t\tin_addr_" << (port+1) << "  : in  std_logic_vector(ADDR_BITS-1 downto 0);\n";
 			ostrPorts << "\t\tout_data_" << (port+1) << " : out std_logic_vector(WORD_BITS-1 downto 0)";
 
-			ostrAssign << "\tout_data_" << (port+1) << " <= words(to_int(in_addr_" << (port+1)<< "));";
+			if(check_bounds)
+			{
+				ostrAssign << "\tout_data_" << (port+1)
+					<< " <= words(to_int(in_addr_" << (port+1)<< "))"
+					<< "\n\t\twhen to_int(in_addr_" << (port+1)<< ") < NUM_WORDS"
+					<< "\n\t\telse (others => '0');";
+			}
+			else
+			{
+				ostrAssign << "\tout_data_" << (port+1)
+					<< " <= words(to_int(in_addr_" << (port+1)<< "));";
+			}
 
 			if(port + 1 < num_ports)
 			{

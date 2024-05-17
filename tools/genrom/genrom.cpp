@@ -32,6 +32,7 @@ int main(int argc, char** argv)
 		bool direct_ports = false;
 		bool fill_rom = true;
 		bool print_chars = true;
+		bool check_bounds = true;
 		std::string module_name = "rom";
 
 		args::options_description arg_descr("ROM generator arguments");
@@ -54,6 +55,8 @@ int main(int argc, char** argv)
 			("directports,d", args::value<bool>(&direct_ports),
 				("generate direct ports, default: "
 					+ std::to_string(direct_ports)).c_str())
+			("check_bounds,b", args::value<decltype(check_bounds)>(&check_bounds),
+				("check index bounds, default: " + std::to_string(check_bounds)).c_str())
 			("module,m", args::value<decltype(module_name)>(&module_name),
 				("module name, default: "
 					+ module_name).c_str())
@@ -154,7 +157,7 @@ int main(int argc, char** argv)
 
 		// set rom generator function
 		std::string (*gen_rom_fkt)(const t_words&, int, int,
-			bool, bool, bool, const std::string&)
+			bool, bool, bool, bool, const std::string&)
 				= &gen_rom_vhdl;
 
 		if(boost::to_lower_copy(rom_type) == "vhdl")
@@ -167,8 +170,8 @@ int main(int argc, char** argv)
 			gen_rom_fkt = &gen_rom_hex;
 
 		// generate rom
-		(*postr) << (*gen_rom_fkt)(data, line_len, num_ports,
-			direct_ports, fill_rom, print_chars, module_name)
+		(*postr) << (*gen_rom_fkt)(data, line_len, num_ports, direct_ports,
+			fill_rom, print_chars, check_bounds, module_name)
 			<< std::endl;
 	}
 	catch(const std::exception& ex)

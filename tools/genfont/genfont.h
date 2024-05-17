@@ -39,6 +39,7 @@ struct Config
 	unsigned int ch_last = 0x7f;
 
 	bool local_params = true;
+	bool check_bounds = true;
 };
 
 

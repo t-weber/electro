@@ -29,7 +29,7 @@ localparam SERIAL_CLK    = 10_000_000;
 localparam SCREEN_WIDTH  = 240;
 localparam SCREEN_HEIGHT = 135;
 localparam SCREEN_HOFFS  = 40;
-localparam SCREEN_VOFFS  = 55;
+localparam SCREEN_VOFFS  = 52;
 localparam PIXEL_BITS    = 16;
 
 localparam TILE_WIDTH    = 12;
@@ -46,7 +46,8 @@ localparam TILE_WIDTH_BITS    = $clog2(TILE_WIDTH);
 localparam TILE_HEIGHT_BITS   = $clog2(TILE_HEIGHT);
 localparam TILE_X_BITS        = $clog2(SCREEN_WIDTH / TILE_WIDTH);
 localparam TILE_Y_BITS        = $clog2(SCREEN_HEIGHT / TILE_HEIGHT);
-localparam TILE_NUM_BITS      = $clog2((SCREEN_WIDTH / TILE_WIDTH) * (SCREEN_HEIGHT / TILE_HEIGHT));
+localparam TILE_NUM_BITS      = $clog2((SCREEN_WIDTH / TILE_WIDTH) * (SCREEN_HEIGHT / TILE_HEIGHT))
+                                + 1 /* because of the additional half-line at the bottom */;
 
 
 // ----------------------------------------------------------------------------
@@ -98,7 +99,8 @@ logic [TILE_HEIGHT_BITS - 1 : 0] tile_pix_y;
 logic font_pixel;
 
 tile #(.SCREEN_WIDTH(SCREEN_WIDTH), .SCREEN_HEIGHT(SCREEN_HEIGHT),
-	.TILE_WIDTH(TILE_WIDTH), .TILE_HEIGHT(TILE_HEIGHT))
+	.TILE_WIDTH(TILE_WIDTH), .TILE_HEIGHT(TILE_HEIGHT),
+	.TILE_X_BITS(TILE_X_BITS), .TILE_Y_BITS(TILE_Y_BITS), .TILE_NUM_BITS(TILE_NUM_BITS))
 tile_mod (.in_x(pixel_x), .in_y(pixel_y),
 	.out_tile_x(tile_x), .out_tile_y(tile_y), .out_tile_num(tile_num),
 	.out_tile_pix_x(tile_pix_x), .out_tile_pix_y(tile_pix_y));
@@ -119,7 +121,8 @@ assign cur_pixel_col = font_pixel==1'b1 ? {PIXEL_BITS{1'b1}} : {PIXEL_BITS{1'b0}
 
 // text buffer in rom; generate with:
 //   ./genrom -l 20 -t sv -p 1 -d 1 -f 0 -m textmem 0.txt -o textmem.sv
-textmem text_mem(.in_addr(tile_num), .out_data(cur_char));
+textmem #(.ADDR_BITS(TILE_NUM_BITS))
+text_mem (.in_addr(tile_num), .out_data(cur_char));
 // ----------------------------------------------------------------------------
 
 
