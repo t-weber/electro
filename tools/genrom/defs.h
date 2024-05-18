@@ -16,4 +16,21 @@ using t_word = boost::dynamic_bitset<>;
 using t_words = std::vector<t_word>;
 
 
+struct Config
+{
+	t_words data;
+
+	bool direct_ports = false;
+	std::size_t num_ports = 2;
+
+	std::size_t max_line_len = 16;
+
+	bool fill_rom = true;
+	bool print_chars = true;
+	bool check_bounds = true;
+
+	std::string module_name = "rom";
+};
+
+
 #endif

@@ -46,8 +46,10 @@ module tile
 );
 
 
-logic [TILE_X_BITS - 1 : 0] tile_x = TILE_X_BITS'(in_x / TILE_WIDTH);
-logic [TILE_Y_BITS - 1 : 0] tile_y = TILE_Y_BITS'(in_y / TILE_HEIGHT);
+logic [TILE_X_BITS - 1 : 0] tile_x;
+logic [TILE_Y_BITS - 1 : 0] tile_y;
+assign tile_x = TILE_X_BITS'(in_x / TILE_WIDTH);
+assign tile_y = TILE_Y_BITS'(in_y / TILE_HEIGHT);
 
 assign out_tile_x = tile_x;
 assign out_tile_y = tile_y;

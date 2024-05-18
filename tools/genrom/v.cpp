@@ -6,6 +6,7 @@
  */
 
 #include "v.h"
+#include "common.h"
 
 #include <string>
 #include <iomanip>
@@ -18,9 +19,7 @@
 /**
  * generates a .v rom
  */
-std::string gen_rom_v(const t_words& data, int max_line_len, int num_ports,
-	bool direct_ports, bool fill_rom, bool print_chars, bool check_bounds,
-	const std::string& module_name)
+std::string gen_rom_v(const Config& cfg)
 {
 	// rom file
 	std::string rom_v = R"raw(module %%MODULE_NAME%%
@@ -33,56 +32,23 @@ std::string gen_rom_v(const t_words& data, int max_line_len, int num_ports,
 )
 (%%PORTS_DEF%%);
 
-wire [WORD_BITS-1 : 0] words [0 : NUM_WORDS - 1];
+wire [WORD_BITS - 1 : 0] words [0 : NUM_WORDS - 1];
 
 %%ROM_DATA%%
 
 %%PORTS_ASSIGN%%
 endmodule)raw";
 
-	// rom generic port definitions
-	std::string rom_ports_v = R"raw(
-	input  wire[NUM_PORTS][ADDR_BITS-1 : 0] in_addr,
-	output wire[NUM_PORTS][WORD_BITS-1 : 0] out_data
-)raw";
-
-	// rom generic port assignment
-	std::string rom_ports_assign_v;
-        if(check_bounds)
-        {
-		rom_ports_assign_v = R"raw(
-genvar port_idx;
-generate for(port_idx=0; port_idx<NUM_PORTS; ++port_idx)
-begin : gen_ports
-	assign out_data[port_idx] = in_addr[port_idx] < NUM_WORDS
-		? words[in_addr[port_idx]]
-		: WORD_BITS'(1'b0);
-end
-endgenerate
-)raw";
-        }
-	else
-	{
-		rom_ports_assign_v = R"raw(
-genvar port_idx;
-generate for(port_idx=0; port_idx<NUM_PORTS; ++port_idx)
-begin : gen_ports
-	assign out_data[port_idx] = words[in_addr[port_idx]];
-end
-endgenerate
-)raw";
-	}
-
 
 	// create data block
 	std::size_t rom_len = 0;
-	int cur_line_len = 0;
-	int cur_line = 0;
+	std::size_t cur_line_len = 0;
+	std::size_t cur_line = 0;
 
 	// get word size
 	typename t_word::size_type word_bits = 8;
-	if(data.size())
-		word_bits = data[0].size();
+	if(cfg.data.size())
+		word_bits = cfg.data[0].size();
 
 	std::ostringstream ostr_data;
 	std::vector<char> chs;
@@ -122,11 +88,11 @@ endgenerate
 		chs.clear();
 	};
 
-	for(const t_word& dat : data)
+	for(const t_word& dat : cfg.data)
 	{
-		if(cur_line_len >= max_line_len)
+		if(cur_line_len >= cfg.max_line_len)
 		{
-			if(print_chars)
+			if(cfg.print_chars)
 				write_chars();
 
 			ostr_data << "\n";
@@ -160,26 +126,28 @@ endgenerate
 
 		ostr_data << ";\n";
 
-		if(print_chars)
+		if(cfg.print_chars)
 			add_char(static_cast<int>(dat.to_ulong()));
 
 		++rom_len;
 		++cur_line_len;
 	}
 
-	std::size_t addr_bits = rom_len > 0 ? std::size_t(std::ceil(std::log2(double(rom_len)))) : 0;
+	const std::size_t addr_bits = rom_len > 0
+		? std::size_t(std::ceil(std::log2(double(rom_len))))
+		: 0;
+	const std::size_t max_rom_len = std::pow(2, addr_bits);
 
 	// fill-up data block to maximum size
-	if(fill_rom && rom_len > 0)
+	if(cfg.fill_rom && rom_len > 0)
 	{
-		std::size_t max_rom_len = std::pow(2, addr_bits);
 
 		t_word fill_data(word_bits, 0x00);
 		for(; rom_len < max_rom_len; ++rom_len)
 		{
-			if(cur_line_len >= max_line_len)
+			if(cur_line_len >= cfg.max_line_len)
 			{
-				if(print_chars)
+				if(cfg.print_chars)
 					write_chars();
 
 				ostr_data << "\n\t";
@@ -217,30 +185,33 @@ endgenerate
 		}
 	}
 
-	if(print_chars)
+	bool check_bounds = cfg.check_bounds;
+	test_bounds_check(rom_len, max_rom_len, check_bounds);
+
+	if(cfg.print_chars)
 		write_chars();
 
 	// fill in missing rom data fields
-	boost::replace_all(rom_v, "%%MODULE_NAME%%", module_name);
-	if(fill_rom)
+	boost::replace_all(rom_v, "%%MODULE_NAME%%", cfg.module_name);
+	if(cfg.fill_rom)
 		boost::replace_all(rom_v, "%%NUM_WORDS%%", "2**" + std::to_string(addr_bits));
 	else
 		boost::replace_all(rom_v, "%%NUM_WORDS%%", std::to_string(rom_len));
 	boost::replace_all(rom_v, "%%ROM_DATA%%", ostr_data.str());
 	boost::replace_all(rom_v, "%%WORD_BITS%%", std::to_string(word_bits));
 	boost::replace_all(rom_v, "%%ADDR_BITS%%", std::to_string(addr_bits));
-	boost::replace_all(rom_v, "%%NUM_PORTS%%", std::to_string(num_ports));
-	boost::replace_all(rom_v, "%%LINE_LEN%%", std::to_string(max_line_len));
+	boost::replace_all(rom_v, "%%NUM_PORTS%%", std::to_string(cfg.num_ports));
+	boost::replace_all(rom_v, "%%LINE_LEN%%", std::to_string(cfg.max_line_len));
 
-	if(direct_ports && num_ports == 1)
+	if(cfg.direct_ports && cfg.num_ports == 1)
 	{
 		// only one port
 
 		std::ostringstream ostrPorts;
 
 		ostrPorts << "\n";
-		ostrPorts << "\tinput  wire[ADDR_BITS-1 : 0] in_addr,\n";
-		ostrPorts << "\toutput wire[WORD_BITS-1 : 0] out_data\n";
+		ostrPorts << "\tinput  wire[ADDR_BITS - 1 : 0] in_addr,\n";
+		ostrPorts << "\toutput wire[WORD_BITS - 1 : 0] out_data\n";
 
 		boost::replace_all(rom_v, "%%PORTS_DEF%%", ostrPorts.str());
 		boost::replace_all(rom_v, "%%PORTS_ASSIGN%%",
@@ -248,16 +219,16 @@ endgenerate
 			             : "assign out_data = words[in_addr];\n");
 
 	}
-	else if(direct_ports && num_ports > 1)
+	else if(cfg.direct_ports && cfg.num_ports > 1)
 	{
 		// iterate ports directly
 		std::ostringstream ostrPorts, ostrAssign;
 
 		ostrPorts << "\n";
-		for(int port = 0; port < num_ports; ++port)
+		for(std::size_t port = 0; port < cfg.num_ports; ++port)
 		{
-			ostrPorts << "\tinput  wire[ADDR_BITS-1 : 0] in_addr_" << (port+1) << ",\n";
-			ostrPorts << "\toutput wire[WORD_BITS-1 : 0] out_data_" << (port+1);
+			ostrPorts << "\tinput  wire[ADDR_BITS - 1 : 0] in_addr_" << (port+1) << ",\n";
+			ostrPorts << "\toutput wire[WORD_BITS - 1 : 0] out_data_" << (port+1);
 
 			if(check_bounds)
 			{
@@ -272,7 +243,7 @@ endgenerate
 					<< " = words[in_addr_" << (port+1) << "];";
 			}
 
-			if(port + 1 < num_ports)
+			if(port + 1 < cfg.num_ports)
 			{
 				ostrPorts << ",";
 				ostrAssign << "\n";
@@ -286,6 +257,41 @@ endgenerate
 	}
 	else
 	{
+		// rom generic port definitions
+		std::string rom_ports_v = R"raw(
+	input  wire[NUM_PORTS][ADDR_BITS - 1 : 0] in_addr,
+	output wire[NUM_PORTS][WORD_BITS - 1 : 0] out_data
+)raw";
+
+
+		// rom generic port assignment
+		std::string rom_ports_assign_v;
+		if(check_bounds)
+		{
+			rom_ports_assign_v = R"raw(
+genvar port_idx;
+generate for(port_idx=0; port_idx<NUM_PORTS; ++port_idx)
+begin : gen_ports
+	assign out_data[port_idx] = in_addr[port_idx] < NUM_WORDS
+		? words[in_addr[port_idx]]
+		: WORD_BITS'(1'b0);
+end
+endgenerate
+)raw";
+		}
+		else
+		{
+			rom_ports_assign_v = R"raw(
+genvar port_idx;
+generate for(port_idx=0; port_idx<NUM_PORTS; ++port_idx)
+begin : gen_ports
+	assign out_data[port_idx] = words[in_addr[port_idx]];
+end
+endgenerate
+)raw";
+		}
+
+
 		// generate generic ports array
 		boost::replace_all(rom_v, "%%PORTS_DEF%%", rom_ports_v);
 		boost::replace_all(rom_v, "%%PORTS_ASSIGN%%", rom_ports_assign_v);

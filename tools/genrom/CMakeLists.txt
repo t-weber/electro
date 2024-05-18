@@ -32,6 +32,7 @@ include_directories(
 
 add_executable(genrom
 	genrom.cpp
+	common.cpp common.h
 	vhdl.cpp vhdl.h
 	sv.cpp sv.h
 	v.cpp v.h

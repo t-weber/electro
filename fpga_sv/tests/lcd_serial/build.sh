@@ -32,6 +32,7 @@ src_files="../../sync/debounce_button.sv \
 	../../display/testpattern.sv \
 	../../display/tile.sv \
 	font.sv textmem.sv \
+	textmem_fgcol.sv textmem_bgcol.sv \
 	main.sv"
 #	../../mem/ram.sv \
 
@@ -59,7 +60,12 @@ if [ $build_roms -ne 0 ]; then
 
 	echo -e "Creating text buffer..."
 	echo -en "--------------------|      Line 1      ||      Line 2      ||      Line 3      ||      Line 4      |--------------------" > textmem.txt
-	../../../tools/genrom/build/genrom -l 20 -t sv -p 1 -d 1 -f 0 -m textmem textmem.txt -o textmem.sv
+	../../../tools/genrom/build/genrom -l 20 -t sv -p 1 -d 1 -f 0 -m textmem \
+		textmem.txt -o textmem.sv
+	../../../tools/genrom/build/genrom -l 20 -t sv -p 1 -d 1 -f 0 -m textmem_fgcol \
+		-r "1111111111111111" -n 120 -o textmem_fgcol.sv
+	../../../tools/genrom/build/genrom -l 20 -t sv -p 1 -d 1 -f 0 -m textmem_bgcol \
+		-r "0000000000011111" -n 120 -o textmem_bgcol.sv
 fi
 
 

@@ -23,22 +23,27 @@ module lcd_serial
 );
 
 
-localparam MAIN_CLK      = 27_000_000;
-localparam SERIAL_CLK    = 10_000_000;
+localparam MAIN_CLK           = 27_000_000;
+localparam SERIAL_CLK         = 10_000_000;
 
-localparam SCREEN_WIDTH  = 240;
-localparam SCREEN_HEIGHT = 135;
-localparam SCREEN_HOFFS  = 40;
-localparam SCREEN_VOFFS  = 52;
-localparam PIXEL_BITS    = 16;
+localparam SCREEN_WIDTH       = 240;
+localparam SCREEN_HEIGHT      = 135;
+localparam SCREEN_HOFFS       = 40;
+localparam SCREEN_VOFFS       = 52;
+localparam RED_BITS           = 5;
+localparam GREEN_BITS         = 6;
+localparam BLUE_BITS          = 5;
+localparam PIXEL_BITS         = RED_BITS + GREEN_BITS + BLUE_BITS;
 
-localparam TILE_WIDTH    = 12;
-localparam TILE_HEIGHT   = 20;
+localparam TILE_WIDTH         = 12;
+localparam TILE_HEIGHT        = 20;
 
-localparam TEXT_ROWS     = SCREEN_HEIGHT / TILE_HEIGHT;
-localparam TEXT_COLS     = SCREEN_WIDTH / TILE_WIDTH;
+localparam TEXT_ROWS          = SCREEN_HEIGHT / TILE_HEIGHT;
+localparam TEXT_COLS          = SCREEN_WIDTH / TILE_WIDTH;
 
-localparam FIRST_CHAR    = 32;
+localparam FIRST_CHAR         = 32;
+
+localparam USE_COLOUR_MEM     = 1;
 
 localparam SCREEN_WIDTH_BITS  = $clog2(SCREEN_WIDTH);
 localparam SCREEN_HEIGHT_BITS = $clog2(SCREEN_HEIGHT);
@@ -76,6 +81,7 @@ assign serlcd_ena = ~lcd_rst;
 assign serlcd_sel = ~lcd_sel;
 
 video_serial #(.SERIAL_BITS(8), .PIXEL_BITS(PIXEL_BITS),
+	.RED_BITS(RED_BITS), .GREEN_BITS(GREEN_BITS), .BLUE_BITS(BLUE_BITS),
 	.SCREEN_WIDTH(SCREEN_WIDTH), .SCREEN_HEIGHT(SCREEN_HEIGHT),
 	.SCREEN_HOFFS(SCREEN_HOFFS), .SCREEN_VOFFS(SCREEN_VOFFS),
 	.SCREEN_HINV(1'b1), .SCREEN_VINV(1'b0),
@@ -106,7 +112,8 @@ tile_mod (.in_x(pixel_x), .in_y(pixel_y),
 	.out_tile_pix_x(tile_pix_x), .out_tile_pix_y(tile_pix_y));
 
 logic [7 : 0] cur_char; //= 8'h31;
-logic [6 : 0] cur_char_idx = tile_num < TEXT_ROWS*TEXT_COLS
+logic [6 : 0] cur_char_idx;
+assign cur_char_idx = tile_num < TEXT_ROWS*TEXT_COLS
 	? 7'(cur_char - FIRST_CHAR)
 	: 7'(8'h20 - FIRST_CHAR);
 
@@ -116,13 +123,32 @@ font font_rom(.in_char(cur_char_idx),
 	.in_x(tile_pix_x), .in_y(tile_pix_y),
 	.out_pixel(font_pixel));
 
-// set current pixel colour
-assign cur_pixel_col = font_pixel==1'b1 ? {PIXEL_BITS{1'b1}} : {PIXEL_BITS{1'b0}};
-
 // text buffer in rom; generate with:
 //   ./genrom -l 20 -t sv -p 1 -d 1 -f 0 -m textmem 0.txt -o textmem.sv
 textmem #(.ADDR_BITS(TILE_NUM_BITS))
-text_mem (.in_addr(tile_num), .out_data(cur_char));
+textmem_mod (.in_addr(tile_num), .out_data(cur_char));
+
+generate
+if(USE_COLOUR_MEM == 1'b0) begin
+	// set current pixel colour to a fixed value
+	assign cur_pixel_col = font_pixel==1'b1
+		? { {RED_BITS{1'b1}}, {GREEN_BITS{1'b1}}, {BLUE_BITS{1'b1}}}   // foreground
+		: { {RED_BITS{1'b0}}, {GREEN_BITS{1'b0}}, {BLUE_BITS{1'b1}}};  // background
+end else begin
+	logic [PIXEL_BITS - 1 : 0] cur_pixel_col_fg, cur_pixel_col_bg;
+
+	// set pixel colour using memories
+	assign cur_pixel_col = font_pixel==1'b1 ? cur_pixel_col_fg : cur_pixel_col_bg;
+
+	// set pixel foreground colour from a memory
+	textmem_fgcol #(.ADDR_BITS(TILE_NUM_BITS))
+	textmem_fgcol_mod (.in_addr(tile_num), .out_data(cur_pixel_col_fg));
+
+	// set pixel background colour from a memory
+	textmem_bgcol #(.ADDR_BITS(TILE_NUM_BITS))
+	textmem_bgcol_mod (.in_addr(tile_num), .out_data(cur_pixel_col_bg));
+end
+endgenerate
 // ----------------------------------------------------------------------------
 
 

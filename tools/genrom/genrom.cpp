@@ -25,41 +25,51 @@ int main(int argc, char** argv)
 {
 	try
 	{
-		std::string in_filename, out_rom;
+		Config cfg;
+		cfg.max_line_len = 16;
+		cfg.num_ports = 2;
+		cfg.direct_ports = false;
+		cfg.fill_rom = true;
+		cfg.print_chars = true;
+		cfg.check_bounds = true;
+		cfg.module_name = "rom";
+
 		std::string rom_type = "vhdl";
-		int line_len = 16;
-		int num_ports = 2;
-		bool direct_ports = false;
-		bool fill_rom = true;
-		bool print_chars = true;
-		bool check_bounds = true;
-		std::string module_name = "rom";
+		std::string in_filename, out_rom;
+
+		std::string repeat_data;
+		std::size_t repeat_times = 0;
 
 		args::options_description arg_descr("ROM generator arguments");
 		arg_descr.add_options()
-			("linelen,l", args::value<decltype(line_len)>(&line_len),
+			("linelen,l", args::value<decltype(cfg.max_line_len)>(&cfg.max_line_len),
 				("line length, default: "
-					+ std::to_string(line_len)).c_str())
-			("fill,f", args::value<bool>(&fill_rom),
+					+ std::to_string(cfg.max_line_len)).c_str())
+			("fill,f", args::value<bool>(&cfg.fill_rom),
 				("fill non-used rom fields with zeros, default: "
-					+ std::to_string(fill_rom)).c_str())
-			("chars,c", args::value<bool>(&print_chars),
+					+ std::to_string(cfg.fill_rom)).c_str())
+			("chars,c", args::value<bool>(&cfg.print_chars),
 				("print characters, default: "
-					+ std::to_string(print_chars)).c_str())
+					+ std::to_string(cfg.print_chars)).c_str())
 			("type,t", args::value<decltype(rom_type)>(&rom_type),
 				("output rom type (vhdl/sv/v/hex), default: "
 					+ rom_type).c_str())
-			("ports,p", args::value<decltype(num_ports)>(&num_ports),
+			("ports,p", args::value<decltype(cfg.num_ports)>(&cfg.num_ports),
 				("number of memory ports, default: "
-					+ std::to_string(num_ports)).c_str())
-			("directports,d", args::value<bool>(&direct_ports),
+					+ std::to_string(cfg.num_ports)).c_str())
+			("direct_ports,d", args::value<bool>(&cfg.direct_ports),
 				("generate direct ports, default: "
-					+ std::to_string(direct_ports)).c_str())
-			("check_bounds,b", args::value<decltype(check_bounds)>(&check_bounds),
-				("check index bounds, default: " + std::to_string(check_bounds)).c_str())
-			("module,m", args::value<decltype(module_name)>(&module_name),
+					+ std::to_string(cfg.direct_ports)).c_str())
+			("check_bounds,b", args::value<decltype(cfg.check_bounds)>(&cfg.check_bounds),
+				("check index bounds, default: " + std::to_string(cfg.check_bounds)).c_str())
+			("module,m", args::value<decltype(cfg.module_name)>(&cfg.module_name),
 				("module name, default: "
-					+ module_name).c_str())
+					+ cfg.module_name).c_str())
+			("repeat_data,r", args::value<decltype(repeat_data)>(&repeat_data),
+				"data word to repeat (instead of input file)")
+			("repeat_times,n", args::value<decltype(repeat_times)>(&repeat_times),
+				("number of times to repeat data word, default: "
+					+ std::to_string(repeat_times)).c_str())
 			("input,i", args::value<decltype(in_filename)>(&in_filename),
 				"input data file")
 			("output,o", args::value<decltype(out_rom)>(&out_rom),
@@ -78,66 +88,83 @@ int main(int argc, char** argv)
 		args::store(parsedArgs, mapArgs);
 		args::notify(mapArgs);
 
-		if(in_filename == "")
+
+		if(in_filename != "")
 		{
+			// get data from input file
+			std::filesystem::path in_file(in_filename);
+			if(!std::filesystem::exists(in_file))
+			{
+				std::cerr << "Error: Input file \"" << in_filename
+					<< "\" does not exist." << std::endl;
+				return -1;
+			}
+
+			std::ifstream ifstr(in_file);
+			if(!ifstr)
+			{
+				std::cerr << "Error: Cannot open input file \""
+					<< in_filename << "\"." << std::endl;
+				return -1;
+			}
+
+			// read input file
+			std::string ext = boost::to_lower_copy(in_file.extension().string());
+
+			if(ext == ".png")
+			{
+				std::size_t w, h, ch;
+				std::tie(w, h, ch, cfg.data) = read_png(in_file);
+				std::cerr << "Info: Read PNG image with size "
+					<< w << " x " << h << " x " << ch << "."
+					<< std::endl;
+
+				cfg.print_chars = false;
+			}
+			else if(ext == ".jpg" || ext == ".jpeg")
+			{
+				std::size_t w, h, ch;
+				std::tie(w, h, ch, cfg.data) = read_jpg(in_file);
+				std::cerr << "Info: Read JPG image with size "
+					<< w << " x " << h << " x " << ch << "."
+					<< std::endl;
+
+				cfg.print_chars = false;
+			}
+			else  // read raw file
+			{
+				cfg.data.reserve(std::filesystem::file_size(in_file));
+
+				while(!!ifstr)
+				{
+					int ch = ifstr.get();
+					if(ch == std::istream::traits_type::eof())
+						break;
+
+					cfg.data.emplace_back(t_word(8, ch));
+				}
+
+				std::cerr << "Info: Read " << cfg.data.size()
+					<< " bytes of raw data."
+					<< std::endl;
+			}
+		}
+		else if(repeat_data != "")
+		{
+			// get data from given pattern
+			t_word word(repeat_data);
+
+			cfg.data.reserve(repeat_times);
+			for(std::size_t idx = 0; idx < repeat_times; ++idx)
+				cfg.data.emplace_back(word);
+		}
+		else
+		{
+			// no input data given
 			std::cerr << arg_descr << std::endl;
 			return -1;
 		}
 
-		// input file
-		std::filesystem::path in_file(in_filename);
-		if(!std::filesystem::exists(in_file))
-		{
-			std::cerr << "Input file \"" << in_filename
-				<< "\" does not exist." << std::endl;
-			return -1;
-		}
-
-		std::ifstream ifstr(in_file);
-		if(!ifstr)
-		{
-			std::cerr << "Cannot open input file \""
-				<< in_filename << "\"." << std::endl;
-			return -1;
-		}
-
-		// read input file
-		t_words data;
-		std::string ext = boost::to_lower_copy(in_file.extension().string());
-
-		if(ext == ".png")
-		{
-			std::size_t w, h, ch;
-			std::tie(w, h, ch, data) = read_png(in_file);
-			std::cerr << "Read PNG image with size "
-				<< w << " x " << h << " x " << ch << "." << std::endl;
-
-			print_chars = false;
-		}
-		else if(ext == ".jpg" || ext == ".jpeg")
-		{
-			std::size_t w, h, ch;
-			std::tie(w, h, ch, data) = read_jpg(in_file);
-			std::cerr << "Read JPG image with size "
-				<< w << " x " << h << " x " << ch << "." << std::endl;
-
-			print_chars = false;
-		}
-		else  // read raw file
-		{
-			data.reserve(std::filesystem::file_size(in_file));
-
-			while(!!ifstr)
-			{
-				int ch = ifstr.get();
-				if(ch == std::istream::traits_type::eof())
-					break;
-
-				data.emplace_back(t_word(8, ch));
-			}
-
-			std::cerr << "Read " << data.size() << " bytes of raw data." << std::endl;
-		}
 
 		// output file
 		std::ostream *postr = &std::cout;
@@ -147,7 +174,7 @@ int main(int argc, char** argv)
 		{
 			if(!ofstr)
 			{
-				std::cerr << "Cannot open output file \""
+				std::cerr << "Error: Cannot open output file \""
 					<< out_rom << "\"." << std::endl;
 				return -1;
 			}
@@ -156,9 +183,7 @@ int main(int argc, char** argv)
 		}
 
 		// set rom generator function
-		std::string (*gen_rom_fkt)(const t_words&, int, int,
-			bool, bool, bool, bool, const std::string&)
-				= &gen_rom_vhdl;
+		std::string (*gen_rom_fkt)(const Config&) = &gen_rom_vhdl;
 
 		if(boost::to_lower_copy(rom_type) == "vhdl")
 			gen_rom_fkt = &gen_rom_vhdl;
@@ -170,9 +195,7 @@ int main(int argc, char** argv)
 			gen_rom_fkt = &gen_rom_hex;
 
 		// generate rom
-		(*postr) << (*gen_rom_fkt)(data, line_len, num_ports, direct_ports,
-			fill_rom, print_chars, check_bounds, module_name)
-			<< std::endl;
+		(*postr) << (*gen_rom_fkt)(cfg) << std::endl;
 	}
 	catch(const std::exception& ex)
 	{

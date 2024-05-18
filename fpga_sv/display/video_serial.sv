@@ -16,6 +16,9 @@ module video_serial
 	#(
 		parameter SERIAL_BITS     = 8,
 		parameter PIXEL_BITS      = 16,
+		parameter RED_BITS        = 5,
+		parameter GREEN_BITS      = 6,
+		parameter BLUE_BITS       = 5,
 
 		parameter SCREEN_HOFFS    = 0,
 		parameter SCREEN_VOFFS    = 0,
@@ -85,7 +88,8 @@ module video_serial
 	// start display [ctrl, pp. 156ff]
 	localparam INIT_BYTES = 17;
 
-	logic [0 : INIT_BYTES - 1][SERIAL_BITS - 1 : 0] init_data = {
+	logic [0 : INIT_BYTES - 1][SERIAL_BITS - 1 : 0] init_data;
+	assign init_data = {
 		//8'h01,  // reset [ctrl, p. 163]
 		8'h11,  // enable [ctrl, p. 184]
 		//8'h20,  // no colour inversion [ctrl, p. 188]
@@ -97,7 +101,8 @@ module video_serial
 		8'h3a, 8'b0101_0101  // 16 bit pixel format [ctrl, p. 224]
 	};
 
-	logic [0 : INIT_BYTES - 1] init_cmd = {
+	logic [0 : INIT_BYTES - 1] init_cmd;
+	assign init_cmd = {
 		//1'b0,  // reset [ctrl, p. 163]
 		1'b0,  // enable [ctrl, p. 184]
 		1'b0,  // colour inversion [ctrl, p. 190]
@@ -160,7 +165,8 @@ module video_serial
 		testpattern
 		#(
 			.HPIX(SCREEN_WIDTH), .VPIX(SCREEN_HEIGHT),
-			.PIXEL_BITS(PIXEL_BITS), .RED_BITS(5), .GREEN_BITS(6), .BLUE_BITS(5),
+			.PIXEL_BITS(PIXEL_BITS), .RED_BITS(RED_BITS),
+			.GREEN_BITS(GREEN_BITS), .BLUE_BITS(BLUE_BITS),
 			.HCTR_BITS(HCTR_BITS), .VCTR_BITS(VCTR_BITS)
 		 )
 		testpattern_mod

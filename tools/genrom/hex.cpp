@@ -18,19 +18,16 @@
 /**
  * generates a hex or binary dump
  */
-std::string gen_rom_hex(const t_words& data, int max_line_len,
-	[[__maybe_unused__]] int num_ports, [[__maybe_unused__]] bool direct_ports,
-	bool fill_rom, bool print_chars, [[__maybe_unused__]] bool check_bounds,
-	[[__maybe_unused__]] const std::string& module_name)
+std::string gen_rom_hex(const Config& cfg)
 {
 	// create data block
 	std::size_t rom_len = 0;
-	int cur_line_len = 0;
+	std::size_t cur_line_len = 0;
 
 	// get word size
 	typename t_word::size_type word_bits = 8;
-	if(data.size())
-		word_bits = data[0].size();
+	if(cfg.data.size())
+		word_bits = cfg.data[0].size();
 
 	std::ostringstream ostr_data;
 	std::vector<char> chs;
@@ -70,11 +67,11 @@ std::string gen_rom_hex(const t_words& data, int max_line_len,
 		chs.clear();
 	};
 
-	for(const t_word& dat : data)
+	for(const t_word& dat : cfg.data)
 	{
-		if(cur_line_len >= max_line_len)
+		if(cur_line_len >= cfg.max_line_len)
 		{
-			if(print_chars)
+			if(cfg.print_chars)
 				write_chars();
 
 			ostr_data << "\n";
@@ -95,7 +92,7 @@ std::string gen_rom_hex(const t_words& data, int max_line_len,
 			ostr_data << dat << " ";
 		}
 
-		if(print_chars)
+		if(cfg.print_chars)
 			add_char(static_cast<int>(dat.to_ulong()));
 
 		++rom_len;
@@ -103,7 +100,7 @@ std::string gen_rom_hex(const t_words& data, int max_line_len,
 	}
 
 	// fill-up data block to maximum size
-	if(fill_rom && rom_len > 0)
+	if(cfg.fill_rom && rom_len > 0)
 	{
 		std::size_t addr_bits = std::size_t(std::ceil(std::log2(double(rom_len))));
 		std::size_t max_rom_len = std::pow(2, addr_bits);
@@ -111,9 +108,9 @@ std::string gen_rom_hex(const t_words& data, int max_line_len,
 		t_word fill_data(word_bits, 0x00);
 		for(; rom_len < max_rom_len; ++rom_len)
 		{
-			if(cur_line_len >= max_line_len)
+			if(cur_line_len >= cfg.max_line_len)
 			{
-				if(print_chars)
+				if(cfg.print_chars)
 					write_chars();
 
 				ostr_data << "\n";
@@ -138,7 +135,7 @@ std::string gen_rom_hex(const t_words& data, int max_line_len,
 		}
 	}
 
-	if(print_chars)
+	if(cfg.print_chars)
 		write_chars();
 
 	return ostr_data.str();
