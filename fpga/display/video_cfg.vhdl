@@ -128,7 +128,7 @@ architecture video_cfg_impl of video_cfg is
 		x"d6", "10000000"   -- hotplug detection, [sw, p. 17, p. 164]
 	);
 
-	signal PowerDown_cycle, next_PowerDown_cycle : natural range 0 to powerup_arr'length := 0;
+	signal powerdown_cycle, next_powerdown_cycle : natural range 0 to powerup_arr'length := 0;
 	signal powerup_cycle, next_powerup_cycle : natural range 0 to powerup_arr'length := 0;
 	signal setupint_cycle, next_setupint_cycle : natural range 0 to setupint_arr'length := 0;
 
@@ -155,7 +155,7 @@ begin
 
 			-- command counter
 			powerup_cycle <= 0;
-			PowerDown_cycle <= 0;
+			powerdown_cycle <= 0;
 			setupint_cycle <= 0;
 
 			-- status register
@@ -179,7 +179,7 @@ begin
 
 			-- command counter
 			powerup_cycle <= next_powerup_cycle;
-			PowerDown_cycle <= next_PowerDown_cycle;
+			powerdown_cycle <= next_powerdown_cycle;
 			setupint_cycle <= next_setupint_cycle;
 
 			-- status register
@@ -213,13 +213,13 @@ begin
 		wait_counter, wait_counter_max,
 		in_bus_ready, in_bus_error, in_bus_data,
 		bus_cycle, powerup_cycle,
-		status_reg, PowerDown_cycle, setupint_cycle,
+		status_reg, powerdown_cycle, setupint_cycle,
 		in_int, int_triggered, is_powered)
 	begin
 		-- defaults
 		next_state <= state;
 		next_powerup_cycle <= powerup_cycle;
-		next_PowerDown_cycle <= PowerDown_cycle;
+		next_powerdown_cycle <= powerdown_cycle;
 		next_setupint_cycle <= setupint_cycle;
 		next_status_reg <= status_reg;
 		next_int_triggered <= int_triggered;
@@ -319,7 +319,7 @@ begin
 				out_bus_addr <= BUS_WRITEADDR;
 
 				-- write register address
-				out_bus_data <= powerdown_arr(PowerDown_cycle);
+				out_bus_data <= powerdown_arr(powerdown_cycle);
 				out_bus_enable <= '1';
 
 				if bus_cycle = '1' then
@@ -330,7 +330,7 @@ begin
 				out_bus_addr <= BUS_WRITEADDR;
 
 				-- write register value
-				out_bus_data <= powerdown_arr(PowerDown_cycle + 1);
+				out_bus_data <= powerdown_arr(powerdown_cycle + 1);
 				out_bus_enable <= '1';
 
 				if bus_cycle = '1' then
@@ -339,15 +339,15 @@ begin
 
 			when PowerDown_Next =>
 				if in_bus_ready = '1' then
-					if PowerDown_cycle + 2 = powerdown_arr'length then
+					if powerdown_cycle + 2 = powerdown_arr'length then
 						-- at end of command list
 						next_state <= Wait_Int;
 						next_is_powered <= '0';
 						next_int_triggered <= '0';
-						next_PowerDown_cycle <= 0;
+						next_powerdown_cycle <= 0;
 					else
 						-- next command
-						next_PowerDown_cycle <= PowerDown_cycle + 2;
+						next_powerdown_cycle <= powerdown_cycle + 2;
 						next_state <= PowerDown_SetAddr;
 					end if;
 				end if;
