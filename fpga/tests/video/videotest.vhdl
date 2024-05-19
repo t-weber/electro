@@ -32,7 +32,7 @@ entity videotest is
 		key : in std_logic_vector(1 downto 0);
 		sw : in std_logic_vector(0 downto 0);
 		ledg : out std_logic_vector(7 downto 0);
-		ledr : out std_logic_vector(4 downto 0)
+		ledr : out std_logic_vector(5 downto 0)
 	);
 end videotest;
 
@@ -63,6 +63,7 @@ architecture videotest_impl of videotest is
 	constant TEXT_TILE_HEIGHT : natural := 24;
 	constant NUM_TEXT_ROWS : natural := 30;
 	constant NUM_TEXT_COLS : natural := 80;
+	constant USE_COLOURBUFFERS : std_logic := '1';
 
 	-- serial bus addresses
 	constant SERIAL_VID_WRITE_ADDR : std_logic_vector(7 downto 0) := x"72";
@@ -110,10 +111,11 @@ begin
 	write_char <= not key(1);
 
 	ledr(0) <= serial_vid_err;
-	ledr(1) <= serial_vid_busy;
+	ledr(1) <= serial_vid_ready;
 	ledr(2) <= pixel_clk_locked;
 	ledr(3) <= test_clk;
 	ledr(4) <= vid_active;
+	ledr(5) <= vid_tx_int;
 
 	ledg <= vid_status;
 
@@ -143,8 +145,8 @@ begin
 	--		data_rd => serial_vid_data_read, data_wr => serial_vid_data_write,
 	--		err => serial_vid_err, busy => serial_vid_busy,
 	--		scl => vid_scl, sda => vid_sda);
-
 	--serial_vid_byte_finished <= not serial_vid_busy;
+	--serial_vid_ready <= not serial_vid_busy;
 
 	vid_serial : entity work.serial_2wire
 		generic map(MAIN_HZ => MAIN_HZ, SERIAL_HZ => SERIAL_HZ)
@@ -158,14 +160,12 @@ begin
 			out_next_word => serial_vid_byte_finished,
 			inout_clk => vid_scl, inout_serial => vid_sda);
 
-	serial_vid_busy <= not serial_vid_ready;
-
 	-- configuration
 	vid_cfg : entity work.video_cfg
 		generic map(MAIN_CLK => MAIN_HZ,
 			BUS_WRITEADDR => SERIAL_VID_WRITE_ADDR, BUS_READADDR => SERIAL_VID_READ_ADDR)
 		port map(in_clk => clock_50_b7a, in_reset => reset,
-			in_bus_busy => serial_vid_busy, in_bus_error => serial_vid_err,
+			in_bus_ready => serial_vid_ready, in_bus_error => serial_vid_err,
 			in_int => vid_tx_int,
 			out_bus_enable => serial_vid_enable, in_bus_byte_finished => serial_vid_byte_finished,
 			out_bus_data => serial_vid_data_write, in_bus_data => serial_vid_data_read,
@@ -184,8 +184,7 @@ begin
 			HPIX_VISIBLE => SCREEN_WIDTH,  HPIX_TOTAL => SCREEN_WIDTH + HSYNC_DELAY,
 			VPIX_VISIBLE => SCREEN_HEIGHT, VPIX_TOTAL => SCREEN_HEIGHT + VSYNC_DELAY)
 		port map(in_clk => pixel_clk, in_rst => reset or not pixel_clk_locked,
-			in_mem => cur_col, --(others => font_pixel),
-			in_testpattern => sw(0),
+			in_mem => cur_col, in_testpattern => sw(0),
 			out_hsync => vid_tx_hs, out_vsync => vid_tx_vs,
 			out_pixel_enable => vid_tx_de,
 			out_pixel => vid_tx_d, out_hpix => vid_x, out_vpix => vid_y);
@@ -197,9 +196,17 @@ begin
 	tile_ent : entity work.tile
 		generic map(SCREEN_WIDTH => SCREEN_WIDTH, SCREEN_HEIGHT => SCREEN_HEIGHT,
 			TILE_WIDTH => TEXT_TILE_WIDTH, TILE_HEIGHT => TEXT_TILE_HEIGHT)
-		port map(in_x => vid_x, in_y => vid_y,
+		port map(
+			in_x => vid_x, in_y => vid_y,
 			out_tile_num => tile_num,
 			out_tile_pix_x => tile_pix_x, out_tile_pix_y => tile_pix_y);
+
+	-- font rom; generate with:
+	--   ./genfont -h 24 -w 24 --target_height 24 --target_pitch 2 -t vhdl -o font.vhdl
+	font_rom : entity work.font
+		port map(in_char => cur_char(6 downto 0),
+			in_x => tile_pix_x, in_y => tile_pix_y,
+			out_pixel => font_pixel);
 
 	-- text buffer in rom
 	--txt_rom : entity work.textrom
@@ -208,6 +215,7 @@ begin
 
 	-- text buffer in ram
 	txt_ram : entity work.ram
+	--txt_ram : entity work.textram
 		generic map(NUM_PORTS => 2, NUM_WORDS => NUM_TEXT_ROWS * NUM_TEXT_COLS,
 			ADDR_BITS => 12, WORD_BITS => 8)
 		port map(in_clk => pixel_clk, in_rst => reset,
@@ -220,35 +228,34 @@ begin
 			in_read_ena(1) => '0', in_write_ena(1) => write_char,
 			in_data(1) => char_to_write_stable);
 
-	-- text foreground colour
-	txt_fgram : entity work.ram
-	--txt_fgram : entity work.textcolourram(textfgcolram_impl)
-		generic map(NUM_PORTS => 1, NUM_WORDS => NUM_TEXT_ROWS * NUM_TEXT_COLS,
-			ADDR_BITS => 12, WORD_BITS => 3*8)
-		port map(in_clk => pixel_clk, in_rst => reset,
-			in_addr(0) => tile_num, out_data(0) => cur_fgcol,
-			in_read_ena(0) => '1', in_write_ena(0) => '0',
-			in_data(0) => (others => '0'));
+	gen_col : if USE_COLOURBUFFERS = '1' generate
+		-- text foreground colour
+		txt_fgram : entity work.ram
+		--txt_fgram : entity work.textcolourram(textfgcolram_impl)
+			generic map(NUM_PORTS => 1, NUM_WORDS => NUM_TEXT_ROWS * NUM_TEXT_COLS,
+				ADDR_BITS => 12, WORD_BITS => 3*8)
+			port map(in_clk => pixel_clk, in_rst => reset,
+				in_addr(0) => tile_num, out_data(0) => cur_fgcol,
+				in_read_ena(0) => '1', in_write_ena(0) => '0',
+				in_data(0) => (others => '0'));
 
-	-- text background colour
-	txt_bgram : entity work.ram
-	--txt_bgram : entity work.textcolourram(textbgcolram_impl)
-		generic map(NUM_PORTS => 1, NUM_WORDS => NUM_TEXT_ROWS * NUM_TEXT_COLS,
-			ADDR_BITS => 12, WORD_BITS => 3*8)
-		port map(in_clk => pixel_clk, in_rst => reset,
-			in_addr(0) => tile_num, out_data(0) => cur_bgcol,
-			in_read_ena(0) => '1', in_write_ena(0) => '0',
-			in_data(0) => (others => '0'));
+		-- text background colour
+		txt_bgram : entity work.ram
+		--txt_bgram : entity work.textcolourram(textbgcolram_impl)
+			generic map(NUM_PORTS => 1, NUM_WORDS => NUM_TEXT_ROWS * NUM_TEXT_COLS,
+				ADDR_BITS => 12, WORD_BITS => 3*8)
+			port map(in_clk => pixel_clk, in_rst => reset,
+				in_addr(0) => tile_num, out_data(0) => cur_bgcol,
+				in_read_ena(0) => '1', in_write_ena(0) => '0',
+				in_data(0) => (others => '0'));
 
-	-- font rom; generate with:
-	--   ./genfont -h 24 -w 24 --target_height 24 --target_pitch 2 -t vhdl -o font.vhdl
-	font_rom : entity work.font
-		port map(in_char => cur_char(6 downto 0),
-			in_x => tile_pix_x, in_y => tile_pix_y,
-			out_pixel => font_pixel);
+		-- current pixel colour
+		cur_col <= cur_fgcol when font_pixel = '1' else cur_bgcol;
+	end generate;
 
-	-- current pixel colour
-	cur_col <= cur_fgcol when font_pixel = '1' else cur_bgcol;
+	gen_col_else : if USE_COLOURBUFFERS = '0' generate
+		cur_col <= (others => font_pixel);
+	end generate;
 
 	----------------------------------------------------------------------------
 

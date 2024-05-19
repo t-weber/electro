@@ -36,7 +36,7 @@ entity video_cfg is
 		in_clk, in_reset : in std_logic;
 
 		-- serial bus interface
-		in_bus_busy, in_bus_error : in std_logic;
+		in_bus_ready, in_bus_error : in std_logic;
 		in_bus_data : in std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
 		in_bus_byte_finished : in std_logic;
 
@@ -58,13 +58,14 @@ end entity;
 architecture video_cfg_impl of video_cfg is
 	-- states
 	type t_state is ( Wait_Reset, CheckStatus,
-		Status_SetAddr, Status_SetData, Status_Next,
+		SetupInt_SetAddr, SetupInt_SetData, SetupInt_Next,
 		ReadStatus_SetAddr, ReadStatus_SetReg, ReadStatus_GetData,
 		PowerUp_SetAddr, PowerUp_SetData, PowerUp_Next,
+		PowerDown_SetAddr, PowerDown_SetData, PowerDown_Next,
 		Wait_Int, Idle);
+
 	signal state, next_state : t_state := Wait_Reset;
 
-	-- serial bus busy signal
 	signal last_bus_byte_finished, bus_cycle : std_logic := '0';
 
 	-- reset delay and counter for busy wait
@@ -79,42 +80,20 @@ architecture video_cfg_impl of video_cfg is
 	-- all video outputs on?
 	signal is_powered, next_is_powered : std_logic := '0';
 
-	-- sequence to power down and enable status register monitoring
-	type t_status_arr is array(0 to 13*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
-	constant status_arr : t_status_arr := (
-		-- reg,   val
+	-- power down sequence
+	type t_powerdown_arr is array(0 to 2*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+	constant powerdown_arr : t_powerdown_arr := (
+		-- reg, val
 		x"41", "01010000",    -- power off, [sw, p. 149]
 
-		x"98", x"03",         -- constants, [sw, p. 14, p. 25]
-		x"9a", x"e0",         --
-		x"9c", x"30",         --
-		x"9d", x"01",         --
-		x"a2", x"a4",         --
-		x"a3", x"a4",         --
-		x"e0", x"d0",         --
-		x"f9", x"00",         --
-
-		-- status register monitoring
-		x"94", "11000000",  -- status interrupts enable, [sw, p. 17, p. 158]
-		x"96", "11000000",  -- clear interrupts, [sw, p. 130]
-		x"a1", "00000000",  -- monitor sense, [sw, p. 104, p. 160]
-		x"d6", "10000000"   -- hotplug detection, [sw, p. 17, p. 164]
+		x"96", "11000000"     -- clear interrupts, [sw, p. 130]
 	);
 
 	-- power up sequence
-	type t_powerup_arr is array(0 to 21*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+	type t_powerup_arr is array(0 to 10*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
 	constant powerup_arr : t_powerup_arr := (
-		-- reg,   val
-		x"41", "00010000",    -- power on, [sw, p. 149]
-
-		x"98", x"03",         -- constants, [sw, p. 14, p. 25]
-		x"9a", x"e0",         --
-		x"9c", x"30",         --
-		x"9d", x"01",         --
-		x"a2", x"a4",         --
-		x"a3", x"a4",         --
-		x"e0", x"d0",         --
-		x"f9", x"00",         --
+		-- reg, val
+		x"41", "00010000",  -- power on, [sw, p. 149]
 
 		-- set i/o formats
 		x"15", "00000000",  -- input format, [sw, p. 34, p. 141]
@@ -126,15 +105,32 @@ architecture video_cfg_impl of video_cfg is
 		x"56", "00101000",  -- aspect, [sw, p. 153]
 		x"af", "00000110",  -- mode, [sw, p. 161]
 
-		-- status register monitoring
+		x"96", "11000000"   -- clear interrupts, [sw, p. 130]
+	);
+
+	-- sequence to set up interrupts (and basic constants)
+	type t_setupint_arr is array(0 to 12*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+	constant setupint_arr : t_setupint_arr := (
+		-- reg, val
+		x"98", x"03",         -- constants, [sw, p. 14, p. 25]
+		x"9a", x"e0",         --
+		x"9c", x"30",         --
+		x"9d", x"01",         --
+		x"a2", x"a4",         --
+		x"a3", x"a4",         --
+		x"e0", x"d0",         --
+		x"f9", x"00",         --
+
+		-- set up interrupt handling
 		x"94", "11000000",  -- status interrupts enable, [sw, p. 17, p. 158]
 		x"96", "11000000",  -- clear interrupts, [sw, p. 130]
 		x"a1", "00000000",  -- monitor sense, [sw, p. 104, p. 160]
 		x"d6", "10000000"   -- hotplug detection, [sw, p. 17, p. 164]
 	);
 
-	signal status_cycle, next_status_cycle : natural range 0 to powerup_arr'length := 0;
+	signal PowerDown_cycle, next_PowerDown_cycle : natural range 0 to powerup_arr'length := 0;
 	signal powerup_cycle, next_powerup_cycle : natural range 0 to powerup_arr'length := 0;
+	signal setupint_cycle, next_setupint_cycle : natural range 0 to setupint_arr'length := 0;
 
 begin
 
@@ -145,6 +141,7 @@ begin
 
 	-- rising edge of serial bus finished signal
 	bus_cycle <= in_bus_byte_finished and (not last_bus_byte_finished);
+	--bus_cycle <= (not in_bus_byte_finished) and last_bus_byte_finished;
 
 
 	--
@@ -158,7 +155,8 @@ begin
 
 			-- command counter
 			powerup_cycle <= 0;
-			status_cycle <= 0;
+			PowerDown_cycle <= 0;
+			setupint_cycle <= 0;
 
 			-- status register
 			status_reg <= (others => '0');
@@ -181,7 +179,8 @@ begin
 
 			-- command counter
 			powerup_cycle <= next_powerup_cycle;
-			status_cycle <= next_status_cycle;
+			PowerDown_cycle <= next_PowerDown_cycle;
+			setupint_cycle <= next_setupint_cycle;
 
 			-- status register
 			status_reg <= next_status_reg;
@@ -210,16 +209,18 @@ begin
 	-- state combinatorics
 	--
 	proc_comb : process(
-		state, wait_counter, wait_counter_max,
-		in_bus_busy, in_bus_error, in_bus_data,
+		state,
+		wait_counter, wait_counter_max,
+		in_bus_ready, in_bus_error, in_bus_data,
 		bus_cycle, powerup_cycle,
-		status_reg, status_cycle,
+		status_reg, PowerDown_cycle, setupint_cycle,
 		in_int, int_triggered, is_powered)
 	begin
 		-- defaults
 		next_state <= state;
 		next_powerup_cycle <= powerup_cycle;
-		next_status_cycle <= status_cycle;
+		next_PowerDown_cycle <= PowerDown_cycle;
+		next_setupint_cycle <= setupint_cycle;
 		next_status_reg <= status_reg;
 		next_int_triggered <= int_triggered;
 		next_is_powered <= is_powered;
@@ -244,53 +245,8 @@ begin
 			when Wait_Reset =>
 				wait_counter_max <= const_wait_reset;
 				if wait_counter = wait_counter_max then
-					if CHECK_STATUS_REG = '1' then
-						next_state <= Status_SetAddr;
-					else
-						next_state <= PowerUp_SetAddr;
-					end if;
+					next_state <= SetUpInt_SetAddr;
 				end if;
-
-
-			----------------------------------------------------------------------
-			-- status monitoring set-up, [sw, p. 14ff]
-			----------------------------------------------------------------------
-			when Status_SetAddr =>
-				out_bus_addr <= BUS_WRITEADDR;
-
-				-- write register address
-				out_bus_data <= status_arr(status_cycle);
-				out_bus_enable <= '1';
-
-				if bus_cycle = '1' then
-					next_state <= Status_SetData;
-				end if;
-
-			when Status_SetData =>
-				out_bus_addr <= BUS_WRITEADDR;
-
-				-- write register value
-				out_bus_data <= status_arr(status_cycle + 1);
-				out_bus_enable <= '1';
-
-				if bus_cycle = '1' then
-					next_state <= Status_Next;
-				end if;
-
-			when Status_Next =>
-				if in_bus_busy = '0' then
-					if status_cycle + 2 = status_arr'length then
-						-- at end of command list
-						next_state <= Wait_Int;
-						next_is_powered <= '0';
-						next_status_cycle <= 0;
-					else
-						-- next command
-						next_status_cycle <= status_cycle + 2;
-						next_state <= Status_SetAddr;
-					end if;
-				end if;
-			----------------------------------------------------------------------
 
 
 			--
@@ -329,33 +285,73 @@ begin
 			when ReadStatus_GetData =>
 				out_bus_addr <= BUS_READADDR;
 
-				if in_bus_busy = '0' then
+				if in_bus_ready = '1' then
 					next_status_reg <= in_bus_data;
 					next_state <= CheckStatus;
 				end if;
-			----------------------------------------------------------------------
 
-
-			--
-			-- check status register if a monitor is present
-			--
+			-- check status register to see if a monitor is present
 			when CheckStatus =>
 				if is_powered = '0' then
 					if status_reg(5) = '1' and status_reg(6) = '1' then
-						-- monitor present -> power on
+						-- monitor now present -> power on
 						next_state <= PowerUp_SetAddr;
 					else
-						-- monitor not present
+						-- monitor still not present
 						next_state <= Wait_Int;
 					end if;
 				else
 					if status_reg(5) = '0' or status_reg(6) = '0' then
 						-- monitor no longer present -> power off
-						next_state <= Status_SetAddr;
+						next_state <= PowerDown_SetAddr;
 					else
+						-- monitor still present
 						next_state <= Wait_Int;
 					end if;
 				end if;
+			----------------------------------------------------------------------
+
+
+			----------------------------------------------------------------------
+			-- power down, [sw, p. 14ff]
+			----------------------------------------------------------------------
+			when PowerDown_SetAddr =>
+				out_bus_addr <= BUS_WRITEADDR;
+
+				-- write register address
+				out_bus_data <= powerdown_arr(PowerDown_cycle);
+				out_bus_enable <= '1';
+
+				if bus_cycle = '1' then
+					next_state <= PowerDown_SetData;
+				end if;
+
+			when PowerDown_SetData =>
+				out_bus_addr <= BUS_WRITEADDR;
+
+				-- write register value
+				out_bus_data <= powerdown_arr(PowerDown_cycle + 1);
+				out_bus_enable <= '1';
+
+				if bus_cycle = '1' then
+					next_state <= PowerDown_Next;
+				end if;
+
+			when PowerDown_Next =>
+				if in_bus_ready = '1' then
+					if PowerDown_cycle + 2 = powerdown_arr'length then
+						-- at end of command list
+						next_state <= Wait_Int;
+						next_is_powered <= '0';
+						next_int_triggered <= '0';
+						next_PowerDown_cycle <= 0;
+					else
+						-- next command
+						next_PowerDown_cycle <= PowerDown_cycle + 2;
+						next_state <= PowerDown_SetAddr;
+					end if;
+				end if;
+			----------------------------------------------------------------------
 
 
 			----------------------------------------------------------------------
@@ -386,7 +382,7 @@ begin
 			when PowerUp_Next =>
 				out_bus_addr <= BUS_WRITEADDR;
 
-				if in_bus_busy = '0' then
+				if in_bus_ready = '1' then
 					if powerup_cycle + 2 = powerup_arr'length then
 						-- at end of command list
 						if CHECK_STATUS_REG = '1' then
@@ -396,6 +392,7 @@ begin
 							next_status_reg <= (5 => '1', 6 => '1', others => '0');
 						end if;
 						next_is_powered <= '1';
+						next_int_triggered <= '0';
 						next_powerup_cycle <= 0;
 					else
 						-- next command
@@ -405,6 +402,54 @@ begin
 				end if;
 
 			when Idle => null;
+			----------------------------------------------------------------------
+
+
+			----------------------------------------------------------------------
+			-- set-up interrupt handling and status monitoring, [sw, p. 14ff]
+			----------------------------------------------------------------------
+			when SetupInt_SetAddr =>
+				out_bus_addr <= BUS_WRITEADDR;
+
+				-- write register address
+				out_bus_data <= setupint_arr(setupint_cycle);
+				out_bus_enable <= '1';
+
+				if bus_cycle = '1' then
+					next_state <= SetupInt_SetData;
+				end if;
+
+			when SetupInt_SetData =>
+				out_bus_addr <= BUS_WRITEADDR;
+
+				-- write register value
+				out_bus_data <= setupint_arr(setupint_cycle + 1);
+				out_bus_enable <= '1';
+
+				if bus_cycle = '1' then
+					next_state <= SetupInt_Next;
+				end if;
+
+			when SetupInt_Next =>
+				if in_bus_ready = '1' then
+					if setupint_cycle + 2 = setupint_arr'length then
+						-- at end of command list
+						next_setupint_cycle <= 0;
+						next_int_triggered <= '0';
+
+						if CHECK_STATUS_REG = '1' then
+							-- power down and wait for status
+							next_state <= PowerDown_SetAddr;
+						else
+							-- directly power up
+							next_state <= PowerUp_SetAddr;
+						end if;
+					else
+						-- next command
+						next_setupint_cycle <= setupint_cycle + 2;
+						next_state <= SetupInt_SetAddr;
+					end if;
+				end if;
 			----------------------------------------------------------------------
 
 
