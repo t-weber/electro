@@ -35,9 +35,12 @@ FontBits create_font(::FT_Face& face, const Config& cfg)
 
 	for(::FT_ULong ch = cfg.ch_first; ch < cfg.ch_last; ++ch)
 	{
-		if(::FT_Load_Char(face, ch, FT_LOAD_TARGET_MONO | FT_LOAD_NO_HINTING | FT_LOAD_RENDER))
+		if(::FT_Load_Char(face, ch,
+			FT_LOAD_TARGET_MONO | FT_LOAD_NO_HINTING | FT_LOAD_RENDER))
 		{
-			std::cerr << "Error: Cannot load char 0x" << std::hex << ch << "." << std::endl;
+			std::cerr << "Error: Cannot load char 0x"
+				<< std::hex << ch << "."
+				<< std::endl;
 			continue;
 		}
 
@@ -189,20 +192,24 @@ int main(int argc, char **argv)
 	::FT_Library freetype{};
 	if(::FT_Init_FreeType(&freetype))
 	{
-		std::cerr << "Error: Cannot initialise Freetype." << std::endl;
+		std::cerr << "Error: Cannot initialise Freetype."
+			<< std::endl;
 		return -1;
 	}
 
 	::FT_Face face{};
 	if(FT_New_Face(freetype, cfg.font_file.c_str(), 0, &face))
 	{
-		std::cerr << "Error: Cannot load font \"" << cfg.font_file << "\"." << std::endl;
+		std::cerr << "Error: Cannot load font \""
+			<< cfg.font_file << "\"."
+			<< std::endl;
 		return -1;
 	}
 
 	if(::FT_Set_Pixel_Sizes(face, cfg.font_width, cfg.font_height))
 	{
-		std::cerr << "Error: Cannot set font size." << std::endl;
+		std::cerr << "Error: Cannot set font size."
+			<< std::endl;
 		return -1;
 	}
 
@@ -226,16 +233,16 @@ int main(int argc, char **argv)
 		unsigned int num_chars = cfg.ch_last - cfg.ch_first;
 		unsigned int char_size = cfg.target_height * cfg.target_pitch * cfg.pitch_bits / 8;
 
-		std::cerr << "Created font ROM: "
+		std::cerr << "Info: Created font ROM: "
 			<< "\"" << cfg.font_file << "\" -> \"" << cfg.out_rom << "\".\n"
-			<< "Number of characters: " << num_chars << ","
+			<< "Info: Number of characters: " << num_chars << ","
 			<< " character size: " << char_size << " B,"
 			<< " ROM size: " << num_chars * char_size / 1024 << " kiB."
 			<< std::endl;
 	}
 	else
 	{
-		std::cerr << "Font ROM creation failed."
+		std::cerr << "Error: Font ROM creation failed."
 			<< std::endl;
 	}
 

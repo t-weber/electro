@@ -29,15 +29,15 @@ bool create_font_c(const FontBits& fontbits, const Config& cfg)
 
 	(*ostr) << "#include <stdint.h>\n\n";
 
-	(*ostr) << "const uint16_t g_characters_first = " << cfg.ch_first << ";\n";
-	(*ostr) << "const uint16_t g_characters_last = " << cfg.ch_last << ";\n";
-	(*ostr) << "const uint16_t g_characters_pitch = " << cfg.target_pitch << ";\n";
-	(*ostr) << "const uint16_t g_characters_width = " << cfg.target_pitch * cfg.pitch_bits << ";\n";
+	(*ostr) << "const uint16_t g_characters_first  = " << cfg.ch_first << ";\n";
+	(*ostr) << "const uint16_t g_characters_last   = " << cfg.ch_last << ";\n";
+	(*ostr) << "const uint16_t g_characters_pitch  = " << cfg.target_pitch << ";\n";
+	(*ostr) << "const uint16_t g_characters_width  = " << cfg.target_pitch * cfg.pitch_bits << ";\n";
 	(*ostr) << "const uint16_t g_characters_height = " << cfg.target_height << ";\n\n";
 
 	// see: https://www.arduino.cc/reference/en/language/variables/utilities/progmem/
 	(*ostr) << "#ifndef PROGMEM\n"
-		<< "#define PROGMEM\n"
+		<< "\t#define PROGMEM\n"
 		<< "#endif\n"
 		<< "const uint8_t g_characters[" << (cfg.ch_last - cfg.ch_first) << "]"
 		<< "[" << cfg.target_height*cfg.target_pitch << "] PROGMEM =\n{\n";

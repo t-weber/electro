@@ -258,7 +258,7 @@ endmodule)raw";
 		{
 			rom_ports_assign_sv = R"raw(
 genvar port_idx;
-generate for(port_idx=0; port_idx<NUM_PORTS; ++port_idx)
+generate for(port_idx = 0; port_idx < NUM_PORTS; ++port_idx)
 begin : gen_ports
 	assign out_data[port_idx] = in_addr[port_idx] < NUM_WORDS
 		? words[in_addr[port_idx]]
@@ -271,7 +271,7 @@ endgenerate
 		{
 			rom_ports_assign_sv = R"raw(
 genvar port_idx;
-generate for(port_idx=0; port_idx<NUM_PORTS; ++port_idx)
+generate for(port_idx = 0; port_idx < NUM_PORTS; ++port_idx)
 begin : gen_ports
 	assign out_data[port_idx] = words[in_addr[port_idx]];
 end

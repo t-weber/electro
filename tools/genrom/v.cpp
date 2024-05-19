@@ -259,8 +259,8 @@ endmodule)raw";
 	{
 		// rom generic port definitions
 		std::string rom_ports_v = R"raw(
-	input  wire[NUM_PORTS][ADDR_BITS - 1 : 0] in_addr,
-	output wire[NUM_PORTS][WORD_BITS - 1 : 0] out_data
+	input  wire[0 : NUM_PORTS - 1][ADDR_BITS - 1 : 0] in_addr,
+	output wire[0 : NUM_PORTS - 1][WORD_BITS - 1 : 0] out_data
 )raw";
 
 
@@ -270,7 +270,7 @@ endmodule)raw";
 		{
 			rom_ports_assign_v = R"raw(
 genvar port_idx;
-generate for(port_idx=0; port_idx<NUM_PORTS; ++port_idx)
+generate for(port_idx = 0; port_idx < NUM_PORTS; port_idx = port_idx + 1)
 begin : gen_ports
 	assign out_data[port_idx] = in_addr[port_idx] < NUM_WORDS
 		? words[in_addr[port_idx]]
@@ -283,7 +283,7 @@ endgenerate
 		{
 			rom_ports_assign_v = R"raw(
 genvar port_idx;
-generate for(port_idx=0; port_idx<NUM_PORTS; ++port_idx)
+generate for(port_idx = 0; port_idx < NUM_PORTS; port_idx = port_idx + 1)
 begin : gen_ports
 	assign out_data[port_idx] = words[in_addr[port_idx]];
 end

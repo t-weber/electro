@@ -29,6 +29,7 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 
 	(*ostr) << "module " << cfg.entity_name << "\n";
 
+	int char_width = cfg.target_pitch * static_cast<int>(cfg.pitch_bits);
 	if(!cfg.local_params)
 	{
 		(*ostr) << "#(\n"
@@ -36,14 +37,14 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 			<< "\tparameter LAST_CHAR   = " << cfg.ch_last << ",\n"
 			<< "\tparameter NUM_CHARS   = " << cfg.ch_last - cfg.ch_first << ",\n"
 			<< "\tparameter CHAR_PITCH  = " << cfg.target_pitch << ",\n"
-			<< "\tparameter CHAR_WIDTH  = " << cfg.target_pitch * cfg.pitch_bits << ",\n"
+			<< "\tparameter CHAR_WIDTH  = " << char_width << ",\n"
 			<< "\tparameter CHAR_HEIGHT = " << cfg.target_height << "\n"
 			<< ")\n";
 	}
 
 	(*ostr) << "(\n"
 		<< "\tinput wire [" << std::ceil(std::log2(cfg.ch_last)) - 1 << " : 0] in_char,\n"
-		<< "\tinput wire [" << std::ceil(std::log2(cfg.target_pitch * cfg.pitch_bits)) - 1 << " : 0] in_x,\n"
+		<< "\tinput wire [" << std::ceil(std::log2(char_width)) - 1 << " : 0] in_x,\n"
 		<< "\tinput wire [" << std::ceil(std::log2(cfg.target_height)) - 1 << " : 0] in_y,\n"
 		<< "\toutput wire out_pixel\n"
 		<< ");\n\n";
@@ -55,12 +56,12 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 			<< "localparam LAST_CHAR   = " << cfg.ch_last << ";\n"
 			<< "localparam NUM_CHARS   = LAST_CHAR - FIRST_CHAR;\n"
 			<< "localparam CHAR_PITCH  = " << cfg.target_pitch << ";\n"
-			<< "localparam CHAR_WIDTH  = " << cfg.target_pitch * cfg.pitch_bits << ";\n"
+			<< "localparam CHAR_WIDTH  = " << char_width << ";\n"
 			<< "localparam CHAR_HEIGHT = " << cfg.target_height << ";\n"
 			<< "\n";
 	}
 
-	(*ostr) << "\nwire [0 : CHAR_WIDTH - 1] chars [0 : (LAST_CHAR - FIRST_CHAR) * CHAR_HEIGHT - 1];\n\n";
+	(*ostr) << "\nwire [0 : CHAR_WIDTH - 1] chars [0 : NUM_CHARS*CHAR_HEIGHT - 1];\n\n";
 
 
 	// iterate characters
@@ -102,9 +103,11 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 	{
 		(*ostr) << "\nassign line = in_char < NUM_CHARS\n"
 			<< "\t? chars[in_char*CHAR_HEIGHT + in_y]\n"
-			<< "\t: CHAR_WIDTH'(0);\n";
+			<< "\t: " << char_width << "'b0;\n";
 
-		(*ostr) << "\nassign out_pixel = in_x < CHAR_WIDTH ? line[in_x] : 1'b0;\n";
+		(*ostr) << "\nassign out_pixel = in_x < CHAR_WIDTH\n"
+			<< "\t? line[in_x]\n"
+			<< "\t: 1'b0;\n";
 	}
 	else
 	{

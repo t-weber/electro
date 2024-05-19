@@ -8,7 +8,7 @@
 #ifndef __GENROM_COMMON_H__
 #define __GENROM_COMMON_H__
 
-#include <cstdint>
+#include <cstdlib>
 
 
 extern void test_bounds_check(
