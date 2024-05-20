@@ -1,7 +1,7 @@
 /**
- * testing gpios
+ * oled display test
  * @author Tobias Weber
- * @date 12-may-2024
+ * @date 20-may-2024
  * @license see 'LICENSE' file
  */
 
