@@ -66,7 +66,7 @@ if [ $run_pnr -ne 0 ]; then
 	if ! nextpnr-gowin --threads $num_threads -q --detailed-timing-report -l $pnr_log \
 		--family $target_fpga --device $target_board --freq $target_freq \
 		--cst $target_pins_file --json $synth_file --write $pnr_file --top $top_module \
-		--placed-svg output/placed.svg --routed-svg output/routed.svg
+		--placed-svg output/placed.svg --routed-svg output/routed.svg --sdf output/delay.sdf
 	then
 		echo -e "P&R failed!"
 		exit -1

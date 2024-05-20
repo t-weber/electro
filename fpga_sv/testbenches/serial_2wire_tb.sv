@@ -56,7 +56,7 @@ module serial_2wire_tb;
 		.in_clk(clk), .in_rst(mod_rst), .out_err(error),
 		.in_enable(enable), .in_write(1'b1), .out_ready(ready),
 		.in_addr_write(8'b10101010), .in_addr_read(8'b10101011),
-		.inout_clk(serial_clk), .inout_serial(serial),
+		.inout_serial_clk(serial_clk), .inout_serial(serial),
 		.in_parallel(data), .out_parallel(received),
 		.out_next_word(byte_finished)
 	);

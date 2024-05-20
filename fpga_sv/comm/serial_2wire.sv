@@ -14,10 +14,10 @@ module serial_2wire
 	// address and word lengths
 	parameter ADDR_BITS     = 8,
 	parameter BITS          = 8,
-	parameter LOWBIT_FIRST  = 1,
+	parameter LOWBIT_FIRST  = 1'b1,
 
 	// continue after errors
-	parameter IGNORE_ERROR  = 0
+	parameter IGNORE_ERROR  = 1'b0
  )
 (
 	// main clock and reset
@@ -25,7 +25,7 @@ module serial_2wire
 	input wire in_rst,
 
 	// serial clock and data
-	inout wire inout_clk,
+	inout wire inout_serial_clk,
 	inout wire inout_serial,
 
 	// enable transmission
@@ -77,13 +77,13 @@ t_serial_state state_afterack = Ready, next_state_afterack = Ready;
 reg [$clog2(BITS) : 0] bit_ctr = 0, next_bit_ctr = 0;
 
 // bit counter with correct ordering
-reg [$clog2(BITS) : 0] actual_bit_ctr;
+wire [$clog2(BITS) : 0] actual_bit_ctr;
 
 generate
-	if(LOWBIT_FIRST == 1) begin
+	if(LOWBIT_FIRST == 1'b1) begin
 		assign actual_bit_ctr = bit_ctr;
 	end else begin
-		assign actual_bit_ctr = BITS - bit_ctr - 1;
+		assign actual_bit_ctr = $size(actual_bit_ctr)'(BITS - bit_ctr - 1'b1);
 	end
 endgenerate
 // ============================================================================
@@ -102,7 +102,7 @@ assign out_err = err;
 // ============================================================================
 // generate serial clock
 // ============================================================================
-reg serial_clk;
+logic serial_clk;
 
 // generate serial clock
 clkgen #(
@@ -117,12 +117,12 @@ clkgen #(
 
 
 // output serial clock
-assign inout_clk =
+assign inout_serial_clk =
 	(serial_state == Transmit || serial_state == Receive ||
 	serial_state == TransmitWriteAddress || serial_state == TransmitReadAddress ||
 	serial_state == ReceiveAck || serial_state == SendAck || serial_state == SendNoAck ||
 	serial_state == SendStop || serial_state == SendRepeatedStart)
-	? (serial_clk == 1'b0 ? 1'b0 : 1'bZ) : 1'bZ;
+	&& serial_clk == 1'b0 ? 1'b0 : 1'bz;
 // ============================================================================
 
 
@@ -150,7 +150,7 @@ end
 // ============================================================================
 always_ff@(negedge serial_clk, posedge in_rst) begin
 	// reset
-	if(in_rst == 1) begin
+	if(in_rst == 1'b1) begin
 		// state registers
 		serial_state <= Ready;
 		state_afterstart <= Ready;
@@ -166,7 +166,7 @@ always_ff@(negedge serial_clk, posedge in_rst) begin
 	end
 
 	// clock
-	else if(serial_clk == 0) begin
+	else begin
 		// state registers
 		serial_state <= next_serial_state;
 		state_afterstart <= next_state_afterstart;
@@ -194,13 +194,13 @@ reg [BITS-1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
 always@(in_write, in_parallel, parallel_fromfpga) begin
 	next_parallel_fromfpga <= parallel_fromfpga;
 
-	//if(in_write == 1)
+	//if(in_write == 1'b1)
 		next_parallel_fromfpga <= in_parallel;
 end
 
 
-reg serial_out = 1'bZ;
-assign inout_serial = serial_out;
+logic serial_out = 1'b1;
+assign inout_serial = (serial_out == 1'b0 ? 1'b0 : 1'bz);
 
 
 // output serial data (FPGA -> IC)
@@ -213,14 +213,14 @@ always_comb begin
 			if(in_addr_write[actual_bit_ctr] == 1'b0)
 				serial_out = 1'b0;
 			else
-				serial_out = 1'bZ;
+				serial_out = 1'b1;
 		end
 
 		TransmitReadAddress: begin
 			if(in_addr_read[actual_bit_ctr] == 1'b0)
 				serial_out = 1'b0;
 			else
-				serial_out = 1'bZ;
+				serial_out = 1'b1;
 		end
 		// ------------------------------------------------------------
 
@@ -231,7 +231,7 @@ always_comb begin
 			if(parallel_fromfpga[actual_bit_ctr] == 1'b0)
 				serial_out = 1'b0;
 			else
-				serial_out = 1'bZ;
+				serial_out = 1'b1;
 		end
 		// ------------------------------------------------------------
 
@@ -239,7 +239,7 @@ always_comb begin
 		// send start signal
 		// ------------------------------------------------------------
 		SendStart: begin
-			serial_out = 1'bZ;
+			serial_out = 1'b1;
 		end
 
 		SendStart2: begin
@@ -248,7 +248,7 @@ always_comb begin
 
 		SendRepeatedStart: begin
 			// same as SendStart, but with serial clock active
-			serial_out = 1'bZ;
+			serial_out = 1'b1;
 		end
 		// ------------------------------------------------------------
 
@@ -260,7 +260,7 @@ always_comb begin
 		end
 
 		SendStop2: begin
-			serial_out = 1'bZ;
+			serial_out = 1'b1;
 		end
 		// ------------------------------------------------------------
 
@@ -272,12 +272,12 @@ always_comb begin
 		end
 
 		SendNoAck: begin
-			serial_out = 1'bZ;
+			serial_out = 1'b1;
 		end
 		// ------------------------------------------------------------
 
 		default: begin
-			serial_out = 1'bZ;
+			serial_out = 1'b1;
 		end
 	endcase
 end
@@ -299,13 +299,15 @@ always_comb begin
 	ready = 1'b0;
 	err = 1'b0;
 
+`ifdef __IN_SIMULATION__
 	$display("serial_2wire: %s", serial_state.name());
+`endif
 
 	case(serial_state)
 		// wait for enable signal
 		Ready: begin
 			next_bit_ctr = 0;
-			if(in_enable == 1) begin
+			if(in_enable == 1'b1) begin
 				next_serial_state = SendStart;
 				next_state_afterstart = TransmitWriteAddress;
 			end else begin
@@ -357,7 +359,7 @@ always_comb begin
 				next_bit_ctr = 0;
 
 				next_serial_state = ReceiveAck;
-				if(in_write == 1) begin
+				if(in_write == 1'b1) begin
 					next_state_afterack = Transmit;
 				end else begin
 					next_state_afterack = SendRepeatedStart;
@@ -442,7 +444,7 @@ always_comb begin
 		// receive or send acknowledge signal
 		// ------------------------------------------------------------
 		ReceiveAck: begin
-			if(inout_serial == 1'b0 || IGNORE_ERROR == 1) begin
+			if(inout_serial == 1'b0 || IGNORE_ERROR == 1'b1) begin
 				next_serial_state = state_afterack;
 			end else begin
 				next_serial_state = Error;

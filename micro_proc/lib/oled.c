@@ -4,7 +4,7 @@
  * @date jan-2022
  * @license see 'LICENSE' file
  *
- * @see https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf
+ * @see [oled] https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf
  * @see https://www.instructables.com/Getting-Started-With-OLED-Displays/
  */
 
@@ -119,6 +119,7 @@ void oled_deinit(OLEDInfo* oled)
 
 /**
  * turn the display on/off
+ * @see [oled], p. 28, p. 62
  */
 void oled_onoff(const OLEDInfo* oled,
 	bool on, bool inverted, bool capacitor)
@@ -149,6 +150,7 @@ void oled_onoff(const OLEDInfo* oled,
 /**
  * set the address mode
  * mode 0: page-by-page, 1: column-by-column, 2: no page increment
+ * @see [oled], p. 30
  */
 void oled_address_mode(OLEDInfo* oled, uint8_t mode)
 {
@@ -159,6 +161,7 @@ void oled_address_mode(OLEDInfo* oled, uint8_t mode)
 
 /**
  * set the output direction
+ * @see [oled], p. 31
  */
 void oled_direction(const OLEDInfo* oled,
 	bool h_inverted, bool v_inverted)
@@ -177,6 +180,7 @@ void oled_direction(const OLEDInfo* oled,
 
 /**
  * set the horizontal and vertical offset
+ * @see [oled], p. 31
  */
 void oled_offset(const OLEDInfo* oled, uint8_t h_offs, uint8_t v_offs)
 {
@@ -187,6 +191,7 @@ void oled_offset(const OLEDInfo* oled, uint8_t h_offs, uint8_t v_offs)
 
 /**
  * set the contrast
+ * @see [oled], p. 28
  */
 void oled_contrast(const OLEDInfo* oled, uint8_t contrast)
 {
@@ -196,16 +201,17 @@ void oled_contrast(const OLEDInfo* oled, uint8_t contrast)
 
 /**
  * set the clock (divider is assumed +1)
+ * @see [oled], p. 32
  */
 void oled_clock(const OLEDInfo* oled,
 	uint8_t divider, uint8_t freq,
 	uint8_t pixel_unset_time, uint8_t pixel_set_time)
 {
-	uint8_t data = (freq & 0x0f) << 4;;
+	uint8_t data = (freq & 0x0f) << 4;
 	data |= divider & 0x0f;
 	oled_send_2bytes(oled, 1, 0xd5, data);
 
-	data = (pixel_set_time & 0x0f) << 4;;
+	data = (pixel_set_time & 0x0f) << 4;
 	data |= pixel_unset_time & 0x0f;
 	oled_send_2bytes(oled, 1, 0xd9, data);
 }
@@ -238,6 +244,7 @@ void oled_pins(const OLEDInfo* oled, bool alternate, bool remap)
 
 /**
  * multiplexer settings
+ * @see [oled], p. 31
  */
 void oled_mux(const OLEDInfo* oled, uint8_t num)
 {
