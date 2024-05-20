@@ -258,6 +258,7 @@ always_comb begin
 				if(serial_ready == 1'b1)
 					next_state = WaitUpdate;
 			end else begin
+				serial_enable = 1'b1;
 				next_init_ctr = $size(init_ctr)'(init_ctr + 1'b1);
 				next_state = WriteInit;
 			end;
@@ -295,11 +296,13 @@ always_comb begin
 				// at last line
 				if(x_ctr + 1 == SCREEN_WIDTH) begin
 					// all finished
-					next_x_ctr = 1'b0;
-					next_y_ctr = 1'b0;
-					if(serial_ready == 1'b1)
+					if(serial_ready == 1'b1) begin
+						next_x_ctr = 1'b0;
+						next_y_ctr = 1'b0;
 						next_state = WaitUpdate;
+					end
 				end else begin
+					serial_enable = 1'b1;
 					next_x_ctr = $size(x_ctr)'(x_ctr + 1'b1);
 					next_state = WriteData;
 				end
@@ -307,10 +310,12 @@ always_comb begin
 				// before last line
 				if(x_ctr + 1 == SCREEN_WIDTH) begin
 					// at last column
+					serial_enable = 1'b1;
 					next_x_ctr = 1'b0;
 					next_y_ctr = $size(y_ctr)'(y_ctr + 1'b1);
 					next_state = WriteData;
 				end else begin
+					serial_enable = 1'b1;
 					next_x_ctr = $size(x_ctr)'(x_ctr + 1'b1);
 					next_state = WriteData;
 				end
