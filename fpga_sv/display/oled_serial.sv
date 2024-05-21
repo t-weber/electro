@@ -134,7 +134,7 @@ reg [PAGE_BITS - 1 : 0] y_ctr = 0, next_y_ctr = 0;
 // --------------------------------------------------------------------
 logic serial_enable, serial_ready, serial_error;
 
-logic [SERIAL_BITS - 1 : 0] data;
+logic [SERIAL_BITS - 1 : 0] data_tosend;
 
 logic byte_finished, last_byte_finished = 1'b0;
 wire bus_cycle = byte_finished && ~last_byte_finished;
@@ -155,7 +155,7 @@ serial_mod(
 	.in_enable(serial_enable), .in_write(1'b1), .out_ready(serial_ready),
 	.in_addr_write(WRITE_ADDR), .in_addr_read(READ_ADDR),
 	.inout_serial_clk(inout_serial_clk), .inout_serial(inout_serial),
-	.in_parallel(data), .out_parallel(),
+	.in_parallel(data_tosend), .out_parallel(),
 	.out_next_word(byte_finished)
 );
 // --------------------------------------------------------------------
@@ -234,7 +234,7 @@ always_comb begin
 
 	wait_ctr_max = WAIT_RESET;
 	serial_enable = 1'b0;
-	data = 0;
+	data_tosend = 0;
 
 	case(state)
 		Reset: begin
@@ -246,14 +246,16 @@ always_comb begin
 		// ----------------------------------------------------
 		// write init data
 		WriteInit: begin
+			data_tosend = init_data[init_ctr];
 			serial_enable = 1'b1;
-			data = init_data[init_ctr];
 
 			if(bus_cycle == 1'b1)
 				next_state = NextInit;
 		end
 
 		NextInit: begin
+			data_tosend = init_data[init_ctr];
+
 			if(init_ctr + 1 == INIT_BYTES) begin
 				if(serial_ready == 1'b1)
 					next_state = WaitUpdate;
@@ -283,8 +285,8 @@ always_comb begin
 		// ----------------------------------------------------
 		// write pixel data
 		WriteData: begin
+			data_tosend = in_pixels;
 			serial_enable = 1'b1;
-			data = in_pixels;
 
 			if(bus_cycle == 1'b1)
 				next_state = NextData;
@@ -292,6 +294,8 @@ always_comb begin
 
 		// next pixel
 		NextData: begin
+			data_tosend = in_pixels;
+
 			if(y_ctr + 1 == SCREEN_PAGES) begin
 				// at last line
 				if(x_ctr + 1 == SCREEN_WIDTH) begin

@@ -191,11 +191,11 @@ end
 reg [BITS-1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
 
 // input parallel data to register (FPGA -> IC)
-always@(in_write, in_parallel, parallel_fromfpga) begin
-	next_parallel_fromfpga <= parallel_fromfpga;
+always_comb begin
+	next_parallel_fromfpga = parallel_fromfpga;
 
-	//if(in_write == 1'b1)
-		next_parallel_fromfpga <= in_parallel;
+	if(in_enable == 1'b1)
+		next_parallel_fromfpga = in_parallel;
 end
 
 
