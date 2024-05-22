@@ -70,9 +70,6 @@ logic [$clog2(WAIT_UPDATE /*largest value*/) : 0]
 // --------------------------------------------------------------------
 // init data
 // --------------------------------------------------------------------
-localparam INIT_BYTES = 35;
-
-// init sequence
 localparam [3 : 0] clock_freq       = 4'd15;
 localparam [3 : 0] clock_div        = 4'd0;
 localparam [3 : 0] pixel_set_time   = 4'd2;
@@ -83,8 +80,11 @@ localparam [5 : 0] h_offs           = 6'd0;
 localparam [7 : 0] v_offs           = 8'd0;
 localparam [7 : 0] contrast         = 8'hff;
 
-logic [0 : INIT_BYTES - 1][SERIAL_BITS - 1 : 0] init_data;
-assign init_data =
+
+// init sequence
+localparam INIT_BYTES = 35;
+logic [0 : INIT_BYTES - 1][SERIAL_BITS - 1 : 0] init_cmds;
+assign init_cmds =
 {
 	// display off, [oled], p. 28
 	8'h80, 8'ha5,
@@ -119,8 +119,21 @@ assign init_data =
 	8'h80, 8'ha4
 };
 
-// init data byte counter
+// init command byte counter
 reg [$clog2(INIT_BYTES) : 0] init_ctr = 0, next_init_ctr = 0;
+
+
+// data transmission sequence
+localparam DATA_BYTES = 8;
+logic [0 : DATA_BYTES - 1][SERIAL_BITS - 1 : 0] data_cmds;
+assign data_cmds =
+{
+	8'h00, 8'h21, 8'h00, 8'(SCREEN_WIDTH - 1'b1),
+	8'h00, 8'h22, 8'h00, 8'(SCREEN_PAGES - 1'b1)
+};
+
+// init command byte counter
+reg [$clog2(DATA_BYTES) : 0] data_ctr = 0, next_data_ctr = 0;
 // --------------------------------------------------------------------
 
 
@@ -180,6 +193,7 @@ typedef enum {
 	Reset,
 	WriteInit, NextInit,
 	WaitUpdate, WaitUpdate2,
+	WriteDataInit, NextDataInit,
 	WriteData, NextData
 } t_state;
 
@@ -193,6 +207,7 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 		state <= Reset;
 
 		init_ctr <= 1'b0;
+		data_ctr <= 1'b0;
 		x_ctr <= 1'b0;
 		y_ctr <= 1'b0;
 
@@ -207,6 +222,7 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 		state <= next_state;
 
 		init_ctr <= next_init_ctr;
+		data_ctr <= next_data_ctr;
 		x_ctr <= next_x_ctr;
 		y_ctr <= next_y_ctr;
 
@@ -229,6 +245,7 @@ always_comb begin
 	// defaults
 	next_state = state;
 	next_init_ctr = init_ctr;
+	next_data_ctr = data_ctr;
 	next_x_ctr = x_ctr;
 	next_y_ctr = y_ctr;
 
@@ -244,9 +261,9 @@ always_comb begin
 		end
 
 		// ----------------------------------------------------
-		// write init data
+		// write init commands
 		WriteInit: begin
-			data_tosend = init_data[init_ctr];
+			data_tosend = init_cmds[init_ctr];
 			serial_enable = 1'b1;
 
 			if(bus_cycle == 1'b1)
@@ -254,7 +271,7 @@ always_comb begin
 		end
 
 		NextInit: begin
-			data_tosend = init_data[init_ctr];
+			data_tosend = init_cmds[init_ctr];
 
 			if(init_ctr + 1 == INIT_BYTES) begin
 				if(serial_ready == 1'b1)
@@ -277,10 +294,36 @@ always_comb begin
 
 		WaitUpdate2: begin
 			if(in_update == 1'b1) begin
-				next_state = WriteData;
+				next_state = WriteDataInit;
 			end
 		end
 		// ----------------------------------------------------
+
+
+		// ----------------------------------------------------
+		// write data transfer commands
+		WriteDataInit: begin
+			data_tosend = data_cmds[data_ctr];
+			serial_enable = 1'b1;
+
+			if(bus_cycle == 1'b1)
+				next_state = NextDataInit;
+		end
+
+		NextDataInit: begin
+			data_tosend = data_cmds[init_data_ctr];
+
+			if(init_data_ctr + 1 == DATA_BYTES) begin
+				if(serial_ready == 1'b1)
+					next_state = WaitData;
+			end else begin
+				serial_enable = 1'b1;
+				next_data_ctr = $size(data_ctr)'(data_ctr + 1'b1);
+				next_state = WriteDataInit;
+			end;
+		end
+		// ----------------------------------------------------
+
 
 		// ----------------------------------------------------
 		// write pixel data
@@ -331,7 +374,7 @@ always_comb begin
 `ifdef __IN_SIMULATION__
 	$display("*** oled_serial: %s, x=%d, y=%d, init=%d, ena=%b, rdy=%b, dat=%x. ***",
 		state.name(), x_ctr, y_ctr, init_ctr,
-		serial_enable, serial_ready, init_data[init_ctr]);
+		serial_enable, serial_ready, init_cmds[init_ctr]);
 `endif
 
 end

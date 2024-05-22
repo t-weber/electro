@@ -30,7 +30,11 @@ architecture serial_2wire_tb_arch of serial_2wire_tb is
 	signal clk, rst : std_logic := '0';
 
 	-- states
-	type t_state is ( Reset, WriteAddr, WriteData, NextAddr, Idle );
+	type t_state is
+	(
+		Reset, Idle,
+		WriteAddr, WriteData, NextAddr
+	);
 	signal state, next_state : t_state := Reset;
 
 	signal start, ready, error : std_logic := '0';
@@ -45,7 +49,8 @@ architecture serial_2wire_tb_arch of serial_2wire_tb is
 	signal received_data : std_logic_vector(BITS-1 downto 0);
 
 	type t_data_arr is array(0 to 2*2 - 1) of std_logic_vector(BITS-1 downto 0);
-	constant data_arr : t_data_arr := (
+	constant data_arr : t_data_arr :=
+	(
 		x"01", x"11",
 		x"02", x"22"
 	);

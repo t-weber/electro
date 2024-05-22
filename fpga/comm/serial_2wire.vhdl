@@ -173,13 +173,13 @@ begin
 	--
 	-- input parallel data (FPGA -> IC)
 	--
-	proc_input : process(in_write, in_parallel, parallel_fromfpga)
+	proc_input : process(in_write, in_enable, in_parallel, parallel_fromfpga)
 	begin
 		next_parallel_fromfpga <= parallel_fromfpga;
 
-		--if in_write = '1' then
+		if in_enable = '1' then
 			next_parallel_fromfpga <= in_parallel;
-		--end if;
+		end if;
 	end process;
 
 

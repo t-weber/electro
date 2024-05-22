@@ -14,14 +14,18 @@
 
 module serial_2wire_tb;
 	localparam VERBOSE    = 1;
-	localparam ITERS      = 768;
+	localparam ITERS      = 775;
 
 	localparam BITS       = 8;
 	localparam MAIN_CLK   = 1_000_000;
 	localparam SERIAL_CLK = 250_000;
 
 
-	typedef enum bit [1 : 0] { Reset, WriteData, NextData, Idle } t_state;
+	typedef enum bit [2 : 0]
+	{
+		Reset, Idle,
+		WriteAddr, WriteData, NextAddr
+	} t_state;
 	t_state state = Reset, next_state = Reset;
 
 
@@ -41,7 +45,11 @@ module serial_2wire_tb;
 
 	// data
 	localparam NUM_BYTES = 4;
-	logic [NUM_BYTES][BITS-1 : 0] data_tosend = { 8'hff, 8'h11, 8'h01, 8'h10 };
+	logic [NUM_BYTES][BITS-1 : 0] data_tosend =
+	{
+		8'h01, 8'h11,
+		8'h02, 8'h22
+	};
 
 	// data byte counter
 	reg [$clog2(NUM_BYTES) : 0] byte_ctr = 0, next_byte_ctr = 0;
@@ -98,24 +106,32 @@ module serial_2wire_tb;
 		case(state)
 			Reset: begin
 				mod_rst = 1;
-				next_state = WriteData;
+				next_state = WriteAddr;
 			end
 
-			WriteData: begin
+			WriteAddr: begin
 				enable = 1;
 				data = data_tosend[byte_ctr];
 
 				if(bus_cycle == 1)
-					next_state = NextData;
+					next_state = WriteData;
 			end
 
-			NextData: begin
+			WriteData: begin
+				enable = 1;
+				data = data_tosend[byte_ctr + 1'b1];
+
+				if(bus_cycle == 1)
+					next_state = NextAddr;
+			end
+
+			NextAddr: begin
 				if(ready == 1) begin
-					if(byte_ctr + 1 == NUM_BYTES) begin
+					if(byte_ctr + 2 == NUM_BYTES) begin
 						next_state = Idle;
 					end else begin
 						next_byte_ctr = byte_ctr + 1;
-						next_state = WriteData;
+						next_state = WriteAddr;
 					end;
 				end;
 			end
