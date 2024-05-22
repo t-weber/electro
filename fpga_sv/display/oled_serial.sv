@@ -79,44 +79,77 @@ localparam [0 : 0] invert_v         = 1'b0;
 localparam [5 : 0] h_offs           = 6'd0;
 localparam [7 : 0] v_offs           = 8'd0;
 localparam [7 : 0] contrast         = 8'hff;
+localparam [0 : 0] invert_disp      = 1'b0;
 
 
-// init sequence
-localparam INIT_BYTES = 35;
+// init sequence, see [oled], p. 64
+localparam INIT_BYTES = 37;
 logic [0 : INIT_BYTES - 1][SERIAL_BITS - 1 : 0] init_cmds;
 assign init_cmds =
 {
 	// display off, [oled], p. 28
-	8'h80, 8'ha5,
-	8'h80, 8'hae,
+	/*  1 */ 8'h80, 8'ha5,
+	/*  2 */ 8'h80, 8'hae,
 
 	// set clock, [oled], p. 32
-	8'h00, 8'hd5, { clock_freq, clock_div },
-	8'h00, 8'hd9, { pixel_set_time, pixel_unset_time },
+	/*  3 */ 8'h00, 8'hd5, { clock_freq, clock_div },
+	/*  4 */ 8'h00, 8'hd9, { pixel_set_time, pixel_unset_time },
 
 	// set multiplexer, [oled], p. 31
-	8'h00, 8'ha8, 8'(SCREEN_HEIGHT - 1),
+	/*  5*/ 8'h00, 8'ha8, 8'(SCREEN_HEIGHT - 1),
 
 	// address mode, [oled], p. 30
-	8'h00, 8'h20, 8'h00,
+	/*  6 */ 8'h00, 8'h20, 8'h00,
 
 	// direction, [oled], p. 31
-	8'h80, 8'ha0 | invert_h,
-	8'h80, 8'hc0 | (invert_v << 3),
+	/*  7 */ 8'h80, 8'ha0 | invert_h,
+	/*  8 */ 8'h80, 8'hc0 | (invert_v << 3),
 
 	// screen offsets, [oled], p. 31
-	8'h80, 8'b0100_0000 | h_offs,
-	8'h00, 8'hd3, v_offs,
+	/*  9 */ 8'h80, 8'b0100_0000 | h_offs,
+	/* 10 */ 8'h00, 8'hd3, v_offs,
 
 	// contrast, [oled], p. 28
-	8'h00, 8'h81, contrast,
+	/* 11 */ 8'h00, 8'h81, contrast,
+
+	// inverted display, [oled], p. 28
+	/* 12 */ 8'h80, 8'ha6 | invert_disp,
 
 	// capacitor, [oled], p. 62
-	8'h00, 8'h8d, 8'b0000_0100,
+	/* 13 */ 8'h00, 8'h8d, 8'b0001_0100,
 
 	// display on, [oled], p. 28
-	8'h80, 8'haf,
-	8'h80, 8'ha4
+	/* 14 */ 8'h80, 8'haf,
+	/* 15 */ 8'h80, 8'ha4
+};
+
+logic [0 : INIT_BYTES - 1] init_cmds_stop;
+assign init_cmds_stop =
+{
+	/*  1 */ 1'b0, 1'b1,
+	/*  2 */ 1'b0, 1'b1,
+
+	/*  3 */ 1'b0, 1'b0, 1'b1,
+	/*  4 */ 1'b0, 1'b0, 1'b1,
+
+	/*  5 */ 1'b0, 1'b0, 1'b1,
+
+	/*  6 */ 1'b0, 1'b0, 1'b1,
+
+	/*  7 */ 1'b0, 1'b1,
+	/*  8 */ 1'b0, 1'b1,
+
+	/*  9 */ 1'b0, 1'b1,
+	/* 10 */ 1'b0, 1'b0, 1'b1,
+
+	/* 11 */ 1'b0, 1'b0, 1'b1,
+
+	/* 12 */ 1'b0, 1'b1,
+
+	/* 13 */ 1'b0, 1'b0, 1'b1,
+
+	/* 14 */ 1'b0, 1'b1,
+	/* 15 */ 1'b0, 1'b1
 };
 
 // init command byte counter
@@ -128,8 +161,16 @@ localparam DATA_BYTES = 8;
 logic [0 : DATA_BYTES - 1][SERIAL_BITS - 1 : 0] data_cmds;
 assign data_cmds =
 {
-	8'h00, 8'h21, 8'h00, 8'(SCREEN_WIDTH - 1'b1),
-	8'h00, 8'h22, 8'h00, 8'(SCREEN_PAGES - 1'b1)
+	// addresses, [oled], pp. 35 - 36
+	/* 1 */ 8'h00, 8'h21, 8'h00, 8'(SCREEN_WIDTH - 1'b1),
+	/* 2 */ 8'h00, 8'h22, 8'h00, 8'(SCREEN_PAGES - 1'b1)
+};
+
+logic [0 : DATA_BYTES - 1] data_cmds_stop;
+assign data_cmds_stop =
+{
+	/* 1 */ 1'b0, 1'b0, 1'b0, 1'b1,
+	/* 2 */ 1'b0, 1'b0, 1'b0, 1'b1
 };
 
 // init command byte counter
@@ -191,9 +232,9 @@ assign out_serial_ready = serial_ready;
 // --------------------------------------------------------------------
 typedef enum {
 	Reset,
-	WriteInit, NextInit,
+	WriteInit, NextInitStop, NextInit,
 	WaitUpdate, WaitUpdate2,
-	WriteDataInit, NextDataInit,
+	WriteDataInit, NextDataInitStop, NextDataInit,
 	WriteData, NextData
 } t_state;
 
@@ -266,21 +307,35 @@ always_comb begin
 			data_tosend = init_cmds[init_ctr];
 			serial_enable = 1'b1;
 
-			if(bus_cycle == 1'b1)
-				next_state = NextInit;
+			if(bus_cycle == 1'b1) begin
+				if(init_cmds_stop[init_ctr] == 1'b1)
+					next_state = NextInitStop;
+				else
+					next_state = NextInit;
+			end
+		end
+
+		NextInitStop: begin
+			if(serial_ready == 1'b1) begin
+				if(init_ctr + 1 == INIT_BYTES) begin
+					next_state = WaitUpdate;
+				end else begin
+					next_init_ctr = $size(init_ctr)'(init_ctr + 1'b1);
+					next_state = WriteInit;
+				end
+			end
 		end
 
 		NextInit: begin
-			data_tosend = init_cmds[init_ctr];
-
 			if(init_ctr + 1 == INIT_BYTES) begin
 				if(serial_ready == 1'b1)
 					next_state = WaitUpdate;
 			end else begin
 				serial_enable = 1'b1;
+				data_tosend = init_cmds[init_ctr];
 				next_init_ctr = $size(init_ctr)'(init_ctr + 1'b1);
 				next_state = WriteInit;
-			end;
+			end
 		end
 		// ----------------------------------------------------
 
@@ -306,21 +361,35 @@ always_comb begin
 			data_tosend = data_cmds[data_ctr];
 			serial_enable = 1'b1;
 
-			if(bus_cycle == 1'b1)
-				next_state = NextDataInit;
+			if(bus_cycle == 1'b1) begin
+				if(data_cmds_stop[data_ctr] == 1'b1)
+					next_state = NextDataInitStop;
+				else
+					next_state = NextDataInit;
+			end
+		end
+
+		NextDataInitStop: begin
+			if(serial_ready == 1'b1) begin
+				if(data_ctr + 1 == DATA_BYTES) begin
+					next_state = WriteData;
+				end else begin
+					next_data_ctr = $size(data_ctr)'(data_ctr + 1'b1);
+					next_state = WriteDataInit;
+				end
+			end
 		end
 
 		NextDataInit: begin
-			data_tosend = data_cmds[init_data_ctr];
-
-			if(init_data_ctr + 1 == DATA_BYTES) begin
+			if(data_ctr + 1 == DATA_BYTES) begin
 				if(serial_ready == 1'b1)
-					next_state = WaitData;
+					next_state = WriteData;
 			end else begin
+				data_tosend = data_cmds[data_ctr];
 				serial_enable = 1'b1;
 				next_data_ctr = $size(data_ctr)'(data_ctr + 1'b1);
 				next_state = WriteDataInit;
-			end;
+			end
 		end
 		// ----------------------------------------------------
 
@@ -337,34 +406,29 @@ always_comb begin
 
 		// next pixel
 		NextData: begin
-			data_tosend = in_pixels;
-
-			if(y_ctr + 1 == SCREEN_PAGES) begin
-				// at last line
-				if(x_ctr + 1 == SCREEN_WIDTH) begin
-					// all finished
-					if(serial_ready == 1'b1) begin
+			if(serial_ready == 1'b1) begin
+				if(y_ctr + 1 == SCREEN_PAGES) begin
+					// at last line
+					if(x_ctr + 1 == SCREEN_WIDTH) begin
+						// all finished
 						next_x_ctr = 1'b0;
 						next_y_ctr = 1'b0;
 						next_state = WaitUpdate;
+					end else begin
+						next_x_ctr = $size(x_ctr)'(x_ctr + 1'b1);
+						next_state = WriteData;
 					end
 				end else begin
-					serial_enable = 1'b1;
-					next_x_ctr = $size(x_ctr)'(x_ctr + 1'b1);
-					next_state = WriteData;
-				end
-			end else begin
-				// before last line
-				if(x_ctr + 1 == SCREEN_WIDTH) begin
-					// at last column
-					serial_enable = 1'b1;
-					next_x_ctr = 1'b0;
-					next_y_ctr = $size(y_ctr)'(y_ctr + 1'b1);
-					next_state = WriteData;
-				end else begin
-					serial_enable = 1'b1;
-					next_x_ctr = $size(x_ctr)'(x_ctr + 1'b1);
-					next_state = WriteData;
+					// before last line
+					if(x_ctr + 1 == SCREEN_WIDTH) begin
+						// at last column
+						next_x_ctr = 1'b0;
+						next_y_ctr = $size(y_ctr)'(y_ctr + 1'b1);
+						next_state = WriteData;
+					end else begin
+						next_x_ctr = $size(x_ctr)'(x_ctr + 1'b1);
+						next_state = WriteData;
+					end
 				end
 			end
 		end

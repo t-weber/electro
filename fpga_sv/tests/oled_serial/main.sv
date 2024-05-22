@@ -56,7 +56,7 @@ oled_mod (.in_clk(clk27), .in_rst(rst),
 	.in_pixels(8'b1111_1111), .in_update(1'b1),
 	.inout_serial_clk(oled_scl), .inout_serial(oled_sda),
 	.out_serial_error(serial_error), .out_serial_ready(serial_ready),
-    .out_hpix(), .out_vpix(), .out_vpage());
+	.out_hpix(), .out_vpix(), .out_vpage());
 // ----------------------------------------------------------------------------
 
 

@@ -74,6 +74,7 @@ void oled_send_nbytes(const OLEDInfo* oled, bool is_command,
 
 /**
  * initialise the display
+ * @see [oled], p. 64
  */
 void oled_init(OLEDInfo* oled)
 {
