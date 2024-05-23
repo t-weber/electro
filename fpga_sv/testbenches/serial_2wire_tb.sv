@@ -130,7 +130,7 @@ module serial_2wire_tb;
 					if(byte_ctr + 2 == NUM_BYTES) begin
 						next_state = Idle;
 					end else begin
-						next_byte_ctr = byte_ctr + 1;
+						next_byte_ctr = byte_ctr + 2;
 						next_state = WriteAddr;
 					end;
 				end;
