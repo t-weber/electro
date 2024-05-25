@@ -29,28 +29,53 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 
 	(*ostr) << "module " << cfg.entity_name << "\n";
 
-	int char_width = cfg.target_pitch * static_cast<int>(cfg.pitch_bits);
+	const int char_width = cfg.target_pitch * static_cast<int>(cfg.pitch_bits);
+	const unsigned int num_chars = cfg.ch_last - cfg.ch_first;
+
+	const unsigned int char_idx_bits = std::ceil(std::log2(num_chars));
+	const unsigned int char_last_bits = std::ceil(std::log2(cfg.ch_last));
+	const unsigned int char_width_bits = std::ceil(std::log2(char_width));
+	const unsigned int char_height_bits = std::ceil(std::log2(cfg.target_height));
+
 	if(!cfg.local_params)
 	{
 		(*ostr) << "#(\n"
 			<< "\tparameter FIRST_CHAR  = " << cfg.ch_first << ",\n"
 			<< "\tparameter LAST_CHAR   = " << cfg.ch_last << ",\n"
-			<< "\tparameter NUM_CHARS   = " << cfg.ch_last - cfg.ch_first << ",\n"
-			<< "\tparameter CHAR_PITCH  = " << cfg.target_pitch << ",\n"
+			<< "\tparameter NUM_CHARS   = LAST_CHAR - FIRST_CHAR"
+				<< " /* " << num_chars << " */,\n"
 			<< "\tparameter CHAR_WIDTH  = " << char_width << ",\n"
-			<< "\tparameter CHAR_HEIGHT = " << cfg.target_height << "\n"
+			<< "\tparameter CHAR_HEIGHT = " << cfg.target_height << ",\n\n";
+
+		(*ostr) << "\tparameter CHAR_IDX_BITS    = $clog2(NUM_CHARS)"
+				<< " /* " << char_idx_bits << " */,\n"
+			<< "\tparameter CHAR_LAST_BITS   = $clog2(LAST_CHAR)"
+				<< " /* " << char_last_bits << " */,\n"
+			<< "\tparameter CHAR_WIDTH_BITS  = $clog2(CHAR_WIDTH)"
+				<< " /* " << char_width_bits << " */,\n"
+			<< "\tparameter CHAR_HEIGHT_BITS = $clog2(CHAR_HEIGHT)"
+				<< " /* " << char_height_bits << " */\n"
 			<< ")\n";
 	}
 
-	(*ostr) << "(\n"
-		<< "\tinput wire [" << std::ceil(std::log2(cfg.ch_last)) - 1 << " : 0] in_char,\n"
-		<< "\tinput wire [" << std::ceil(std::log2(char_width)) - 1 << " : 0] in_x,\n"
-		<< "\tinput wire [" << std::ceil(std::log2(cfg.target_height)) - 1 << " : 0] in_y,\n";
-
 	if(!cfg.local_params)
+	{
+		(*ostr) << "(\n"
+			<< "\tinput wire [CHAR_LAST_BITS - 1 : 0] in_char,\n"
+			<< "\tinput wire [CHAR_WIDTH_BITS - 1 : 0] in_x,\n"
+			<< "\tinput wire [CHAR_HEIGHT_BITS - 1 : 0] in_y,\n";
+
 		(*ostr) << "\n\toutput wire [0 : CHAR_WIDTH - 1] out_line,\n";
+	}
 	else
+	{
+		(*ostr) << "(\n"
+			<< "\tinput wire [" << char_last_bits - 1 << " : 0] in_char,\n"
+			<< "\tinput wire [" << char_width_bits - 1 << " : 0] in_x,\n"
+			<< "\tinput wire [" << char_height_bits - 1 << " : 0] in_y,\n";
+
 		(*ostr) << "\n\toutput wire [0 : " << char_width - 1 << "] out_line,\n";
+	}
 
 	(*ostr) << "\toutput wire out_pixel\n"
 		<< ");\n\n";
@@ -58,12 +83,14 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 	if(cfg.local_params)
 	{
 		(*ostr) << "\n"
-			<< "localparam FIRST_CHAR  = " << cfg.ch_first << ";\n"
-			<< "localparam LAST_CHAR   = " << cfg.ch_last << ";\n"
-			<< "localparam NUM_CHARS   = LAST_CHAR - FIRST_CHAR;\n"
-			<< "localparam CHAR_PITCH  = " << cfg.target_pitch << ";\n"
-			<< "localparam CHAR_WIDTH  = " << char_width << ";\n"
-			<< "localparam CHAR_HEIGHT = " << cfg.target_height << ";\n"
+			<< "localparam FIRST_CHAR    = " << cfg.ch_first << ";\n"
+			<< "localparam LAST_CHAR     = " << cfg.ch_last << ";\n"
+			<< "localparam NUM_CHARS     = LAST_CHAR - FIRST_CHAR"
+				<< " /* " << num_chars << " */;\n"
+			<< "localparam CHAR_WIDTH    = " << char_width << ";\n"
+			<< "localparam CHAR_HEIGHT   = " << cfg.target_height << ";\n"
+			<< "localparam CHAR_IDX_BITS = $clog2(NUM_CHARS)"
+				<< " /* " << char_idx_bits << " */;\n"
 			<< "\n";
 	}
 
@@ -109,18 +136,22 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 		(*ostr) << "\n";*/
 	}
 
-
 	(*ostr) << "\n};\n";
 
-	(*ostr) << "\nwire [0 : CHAR_WIDTH - 1] line;\n";
+
+	(*ostr) << "\nwire [CHAR_IDX_BITS - 1 : 0] char_idx;\n"
+		<< "wire [0 : CHAR_WIDTH - 1] line;\n";
 
 	if(cfg.check_bounds)
 	{
-		(*ostr) << "\nassign line = in_char < NUM_CHARS\n"
-			<< "\t? chars[in_char*CHAR_HEIGHT + in_y]\n"
-			<< "\t: CHAR_WIDTH'(1'b0);\n";
+		(*ostr) << "\nassign char_idx = in_char >= FIRST_CHAR && in_char < LAST_CHAR\n"
+			<< "\t? CHAR_IDX_BITS'(in_char - FIRST_CHAR)\n"
+			<< "\t: CHAR_IDX_BITS'(1'b0);\n";
 
-		(*ostr) << "\nassign out_line = line;\n";
+		(*ostr) << "\nassign line = char_idx < NUM_CHARS\n"
+			<< "\t? chars[char_idx*CHAR_HEIGHT + in_y]\n"
+			<< "\t: CHAR_WIDTH'(1'b0);\n"
+			<< "\nassign out_line = line;\n";
 
 		(*ostr) << "\nassign out_pixel = in_x < CHAR_WIDTH\n"
 			<< "\t? line[in_x]\n"
@@ -128,8 +159,9 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 	}
 	else
 	{
-		(*ostr) << "assign line = chars[in_char*CHAR_HEIGHT + in_y];\n"
-			<< "assign out_line = line;\n"
+		(*ostr) << "\nassign char_idx = CHAR_IDX_BITS'(in_char - FIRST_CHAR);\n"
+			<< "assign line = chars[char_idx*CHAR_HEIGHT + in_y];\n"
+			<< "\nassign out_line = line;\n"
 			<< "assign out_pixel = line[in_x];\n";
 	}
 

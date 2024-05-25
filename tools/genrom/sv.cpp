@@ -25,9 +25,9 @@ std::string gen_rom_sv(const Config& cfg)
 	std::string rom_sv = R"raw(module %%MODULE_NAME%%
 #(
 	parameter NUM_PORTS = %%NUM_PORTS%%,
-	parameter ADDR_BITS = %%ADDR_BITS%%,
-	parameter WORD_BITS = %%WORD_BITS%%,
-	parameter NUM_WORDS = %%NUM_WORDS%%
+	parameter NUM_WORDS = %%NUM_WORDS%%,
+	parameter ADDR_BITS = %%ADDR_BITS%% /*$clog2(NUM_WORDS)*/,
+	parameter WORD_BITS = %%WORD_BITS%%
 )
 (%%PORTS_DEF%%);
 

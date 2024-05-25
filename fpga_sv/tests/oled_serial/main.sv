@@ -39,8 +39,6 @@ localparam SCREEN_PAGES  = SCREEN_HEIGHT / 8;
 localparam TILE_WIDTH    = 8;
 localparam NUM_TILES_X   = SCREEN_WIDTH / TILE_WIDTH;
 
-localparam FIRST_CHAR    = 32;
-
 localparam SERIAL_BITS     = 8;
 localparam HCTR_BITS       = $clog2(SCREEN_WIDTH);
 localparam PAGE_BITS       = $clog2(SCREEN_PAGES);
@@ -119,13 +117,9 @@ assign tile_pix_x = TILE_WIDTH_BITS'(x_pix % TILE_WIDTH);
 assign tile_num = TILE_NUM_BITS'(y_page*NUM_TILES_X + tile_x);
 
 logic [7 : 0] cur_char; //= 8'h31;
-logic [6 : 0] cur_char_idx;
-assign cur_char_idx = tile_num < SCREEN_PAGES*NUM_TILES_X
-	? 7'(cur_char - FIRST_CHAR)
-	: 7'(8'h20 - FIRST_CHAR);
 
 // font rom
-font font_rom(.in_char(cur_char_idx),
+font font_rom(.in_char(7'(cur_char)),
 	.in_x(1'b0), .in_y(tile_pix_x),
 	.out_line(char_line), .out_pixel());
 

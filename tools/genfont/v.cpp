@@ -103,15 +103,20 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 	}
 
 
-	(*ostr) << "\nwire [0 : CHAR_WIDTH - 1] line;\n";
+	const unsigned int char_idx_bits = std::ceil(std::log2(cfg.ch_last - cfg.ch_first));
+	(*ostr) << "\nwire [" << char_idx_bits - 1 << " : 0] char_idx;\n"
+		<< "wire [0 : CHAR_WIDTH - 1] line;\n";
 
 	if(cfg.check_bounds)
 	{
-		(*ostr) << "\nassign line = in_char < NUM_CHARS\n"
-			<< "\t? chars[in_char*CHAR_HEIGHT + in_y]\n"
-			<< "\t: " << char_width << "'b0;\n";
+		(*ostr) << "\nassign char_idx = in_char >= FIRST_CHAR && in_char < LAST_CHAR\n"
+			<< "\t? in_char - FIRST_CHAR\n"
+			<< "\t: " << char_idx_bits << "'b0;\n";
 
-		(*ostr) << "\nassign out_line = line;\n";
+		(*ostr) << "\nassign line = char_idx < NUM_CHARS\n"
+			<< "\t? chars[char_idx*CHAR_HEIGHT + in_y]\n"
+			<< "\t: " << char_width << "'b0;\n"
+			<< "\nassign out_line = line;\n";
 
 		(*ostr) << "\nassign out_pixel = in_x < CHAR_WIDTH\n"
 			<< "\t? line[in_x]\n"
@@ -119,8 +124,9 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 	}
 	else
 	{
-		(*ostr) << "assign line = chars[in_char*CHAR_HEIGHT + in_y];\n"
-			<< "assign out_line = line;\n"
+		(*ostr) << "\nassign char_idx = in_char - FIRST_CHAR;\n"
+			<< "assign line = chars[char_idx*CHAR_HEIGHT + in_y];\n"
+			<< "\nassign out_line = line;\n"
 			<< "assign out_pixel = line[in_x];\n";
 	}
 

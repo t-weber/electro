@@ -41,8 +41,6 @@ localparam TILE_HEIGHT        = 20;
 localparam TEXT_ROWS          = SCREEN_HEIGHT / TILE_HEIGHT;
 localparam TEXT_COLS          = SCREEN_WIDTH / TILE_WIDTH;
 
-localparam FIRST_CHAR         = 32;
-
 localparam USE_COLOUR_MEM     = 1;
 
 localparam SCREEN_WIDTH_BITS  = $clog2(SCREEN_WIDTH);
@@ -112,14 +110,14 @@ tile_mod (.in_x(pixel_x), .in_y(pixel_y),
 	.out_tile_pix_x(tile_pix_x), .out_tile_pix_y(tile_pix_y));
 
 logic [7 : 0] cur_char; //= 8'h31;
-logic [6 : 0] cur_char_idx;
-assign cur_char_idx = tile_num < TEXT_ROWS*TEXT_COLS
-	? 7'(cur_char - FIRST_CHAR)
-	: 7'(8'h20 - FIRST_CHAR);
+logic [6 : 0] cur_char_chk;
+assign cur_char_chk = tile_num < TEXT_ROWS*TEXT_COLS
+	? $size(cur_char_chk)'(cur_char)
+	: $size(cur_char_chk)'(8'h20);
 
 // font rom; generate with:
 //   ./genfont -h 20 -w 24 --target_height 20 --target_pitch 2 --target_left 1 --pitch_bits 6 -t sv -o font.sv
-font font_rom(.in_char(cur_char_idx),
+font font_rom(.in_char(cur_char_chk),
 	.in_x(tile_pix_x), .in_y(tile_pix_y),
 	.out_pixel(font_pixel));
 

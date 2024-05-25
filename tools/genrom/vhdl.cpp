@@ -24,14 +24,15 @@ std::string gen_rom_vhdl(const Config& cfg)
 	// rom file
 	std::string rom_vhdl = R"raw(library ieee;
 use ieee.std_logic_1164.all;
+--use ieee.math_real.all;
 use work.conv.all;
 
 entity %%MODULE_NAME%% is
 	generic(
 		constant NUM_PORTS : natural := %%NUM_PORTS%%;
-		constant ADDR_BITS : natural := %%ADDR_BITS%%;
-		constant WORD_BITS : natural := %%WORD_BITS%%;
-		constant NUM_WORDS : natural := %%NUM_WORDS%%
+		constant NUM_WORDS : natural := %%NUM_WORDS%%;
+		constant ADDR_BITS : natural := %%ADDR_BITS%%;  -- natural(ceil(log2(real(NUM_WORDS))));
+		constant WORD_BITS : natural := %%WORD_BITS%%
 	);
 
 	port(%%PORTS_DEF%%);

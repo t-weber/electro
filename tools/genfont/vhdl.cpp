@@ -33,23 +33,27 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 
 	(*ostr) << "\nentity " << cfg.entity_name << " is\n";
 
-	int char_width = cfg.target_pitch * static_cast<int>(cfg.pitch_bits);
+	const int char_width = cfg.target_pitch * static_cast<int>(cfg.pitch_bits);
+        const unsigned int char_last_bits = std::ceil(std::log2(cfg.ch_last));
+        const unsigned int char_width_bits = std::ceil(std::log2(char_width));
+        const unsigned int char_height_bits = std::ceil(std::log2(cfg.target_height));
+
 	if(!cfg.local_params)
 	{
 		(*ostr) << "\tgeneric(\n"
 			<< "\t\tconstant FIRST_CHAR  : natural := " << cfg.ch_first << ";\n"
 			<< "\t\tconstant LAST_CHAR   : natural := " << cfg.ch_last << ";\n"
 			//<< "\t\tconstant NUM_CHARS   : natural := " << cfg.ch_last - cfg.ch_first << ";\n"
-			<< "\t\tconstant CHAR_PITCH  : natural := " << cfg.target_pitch << ";\n"
+			//<< "\t\tconstant CHAR_PITCH  : natural := " << cfg.target_pitch << ";\n"
 			<< "\t\tconstant CHAR_WIDTH  : natural := " << char_width << ";\n"
 			<< "\t\tconstant CHAR_HEIGHT : natural := " << cfg.target_height << "\n"
 			<< "\t);\n\n";
 	}
 
 	(*ostr) << "\tport(\n"
-		<< "\t\tin_char : in std_logic_vector(" << std::ceil(std::log2(cfg.ch_last)) - 1 << " downto 0);\n"
-		<< "\t\tin_x : in std_logic_vector(" << std::ceil(std::log2(char_width)) - 1 << " downto 0);\n"
-		<< "\t\tin_y : in std_logic_vector(" << std::ceil(std::log2(cfg.target_height)) - 1 << " downto 0);\n";
+		<< "\t\tin_char : in std_logic_vector(" << char_last_bits - 1 << " downto 0);\n"
+		<< "\t\tin_x : in std_logic_vector(" << char_width_bits - 1 << " downto 0);\n"
+		<< "\t\tin_y : in std_logic_vector(" << char_height_bits - 1 << " downto 0);\n";
 
 	if(!cfg.local_params)
 		(*ostr) << "\n\t\tout_line : out std_logic_vector(0 to CHAR_WIDTH - 1);\n";
@@ -68,7 +72,7 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 			<< "\tconstant FIRST_CHAR  : natural := " << cfg.ch_first << ";\n"
 			<< "\tconstant LAST_CHAR   : natural := " << cfg.ch_last << ";\n"
 			//<< "\tconstant NUM_CHARS   : natural := LAST_CHAR - FIRST_CHAR;\n"
-			<< "\tconstant CHAR_PITCH  : natural := " << cfg.target_pitch << ";\n"
+			//<< "\tconstant CHAR_PITCH  : natural := " << cfg.target_pitch << ";\n"
 			<< "\tconstant CHAR_WIDTH  : natural := " << char_width << ";\n"
 			<< "\tconstant CHAR_HEIGHT : natural := " << cfg.target_height << ";\n"
 			<< "\n";

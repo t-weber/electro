@@ -51,21 +51,37 @@ target_pins_file=pins9k.cst
 #target_freq=27
 #target_pins_file=pins1k.cst
 
+# tools
+YOSYS=yosys
+NEXTPNR=nextpnr-gowin
+PACK=gowin_pack
+GENFONT=../../../tools/genfont/build/genfont
+GENROM=../../../tools/genrom/build/genrom
+gen_type=sv
+
 
 if [ $build_roms -ne 0 ]; then
 	echo -e "Creating font rom..."
-	../../../tools/genfont/build/genfont -f DejaVuSansMono.ttf \
+	${GENFONT} -f DejaVuSansMono.ttf \
 		-h 20 -w 24 \
 		--target_height 20 --target_pitch 2 --target_left 1 \
-		--pitch_bits 6 -t sv -o font.sv
+		--pitch_bits 6 -t $gen_type -o font.sv
+
 
 	echo -e "Creating text buffer..."
-	echo -en "--------------------|      Line 1      ||      Line 2      ||      Line 3      ||      Line 4      |--------------------" > textmem.txt
-	../../../tools/genrom/build/genrom -l 20 -t sv -p 1 -d 1 -f 0 -m textmem \
+	 txt="--------------------"
+	txt+="|      Line 1      |"
+	txt+="|      Line 2      |"
+	txt+="|      Line 3      |"
+	txt+="|      Line 4      |"
+	txt+="--------------------"
+        echo -en "$txt" > textmem.txt
+
+	${GENROM} -l 20 -t $gen_type -p 1 -d 1 -f 0 -m textmem \
 		textmem.txt -o textmem.sv
-	../../../tools/genrom/build/genrom -l 20 -t sv -p 1 -d 1 -f 0 -m textmem_fgcol \
+	${GENROM} -l 20 -t $gen_type -p 1 -d 1 -f 0 -m textmem_fgcol \
 		-r "1111111111111111" -n 120 -o textmem_fgcol.sv
-	../../../tools/genrom/build/genrom -l 20 -t sv -p 1 -d 1 -f 0 -m textmem_bgcol \
+	${GENROM} -l 20 -t $gen_type -p 1 -d 1 -f 0 -m textmem_bgcol \
 		-r "0000000000011111" -n 120 -o textmem_bgcol.sv
 fi
 
@@ -77,7 +93,7 @@ fi
 
 if [ $run_synth -ne 0 ]; then
 	echo -e "Running Synthesis: sv -> $synth_file..."
-	if ! yosys -q -d -t -l $synth_log \
+	if ! ${YOSYS} -q -d -t -l $synth_log \
 		-p "synth_gowin -top $top_module -json $synth_file" \
 		$src_files
 	then
@@ -88,13 +104,13 @@ fi
 
 
 if [ $run_pnr -ne 0 ]; then
-	echo -e "Running P&R for $target_fpga: $synth_file & $target_pins_file -> $pnr_file..."
-	if ! nextpnr-gowin --threads $num_threads -q --detailed-timing-report -l $pnr_log \
+	echo -e "Running P&R Fitter for $target_fpga: $synth_file & $target_pins_file -> $pnr_file..."
+	if ! ${NEXTPNR} --threads $num_threads -q --detailed-timing-report -l $pnr_log \
 		--family $target_fpga --device $target_board --freq $target_freq \
 		--cst $target_pins_file --json $synth_file --write $pnr_file --top $top_module \
 		--placed-svg output/placed.svg --routed-svg output/routed.svg --sdf output/delay.sdf
 	then
-		echo -e "P&R failed!"
+		echo -e "P&R Fitting failed!"
 		exit -1
 	fi
 fi
@@ -102,10 +118,10 @@ fi
 
 if [ $run_pack -ne 0 ]; then
 	echo -e "Generating bit stream for $target_fpga: $pnr_file -> $pack_file..."
-	if ! gowin_pack -d $target_fpga \
+	if ! ${PACK} -d $target_fpga \
 		-o $pack_file --cst $pack_cst_file $pnr_file --png $pack_png_file
 	then
-		echo -e "Packing failed!"
+		echo -e "Bit stream generation failed!"
 		exit -1
 	fi
 fi
