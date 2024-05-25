@@ -14,6 +14,9 @@
 
 #include <boost/dynamic_bitset.hpp>
 
+#include <ft2build.h>
+#include <freetype/freetype.h>
+
 
 
 /**
@@ -29,8 +32,8 @@ struct Config
 	unsigned int font_height = 16;
 
 	unsigned int target_height = 16;
-	unsigned int target_top = 12;
-	unsigned int target_left = 0;
+	int target_top = 12;
+	int target_left = 0;
 
 	unsigned int pitch_bits = 8;
 	int target_pitch = 1;
@@ -65,28 +68,24 @@ struct FontBits
 };
 
 
+// create a bitmap of the font
+extern FontBits create_font(::FT_Face& face, const Config& cfg);
 
-/**
- * output a c file
- */
+// apply transformations to the font's pixel maps
+extern void trafo_font(Config& cfg, FontBits& fontbits,
+	bool reverse_lines, bool reverse_columns, bool transpose);
+
+
+// output a c file
 extern bool create_font_c(const FontBits& fontbits, const Config& cfg);
 
-
-/**
- * output a vhdl file
- */
+// output a vhdl file
 extern bool create_font_vhdl(const FontBits& fontbits, const Config& cfg);
 
-
-/**
- * output an sv file
- */
+// output an sv file
 extern bool create_font_sv(const FontBits& fontbits, const Config& cfg);
 
-
-/**
- * output an v file
- */
+// output an v file
 extern bool create_font_v(const FontBits& fontbits, const Config& cfg);
 
 

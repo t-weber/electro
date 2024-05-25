@@ -14,17 +14,12 @@
 
 module oled_serial
 #(
-	parameter SERIAL_BITS     = 8,
+	parameter MAIN_CLK        = 50_000_000,
+	parameter BUS_BITS        = 8,
 
 	parameter SCREEN_WIDTH    = 128,
 	parameter SCREEN_HEIGHT   = 64,
-	parameter SCREEN_PAGES    = SCREEN_HEIGHT / SERIAL_BITS,
-
-	parameter MAIN_CLK        = 50_000_000,
-	parameter SERIAL_CLK      = 400_000,
-
-	parameter WRITE_ADDR      = 8'h78, // 8'h7a,
-	parameter READ_ADDR       = 8'h79, // 8'h7b,
+	parameter SCREEN_PAGES    = SCREEN_HEIGHT / BUS_BITS,
 
 	parameter HCTR_BITS       = $clog2(SCREEN_WIDTH),
 	parameter VCTR_BITS       = $clog2(SCREEN_HEIGHT),
@@ -38,16 +33,16 @@ module oled_serial
 	input wire in_update,
 
 	// pixel data
-	input wire [SERIAL_BITS - 1 : 0] in_pixels,
+	input wire [BUS_BITS - 1 : 0] in_pixels,
 	output wire [HCTR_BITS - 1 : 0] out_hpix,
 	output wire [VCTR_BITS - 1 : 0] out_vpix,
 	output wire [PAGE_BITS - 1 : 0] out_vpage,
 
-	// serial interface
-	inout wire inout_serial_clk,
-	inout wire inout_serial,
-
-	output wire out_serial_error, out_serial_ready
+	// serial bus interface
+	input wire in_bus_ready,
+	input wire in_bus_next_word,
+	output wire out_bus_enable,
+	output wire [BUS_BITS - 1 : 0] out_bus_data
 );
 
 
@@ -74,8 +69,8 @@ localparam [3 : 0] clock_freq       = 4'd15;
 localparam [3 : 0] clock_div        = 4'd0;
 localparam [3 : 0] pixel_set_time   = 4'd2;
 localparam [3 : 0] pixel_unset_time = 4'd2;
-localparam [0 : 0] invert_h         = 1'b0;
-localparam [0 : 0] invert_v         = 1'b0;
+localparam [0 : 0] invert_h         = 1'b1;
+localparam [0 : 0] invert_v         = 1'b1;
 localparam [5 : 0] h_offs           = 6'd0;
 localparam [7 : 0] v_offs           = 8'd0;
 localparam [7 : 0] contrast         = 8'hff;
@@ -88,7 +83,7 @@ localparam [7 : 0] cmd_data         = 8'h40;
 
 // init sequence, see [oled], p. 64
 localparam INIT_BYTES = 37;
-logic [0 : INIT_BYTES - 1][SERIAL_BITS - 1 : 0] init_cmds;
+logic [0 : INIT_BYTES - 1][BUS_BITS - 1 : 0] init_cmds;
 assign init_cmds =
 {
 	// display off, [oled], p. 28
@@ -133,7 +128,7 @@ reg [$clog2(INIT_BYTES) : 0] init_ctr = 0, next_init_ctr = 0;
 
 // data transmission sequence
 localparam DATA_BYTES = 8;
-logic [0 : DATA_BYTES - 1][SERIAL_BITS - 1 : 0] data_cmds;
+logic [0 : DATA_BYTES - 1][BUS_BITS - 1 : 0] data_cmds;
 assign data_cmds =
 {
 	// addresses, [oled], pp. 35 - 36
@@ -152,34 +147,14 @@ reg [PAGE_BITS - 1 : 0] y_ctr = 0, next_y_ctr = 0;
 
 
 // --------------------------------------------------------------------
-// serial interface
+// serial bus interface
 // --------------------------------------------------------------------
-logic serial_enable, serial_ready, serial_error;
+logic last_byte_finished = 1'b0;
+wire bus_cycle = in_bus_next_word && ~last_byte_finished;
+//wire bus_cycle_next = ~in_bus_next_word && last_byte_finished;
 
-logic [SERIAL_BITS - 1 : 0] data_tosend;
-
-logic byte_finished, last_byte_finished = 1'b0;
-wire bus_cycle = byte_finished && ~last_byte_finished;
-//wire bus_cycle_next = ~byte_finished && last_byte_finished;
-
-// instantiate serial module
-serial_2wire #(
-	.BITS(SERIAL_BITS), .LOWBIT_FIRST(0),
-`ifdef __IN_SIMULATION__
-	.IGNORE_ERROR(1'b1),
-`else
-	.IGNORE_ERROR(1'b0),
-`endif
-	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SERIAL_CLK)
-)
-serial_mod(
-	.in_clk(in_clk), .in_rst(in_rst), .out_err(serial_error),
-	.in_enable(serial_enable), .in_write(1'b1), .out_ready(serial_ready),
-	.in_addr_write(WRITE_ADDR), .in_addr_read(READ_ADDR),
-	.inout_serial_clk(inout_serial_clk), .inout_serial(inout_serial),
-	.in_parallel(data_tosend), .out_parallel(),
-	.out_next_word(byte_finished)
-);
+logic bus_enable = 1'b0;
+logic [BUS_BITS - 1 : 0] bus_data = BUS_BITS'(1'b0);
 // --------------------------------------------------------------------
 
 
@@ -187,11 +162,11 @@ serial_mod(
 // outputs
 // --------------------------------------------------------------------
 assign out_hpix = x_ctr;
-assign out_vpix = VCTR_BITS'(y_ctr * SERIAL_BITS);
+assign out_vpix = VCTR_BITS'(y_ctr * BUS_BITS);
 assign out_vpage = y_ctr;
 
-assign out_serial_error = serial_error;
-assign out_serial_ready = serial_ready;
+assign out_bus_enable = bus_enable;
+assign out_bus_data = bus_data;
 // --------------------------------------------------------------------
 
 
@@ -244,7 +219,7 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 			wait_ctr <= $size(wait_ctr)'(wait_ctr + 1'b1);
 		end
 
-		last_byte_finished <= byte_finished;
+		last_byte_finished <= in_bus_next_word;
 	end
 end
 
@@ -259,8 +234,8 @@ always_comb begin
 	next_y_ctr = y_ctr;
 
 	wait_ctr_max = WAIT_RESET;
-	serial_enable = 1'b0;
-	data_tosend = 0;
+	bus_enable = 1'b0;
+	bus_data = 0;
 
 	case(state)
 		Reset: begin
@@ -272,8 +247,8 @@ always_comb begin
 		// ----------------------------------------------------
 		// write init commands
 		WriteInit: begin
-			data_tosend = init_cmds[init_ctr];
-			serial_enable = 1'b1;
+			bus_data = init_cmds[init_ctr];
+			bus_enable = 1'b1;
 
 			if(bus_cycle == 1'b1)
 				next_state = NextInit;
@@ -281,11 +256,11 @@ always_comb begin
 
 		NextInit: begin
 			if(init_ctr + 1 == INIT_BYTES) begin
-				if(serial_ready == 1'b1)
+				if(in_bus_ready == 1'b1)
 					next_state = WaitUpdate;
 			end else begin
-				data_tosend = init_cmds[init_ctr];
-				serial_enable = 1'b1;
+				bus_data = init_cmds[init_ctr];
+				bus_enable = 1'b1;
 				next_init_ctr = $size(init_ctr)'(init_ctr + 1'b1);
 				next_state = WriteInit;
 			end
@@ -311,8 +286,8 @@ always_comb begin
 		// ----------------------------------------------------
 		// write data transfer commands
 		WriteDataInit: begin
-			data_tosend = data_cmds[data_ctr];
-			serial_enable = 1'b1;
+			bus_data = data_cmds[data_ctr];
+			bus_enable = 1'b1;
 
 			if(bus_cycle == 1'b1)
 				next_state = NextDataInit;
@@ -320,11 +295,11 @@ always_comb begin
 
 		NextDataInit: begin
 			if(data_ctr + 1 == DATA_BYTES) begin
-				if(serial_ready == 1'b1)
+				if(in_bus_ready == 1'b1)
 					next_state = WriteDataCmd;
 			end else begin
-				data_tosend = data_cmds[data_ctr];
-				serial_enable = 1'b1;
+				bus_data = data_cmds[data_ctr];
+				bus_enable = 1'b1;
 				next_data_ctr = $size(data_ctr)'(data_ctr + 1'b1);
 				next_state = WriteDataInit;
 			end
@@ -335,8 +310,8 @@ always_comb begin
 		// ----------------------------------------------------
 		// write start command for data
 		WriteDataCmd: begin
-			data_tosend = cmd_cont | cmd_data;
-			serial_enable = 1'b1;
+			bus_data = cmd_cont | cmd_data;
+			bus_enable = 1'b1;
 
 			if(bus_cycle == 1'b1)
 				next_state = WriteData;
@@ -344,8 +319,8 @@ always_comb begin
 
 		// write pixel data
 		WriteData: begin
-			data_tosend = in_pixels;
-			serial_enable = 1'b1;
+			bus_data = in_pixels;
+			bus_enable = 1'b1;
 
 			if(bus_cycle == 1'b1)
 				next_state = NextData;
@@ -353,25 +328,25 @@ always_comb begin
 
 		// next pixel
 		NextData: begin
-			data_tosend = in_pixels;
+			bus_data = in_pixels;
 
 			if(y_ctr + 1 == SCREEN_PAGES) begin
 				// at last line
 				if(x_ctr + 1 == SCREEN_WIDTH) begin
-					if(serial_ready == 1'b1) begin
+					if(in_bus_ready == 1'b1) begin
 						// all finished
 						next_x_ctr = 1'b0;
 						next_y_ctr = 1'b0;
 						next_state = WaitUpdate;
 					end
 				end else begin
-					serial_enable = 1'b1;
+					bus_enable = 1'b1;
 					next_x_ctr = $size(x_ctr)'(x_ctr + 1'b1);
 					next_state = WriteData;
 				end
 			end else begin
 				// before last line
-				serial_enable = 1'b1;
+				bus_enable = 1'b1;
 				if(x_ctr + 1 == SCREEN_WIDTH) begin
 					// at last column
 					next_x_ctr = 1'b0;
@@ -387,9 +362,8 @@ always_comb begin
 	endcase
 
 `ifdef __IN_SIMULATION__
-	$display("*** oled_serial: %s, x=%d, y=%d, init=%d, ena=%b, rdy=%b, dat=%x. ***",
-		state.name(), x_ctr, y_ctr, init_ctr,
-		serial_enable, serial_ready, init_cmds[init_ctr]);
+	$display("*** oled_serial: %s, x=%d, y=%d, init=%d, dat=%x. ***",
+		state.name(), x_ctr, y_ctr, init_ctr, init_cmds[init_ctr]);
 `endif
 
 end

@@ -165,8 +165,7 @@ begin
 		generic map(MAIN_CLK => MAIN_HZ,
 			BUS_WRITEADDR => SERIAL_VID_WRITE_ADDR, BUS_READADDR => SERIAL_VID_READ_ADDR)
 		port map(in_clk => clock_50_b7a, in_reset => reset,
-			in_bus_ready => serial_vid_ready, in_bus_error => serial_vid_err,
-			in_int => vid_tx_int,
+			in_bus_ready => serial_vid_ready, in_int => vid_tx_int,
 			out_bus_enable => serial_vid_enable, in_bus_byte_finished => serial_vid_byte_finished,
 			out_bus_data => serial_vid_data_write, in_bus_data => serial_vid_data_read,
 			out_bus_addr => serial_vid_addr,

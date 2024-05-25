@@ -31,6 +31,7 @@ include_directories(
 add_executable(genfont
 	genfont.cpp genfont.h
 	vhdl.cpp sv.cpp v.cpp c.cpp
+	main.cpp
 )
 
 

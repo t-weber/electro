@@ -16,13 +16,19 @@
 #include "genfont.h"
 
 #include <iostream>
+#include <algorithm>
 
-#include <ft2build.h>
-#include <freetype/freetype.h>
 
-#include <boost/algorithm/string.hpp>
-#include <boost/program_options.hpp>
-namespace args = boost::program_options;
+
+template<class t_bitset>
+static void reverse_bitset(t_bitset& bitset)
+{
+	std::size_t N = bitset.size();
+	t_bitset bitset_cpy = bitset;
+
+	for(std::size_t i = 0; i < N; ++i)
+		bitset[N - i - 1] = bitset_cpy[i];
+}
 
 
 
@@ -97,7 +103,7 @@ FontBits create_font(::FT_Face& face, const Config& cfg)
 
 		// top filler
 		unsigned int cur_y_top = 0;
-		int top_filler_size = (cfg.target_height-(height + shift_y))/2 + shift_y;
+		int top_filler_size = (cfg.target_height - (height + shift_y))/2 + shift_y;
 		if(top_filler_size < 0)
 			top_filler_size = 0;
 
@@ -131,125 +137,68 @@ FontBits create_font(::FT_Face& face, const Config& cfg)
 
 
 
-int main(int argc, char **argv)
+static bool get_char_pixel(CharBits& charbits, std::size_t line, std::size_t col)
 {
-	Config cfg{};
-	bool show_help = false;
-	std::string rom_type = "c";
+	const std::size_t pitch_bits = charbits.lines[0][0].size();
 
-	// parse arguments
-	args::options_description arg_descr("Font generator arguments");
-	arg_descr.add_options()
-		("help", args::bool_switch(&show_help), "show help")
-		("font,f", args::value<decltype(cfg.font_file)>(&cfg.font_file),
-			("font file, default: " + cfg.font_file).c_str())
-		("output,o", args::value<decltype(cfg.out_rom)>(&cfg.out_rom),
-			"output font rom file")
-		("module,m", args::value<decltype(cfg.entity_name)>(&cfg.entity_name),
-			("module name, default: " + cfg.entity_name).c_str())
-		("type,t", args::value<decltype(rom_type)>(&rom_type),
-			("output type (c/vhdl/sv/v), default: " + rom_type).c_str())
-		("first_char,c", args::value<decltype(cfg.ch_first)>(&cfg.ch_first),
-			("first char, default: " + std::to_string(cfg.ch_first)).c_str())
-		("last_char,l", args::value<decltype(cfg.ch_last)>(&cfg.ch_last),
-			("last char, default: " + std::to_string(cfg.ch_last)).c_str())
-		("font_width,w", args::value<decltype(cfg.font_width)>(&cfg.font_width),
-			("font width, default: " + std::to_string(cfg.font_width)).c_str())
-		("font_height,h", args::value<decltype(cfg.font_height)>(&cfg.font_height),
-			("font height, default: " + std::to_string(cfg.font_height)).c_str())
-		("target_height", args::value<decltype(cfg.target_height)>(&cfg.target_height),
-			("target height, default: " + std::to_string(cfg.target_height)).c_str())
-		("target_top", args::value<decltype(cfg.target_top)>(&cfg.target_top),
-			("target top, default: " + std::to_string(cfg.target_top)).c_str())
-		("target_left", args::value<decltype(cfg.target_left)>(&cfg.target_left),
-			("target left, default: " + std::to_string(cfg.target_left)).c_str())
-		("target_pitch", args::value<decltype(cfg.target_pitch)>(&cfg.target_pitch),
-			("target pitch, default: " + std::to_string(cfg.target_pitch)).c_str())
-		("pitch_bits", args::value<decltype(cfg.pitch_bits)>(&cfg.pitch_bits),
-			("bits per pitch, default: " + std::to_string(cfg.pitch_bits)).c_str())
-		("local_params", args::value<decltype(cfg.local_params)>(&cfg.local_params),
-			("use local parameters, default: " + std::to_string(cfg.local_params)).c_str())
-		("check_bounds", args::value<decltype(cfg.check_bounds)>(&cfg.check_bounds),
-			("check index bounds, default: " + std::to_string(cfg.check_bounds)).c_str());
+	return charbits.lines[line][col / pitch_bits][col % pitch_bits];
+}
 
-	auto argparser = args::command_line_parser{argc, argv};
-	argparser.style(args::command_line_style::default_style);
-	argparser.options(arg_descr);
 
-	auto parsedArgs = argparser.run();
-	args::variables_map mapArgs;
-	args::store(parsedArgs, mapArgs);
-	args::notify(mapArgs);
 
-	if(show_help)
+static void trafo_char(Config& cfg, CharBits& charbits,
+	bool reverse_lines, bool reverse_columns, bool transpose)
+{
+	if(reverse_lines)
 	{
-		std::cout << arg_descr << std::endl;
-		return 0;
+		std::reverse(charbits.lines.begin(), charbits.lines.end());
 	}
 
-
-	// load the font
-	::FT_Library freetype{};
-	if(::FT_Init_FreeType(&freetype))
+	if(reverse_columns)
 	{
-		std::cerr << "Error: Cannot initialise Freetype."
-			<< std::endl;
-		return -1;
+		for(auto& line : charbits.lines)
+		{
+			std::reverse(line.begin(), line.end());
+			for(auto& subline : line)
+				reverse_bitset(subline);
+		}
 	}
 
-	::FT_Face face{};
-	if(FT_New_Face(freetype, cfg.font_file.c_str(), 0, &face))
+	if(transpose)
 	{
-		std::cerr << "Error: Cannot load font \""
-			<< cfg.font_file << "\"."
-			<< std::endl;
-		return -1;
+		// old dimensions
+		const std::size_t num_rows = charbits.lines.size();
+		const std::size_t num_cols = cfg.target_pitch * static_cast<int>(cfg.pitch_bits);
+
+		// set new dimensions
+		cfg.target_pitch = 1;
+		cfg.pitch_bits = num_rows;
+
+		// create transposed data container
+		decltype(charbits.lines) lines_transp;
+		lines_transp.reserve(num_cols);
+		for(std::size_t line_idx = 0; line_idx < num_rows; ++line_idx)
+		{
+			std::remove_reference_t<decltype(charbits.lines[0])> line;
+			line.resize(1);
+			line[0].resize(num_rows);
+			lines_transp.emplace_back(std::move(line));
+		}
+
+		// transpose bits
+		for(std::size_t line_idx = 0; line_idx < num_rows; ++line_idx)
+		for(std::size_t col_idx = 0; col_idx < num_cols; ++col_idx)
+			lines_transp[col_idx][0][line_idx] = get_char_pixel(charbits, line_idx, col_idx);
+
+		charbits.lines = std::move(lines_transp);
 	}
-
-	if(::FT_Set_Pixel_Sizes(face, cfg.font_width, cfg.font_height))
-	{
-		std::cerr << "Error: Cannot set font size."
-			<< std::endl;
-		return -1;
-	}
+}
 
 
-	// create the font bitmaps
-	FontBits fontbits = create_font(face, cfg);
 
-
-	bool ok = false;
-	if(boost::to_lower_copy(rom_type) == "c")
-		ok = create_font_c(fontbits, cfg);
-	else if(boost::to_lower_copy(rom_type) == "vhdl")
-		ok = create_font_vhdl(fontbits, cfg);
-	else if(boost::to_lower_copy(rom_type) == "sv")
-		ok = create_font_sv(fontbits, cfg);
-	else if(boost::to_lower_copy(rom_type) == "v")
-		ok = create_font_v(fontbits, cfg);
-
-	if(ok)
-	{
-		unsigned int num_chars = cfg.ch_last - cfg.ch_first;
-		unsigned int char_size = cfg.target_height * cfg.target_pitch * cfg.pitch_bits / 8;
-
-		std::cerr << "Info: Created font ROM: "
-			<< "\"" << cfg.font_file << "\" -> \"" << cfg.out_rom << "\".\n"
-			<< "Info: Number of characters: " << num_chars << ","
-			<< " character size: " << char_size << " B,"
-			<< " ROM size: " << num_chars * char_size / 1024 << " kiB."
-			<< std::endl;
-	}
-	else
-	{
-		std::cerr << "Error: Font ROM creation failed."
-			<< std::endl;
-	}
-
-
-	// clean up
-	::FT_Done_Face(face);
-	::FT_Done_FreeType(freetype);
-
-	return ok ? 0 : -1;;
+void trafo_font(Config& cfg, FontBits& fontbits,
+	bool reverse_lines, bool reverse_columns, bool transpose)
+{
+	for(CharBits& ch : fontbits.charbits)
+		trafo_char(cfg, ch, reverse_lines, reverse_columns, transpose);
 }

@@ -11,6 +11,7 @@
 #   - https://learn.lushaylabs.com/os-toolchain-manual-installation
 #
 
+build_roms=0
 run_synth=1
 run_pnr=1
 run_pack=1
@@ -28,6 +29,7 @@ src_files="../../sync/debounce_button.sv \
 	../../clock/clkgen.sv \
 	../../comm/serial_2wire.sv \
 	../../display/oled_serial.sv \
+	textmem.sv font.sv \
 	main.sv"
 
 synth_log=output/synth.log
@@ -44,6 +46,22 @@ target_board=GW1NZ-LV1QN48C6/I5
 target_fpga=GW1NZ-1
 target_freq=27
 target_pins_file=pins1k.cst
+
+
+if [ $build_roms -ne 0 ]; then
+	echo -e "Creating font rom..."
+	../../../tools/genfont/build/genfont -f DejaVuSansMono.ttf \
+		-w 12 -h 9 \
+		--target_height 8 --target_pitch 1 --pitch_bits 8 \
+		--transpose --reverse_cols \
+		--target_top 0 --target_left 0 \
+		-t sv -o font.sv
+
+	echo -e "Creating text buffer..."
+	echo -en "----------------|    Line 1    ||    Line 2    ||    Line 3    ||    Line 4    ||    Line 5    ||    Line 6    |----------------" > textmem.txt
+	../../../tools/genrom/build/genrom -l 16 -t sv -p 1 -d 1 -f 0 -m textmem \
+		textmem.txt -o textmem.sv
+fi
 
 
 if [ ! -e output ]; then

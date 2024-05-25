@@ -35,14 +35,15 @@ entity video_cfg is
 		-- main clock and reset
 		in_clk, in_reset : in std_logic;
 
-		-- serial bus interface
-		in_bus_ready, in_bus_error : in std_logic;
-		in_bus_data : in std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
-		in_bus_byte_finished : in std_logic;
-
 		-- video status interrupt
 		in_int : in std_logic;
 
+		-- serial bus interface
+		in_bus_ready : in std_logic;
+		in_bus_data : in std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+		in_bus_byte_finished : in std_logic;
+
+		-- serial bus interface
 		out_bus_enable : out std_logic;
 		out_bus_addr : out std_logic_vector(BUS_NUM_ADDRBITS-1 downto 0);
 		out_bus_data : out std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
@@ -211,7 +212,7 @@ begin
 	proc_comb : process(
 		state,
 		wait_counter, wait_counter_max,
-		in_bus_ready, in_bus_error, in_bus_data,
+		in_bus_ready, in_bus_data,
 		bus_cycle, powerup_cycle,
 		status_reg, powerdown_cycle, setupint_cycle,
 		in_int, int_triggered, is_powered)

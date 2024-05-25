@@ -45,8 +45,14 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 	(*ostr) << "(\n"
 		<< "\tinput wire [" << std::ceil(std::log2(cfg.ch_last)) - 1 << " : 0] in_char,\n"
 		<< "\tinput wire [" << std::ceil(std::log2(char_width)) - 1 << " : 0] in_x,\n"
-		<< "\tinput wire [" << std::ceil(std::log2(cfg.target_height)) - 1 << " : 0] in_y,\n"
-		<< "\toutput wire out_pixel\n"
+		<< "\tinput wire [" << std::ceil(std::log2(cfg.target_height)) - 1 << " : 0] in_y,\n";
+
+	if(!cfg.local_params)
+		(*ostr) << "\n\toutput wire [0 : CHAR_WIDTH - 1] out_line,\n";
+	else
+		(*ostr) << "\n\toutput wire [0 : " << char_width - 1 << "] out_line,\n";
+
+	(*ostr) << "\toutput wire out_pixel\n"
 		<< ");\n\n";
 
 	if(cfg.local_params)
@@ -105,6 +111,8 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 			<< "\t? chars[in_char*CHAR_HEIGHT + in_y]\n"
 			<< "\t: " << char_width << "'b0;\n";
 
+		(*ostr) << "\nassign out_line = line;\n";
+
 		(*ostr) << "\nassign out_pixel = in_x < CHAR_WIDTH\n"
 			<< "\t? line[in_x]\n"
 			<< "\t: 1'b0;\n";
@@ -112,6 +120,7 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 	else
 	{
 		(*ostr) << "assign line = chars[in_char*CHAR_HEIGHT + in_y];\n"
+			<< "assign out_line = line;\n"
 			<< "assign out_pixel = line[in_x];\n";
 	}
 

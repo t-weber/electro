@@ -54,7 +54,8 @@ target_pins_file=pins9k.cst
 
 if [ $build_roms -ne 0 ]; then
 	echo -e "Creating font rom..."
-	../../../tools/genfont/build/genfont -h 20 -w 24 \
+	../../../tools/genfont/build/genfont -f DejaVuSansMono.ttf \
+		-h 20 -w 24 \
 		--target_height 20 --target_pitch 2 --target_left 1 \
 		--pitch_bits 6 -t sv -o font.sv
 

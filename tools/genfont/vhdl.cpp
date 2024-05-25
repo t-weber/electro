@@ -33,6 +33,7 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 
 	(*ostr) << "\nentity " << cfg.entity_name << " is\n";
 
+	int char_width = cfg.target_pitch * static_cast<int>(cfg.pitch_bits);
 	if(!cfg.local_params)
 	{
 		(*ostr) << "\tgeneric(\n"
@@ -40,16 +41,22 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 			<< "\t\tconstant LAST_CHAR   : natural := " << cfg.ch_last << ";\n"
 			//<< "\t\tconstant NUM_CHARS   : natural := " << cfg.ch_last - cfg.ch_first << ";\n"
 			<< "\t\tconstant CHAR_PITCH  : natural := " << cfg.target_pitch << ";\n"
-			<< "\t\tconstant CHAR_WIDTH  : natural := " << cfg.target_pitch * cfg.pitch_bits << ";\n"
+			<< "\t\tconstant CHAR_WIDTH  : natural := " << char_width << ";\n"
 			<< "\t\tconstant CHAR_HEIGHT : natural := " << cfg.target_height << "\n"
 			<< "\t);\n\n";
 	}
 
 	(*ostr) << "\tport(\n"
 		<< "\t\tin_char : in std_logic_vector(" << std::ceil(std::log2(cfg.ch_last)) - 1 << " downto 0);\n"
-		<< "\t\tin_x : in std_logic_vector(" << std::ceil(std::log2(cfg.target_pitch * cfg.pitch_bits)) - 1 << " downto 0);\n"
-		<< "\t\tin_y : in std_logic_vector(" << std::ceil(std::log2(cfg.target_height)) - 1 << " downto 0);\n"
-		<< "\t\tout_pixel : out std_logic\n"
+		<< "\t\tin_x : in std_logic_vector(" << std::ceil(std::log2(char_width)) - 1 << " downto 0);\n"
+		<< "\t\tin_y : in std_logic_vector(" << std::ceil(std::log2(cfg.target_height)) - 1 << " downto 0);\n";
+
+	if(!cfg.local_params)
+		(*ostr) << "\n\t\tout_line : out std_logic_vector(0 to CHAR_WIDTH - 1);\n";
+	else
+		(*ostr) << "\n\t\tout_line : out std_logic_vector(0 to " << char_width - 1 << ");\n";
+
+	(*ostr) << "\t\tout_pixel : out std_logic\n"
 		<< "\t);\n\n"
 		<< "end entity;\n\n";
 
@@ -62,14 +69,14 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 			<< "\tconstant LAST_CHAR   : natural := " << cfg.ch_last << ";\n"
 			//<< "\tconstant NUM_CHARS   : natural := LAST_CHAR - FIRST_CHAR;\n"
 			<< "\tconstant CHAR_PITCH  : natural := " << cfg.target_pitch << ";\n"
-			<< "\tconstant CHAR_WIDTH  : natural := " << cfg.target_pitch * cfg.pitch_bits << ";\n"
+			<< "\tconstant CHAR_WIDTH  : natural := " << char_width << ";\n"
 			<< "\tconstant CHAR_HEIGHT : natural := " << cfg.target_height << ";\n"
 			<< "\n";
 	}
 
-	(*ostr) << "\tsubtype t_line is std_logic_vector(0 to CHAR_WIDTH-1);\n"
-		<< "\ttype t_char is array(0 to CHAR_HEIGHT-1) of t_line;\n"
-		<< "\ttype t_chars is array(FIRST_CHAR to LAST_CHAR-1) of t_char;\n";
+	(*ostr) << "\tsubtype t_line is std_logic_vector(0 to CHAR_WIDTH - 1);\n"
+		<< "\ttype t_char is array(0 to CHAR_HEIGHT - 1) of t_line;\n"
+		<< "\ttype t_chars is array(FIRST_CHAR to LAST_CHAR - 1) of t_char;\n";
 
 	(*ostr) << "\n\tconstant chars : t_chars :=\n\t(";
 
@@ -119,13 +126,18 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 
 	if(cfg.check_bounds)
 	{
+		(*ostr) << "\n\tout_line <= chars(to_int(in_char))(to_int(in_y))\n"
+			<< "\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR\n"
+			<< "\t\telse (others => '0');\n";
+
 		(*ostr) << "\n\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x))\n"
 			<< "\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR\n"
 			<< "\t\telse '0';\n";
 	}
 	else
 	{
-		(*ostr) << "\n\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x));\n";
+		(*ostr) << "\n\tout_line <= chars(to_int(in_char))(to_int(in_y));\n";
+		(*ostr) << "\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x));\n";
 	}
 
 	(*ostr) << "\nend architecture;" << std::endl;
