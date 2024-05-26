@@ -29,6 +29,7 @@ src_files="../../sync/debounce_button.sv \
 	../../clock/clkgen.sv \
 	../../comm/serial_2wire.sv \
 	../../display/oled_serial.sv \
+	../../mem/ram_2port.sv \
 	textmem.sv font.sv \
 	main.sv"
 
@@ -87,7 +88,7 @@ fi
 
 if [ $run_synth -ne 0 ]; then
 	echo -e "Running Synthesis: sv -> $synth_file..."
-	if ! ${YOSYS} -q -d -t -l $synth_log \
+	if ! ${YOSYS} -D RAM_UNPACKED -q -d -t -l $synth_log \
 		-p "synth_gowin -top $top_module -json $synth_file" \
 		$src_files
 	then
@@ -102,6 +103,8 @@ if [ $run_pnr -ne 0 ]; then
 	if ! ${NEXTPNR} --threads $num_threads -q --detailed-timing-report -l $pnr_log \
 		--family $target_fpga --device $target_board --freq $target_freq \
 		--cst $target_pins_file --json $synth_file --write $pnr_file --top $top_module \
+		--parallel-refine --enable-auto-longwires --disable-globals \
+		--placer-heap-cell-placement-timeout 4 \
 		--placed-svg output/placed.svg --routed-svg output/routed.svg --sdf output/delay.sdf
 	then
 		echo -e "P&R Fitting failed!"

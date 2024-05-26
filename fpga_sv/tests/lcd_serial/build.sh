@@ -31,10 +31,10 @@ src_files="../../sync/debounce_button.sv \
 	../../display/video_serial.sv \
 	../../display/testpattern.sv \
 	../../display/tile.sv \
+	../../mem/ram_2port.sv \
 	font.sv textmem.sv \
 	textmem_fgcol.sv textmem_bgcol.sv \
 	main.sv"
-#	../../mem/ram.sv \
 
 synth_log=output/synth.log
 pnr_log=output/pnr.log
@@ -94,6 +94,7 @@ fi
 if [ $run_synth -ne 0 ]; then
 	echo -e "Running Synthesis: sv -> $synth_file..."
 	if ! ${YOSYS} -q -d -t -l $synth_log \
+		-D RAM_UNPACKED \
 		-p "synth_gowin -top $top_module -json $synth_file" \
 		$src_files
 	then
@@ -107,6 +108,7 @@ if [ $run_pnr -ne 0 ]; then
 	echo -e "Running P&R Fitter for $target_fpga: $synth_file & $target_pins_file -> $pnr_file..."
 	if ! ${NEXTPNR} --threads $num_threads -q --detailed-timing-report -l $pnr_log \
 		--family $target_fpga --device $target_board --freq $target_freq \
+		--parallel-refine --enable-auto-longwires \
 		--cst $target_pins_file --json $synth_file --write $pnr_file --top $top_module \
 		--placed-svg output/placed.svg --routed-svg output/routed.svg --sdf output/delay.sdf
 	then

@@ -32,47 +32,55 @@ module ram
 
 
 
-// memory flip-flops (packed array)
-logic [0 : NUM_WORDS - 1][WORD_BITS - 1 : 0] words;
-//	= { 8'h31, 8'h32, 8'h33, 8'h34, 8'h35, 8'h36, 8'h37, 8'h38 };
+`ifdef RAM_UNPACKED
+	// memory flip-flops as unpacked array (non-contiguous ram, e.g. list of flip-flops)
+	logic [WORD_BITS - 1 : 0] words [0 : NUM_WORDS - 1];
+`else
+	// memory flip-flops as packed array (contiguous ram)
+	logic [0 : NUM_WORDS - 1][WORD_BITS - 1 : 0] words;
+		// = { 8'h31, 8'h32, 8'h33, 8'h34, 8'h35, 8'h36, 8'h37, 8'h38 };
+`endif
+
 
 // output data register
 logic [0 : NUM_PORTS - 1][WORD_BITS - 1 : 0] data;
 
 
 genvar port_idx;
-generate for(port_idx=0; port_idx<NUM_PORTS; ++port_idx)
+generate for(port_idx = 0; port_idx < NUM_PORTS; ++port_idx)
 begin : gen_ports
 
-	// output data if the output enable signal is 1
+	// output data
 	assign out_data[port_idx] = data[port_idx];
-	/*assign out_data[port_idx][WORD_BITS-1 : 0] =
-		in_read_ena[port_idx]
-			? data[port_idx][WORD_BITS-1 : 0]
-			: {WORD_BITS{1'bz}};*/
 
 
 	always@(posedge in_clk, posedge in_rst)
 	begin
-		if(in_rst == 1) begin
+		if(in_rst == 1'b1) begin
+			data[port_idx] <= { WORD_BITS{ 1'b0 } };
+
 			// fill ram with zeros
-			for(logic [WORD_BITS : 0] i=0; i<NUM_WORDS; ++i) begin
-				words[i] <= {WORD_BITS{1'b0}};
+			if(port_idx == 0) begin
+				for(logic [WORD_BITS : 0] i = 0; i < NUM_WORDS; ++i) begin
+					words[i] <= { WORD_BITS{ 1'b0 } };
+				end
 			end
 		end
 
 		else begin
 			// write data to ram
-			if(in_write_ena == 1'b1) begin
+			// if NUM_WORDS == 2**ADDR_BITS the range check against NUM_WORDS is not needed
+			if(in_write_ena == 1'b1 && in_addr[port_idx] < NUM_WORDS) begin
 				//$display("write to addr %h", in_addr[port_idx]);
 				words[in_addr[port_idx]] <= in_data[port_idx];
 			end
 
 			// read data from ram into buffer
-			if(in_read_ena == 1'b1) begin
+			// if NUM_WORDS == 2**ADDR_BITS the range check against NUM_WORDS is not needed
+			if(in_read_ena == 1'b1 && in_addr[port_idx] < NUM_WORDS) begin
 				data[port_idx] <= words[in_addr[port_idx]];
 			end else begin
-				data[port_idx] <= {WORD_BITS{1'b0}};
+				data[port_idx] <= { WORD_BITS{ 1'b0 } };
 			end
 		end
 	end

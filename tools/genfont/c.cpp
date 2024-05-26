@@ -46,7 +46,8 @@ bool create_font_c(const FontBits& fontbits, const Config& cfg)
 	for(const CharBits& charbits : fontbits.charbits)
 	{
 
-		(*ostr) << "\n\t/* char number " << charbits.ch_num
+		(*ostr) << "\n\t/* char #" << charbits.ch_num
+			<< std::hex << " (0x" << std::hex << charbits.ch_num << ")" << std::dec
 			<< ": '" << static_cast<char>(charbits.ch_num) << "'"
 			<< ", height: " << charbits.height
 			<< ", width: " << charbits.width

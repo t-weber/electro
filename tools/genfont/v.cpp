@@ -75,7 +75,8 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 	{
 		const CharBits& charbits = fontbits.charbits[charidx];
 
-		(*ostr) << "\n// char number " << charbits.ch_num
+		(*ostr) << "\n// char #" << charbits.ch_num
+			<< std::hex << " (0x" << std::hex << charbits.ch_num << ")" << std::dec
 			<< ": '" << static_cast<char>(charbits.ch_num) << "'"
 			<< ", height: " << charbits.height
 			<< ", width: " << charbits.width

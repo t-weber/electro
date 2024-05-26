@@ -88,7 +88,8 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 	// iterate characters
 	for(const CharBits& charbits : fontbits.charbits)
 	{
-		(*ostr) << "\n\t\t-- char number " << charbits.ch_num
+		(*ostr) << "\n\t\t-- char #" << charbits.ch_num
+			<< std::hex << " (0x" << std::hex << charbits.ch_num << ")" << std::dec
 			<< ": '" << static_cast<char>(charbits.ch_num) << "'"
 			<< ", height: " << charbits.height
 			<< ", width: " << charbits.width

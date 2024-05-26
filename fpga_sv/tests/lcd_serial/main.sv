@@ -5,6 +5,11 @@
  * @license see 'LICENSE' file
  */
 
+
+// use text buffer in rom (or alternatively ram)
+`define USE_TEXTROM
+
+
 module lcd_serial
 (
 	// main clock
@@ -49,21 +54,31 @@ localparam TILE_WIDTH_BITS    = $clog2(TILE_WIDTH);
 localparam TILE_HEIGHT_BITS   = $clog2(TILE_HEIGHT);
 localparam TILE_X_BITS        = $clog2(SCREEN_WIDTH / TILE_WIDTH);
 localparam TILE_Y_BITS        = $clog2(SCREEN_HEIGHT / TILE_HEIGHT);
-localparam TILE_NUM_BITS      = $clog2((SCREEN_WIDTH / TILE_WIDTH) * (SCREEN_HEIGHT / TILE_HEIGHT))
+localparam TILE_NUM_BITS      = $clog2(TEXT_COLS * TEXT_ROWS)
                                 + 1 /* because of the additional half-line at the bottom */;
 
 
 // ----------------------------------------------------------------------------
 // keys
 // ----------------------------------------------------------------------------
-wire rst, show_tp;
-wire update = 1'b1;
+logic rst, show_tp;
+logic update = 1'b1;
 
 debounce_switch debounce_key0(.in_clk(clk27), .in_rst(1'b0),
 	.in_signal(~key[0]), .out_debounced(rst));
 
 debounce_button debounce_key1(.in_clk(clk27), .in_rst(rst),
 	.in_signal(~key[1]), .out_toggled(show_tp), .out_debounced());
+// ----------------------------------------------------------------------------
+
+
+// ----------------------------------------------------------------------------
+// slow clock
+// ----------------------------------------------------------------------------
+logic slow_clk;
+
+clkgen #(.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(1))
+clk_test (.in_clk(clk27), .in_rst(rst), .out_clk(slow_clk));
 // ----------------------------------------------------------------------------
 
 
@@ -119,12 +134,54 @@ assign cur_char_chk = tile_num < TEXT_ROWS*TEXT_COLS
 //   ./genfont -h 20 -w 24 --target_height 20 --target_pitch 2 --target_left 1 --pitch_bits 6 -t sv -o font.sv
 font font_rom(.in_char(cur_char_chk),
 	.in_x(tile_pix_x), .in_y(tile_pix_y),
-	.out_pixel(font_pixel));
+	.out_pixel(font_pixel), .out_line());
 
-// text buffer in rom; generate with:
-//   ./genrom -l 20 -t sv -p 1 -d 1 -f 0 -m textmem 0.txt -o textmem.sv
-textmem #(.ADDR_BITS(TILE_NUM_BITS))
-textmem_mod (.in_addr(tile_num), .out_data(cur_char));
+
+`ifdef USE_TEXTROM
+	// text buffer as rom; generate with:
+	//   ./genrom -l 20 -t sv -p 1 -d 1 -f 0 -m textmem 0.txt -o textmem.sv
+	textmem #(.ADDR_BITS(TILE_NUM_BITS))
+	textmem_mod (.in_addr(tile_num), .out_data(cur_char));
+`else
+	logic [TILE_NUM_BITS - 1 : 0] tile_num_write = 0;
+	logic write_textmem = 1'b1;
+	logic [7 : 0] char_write = 8'd42;
+
+	// text buffer as ram
+	ram_2port #(.ADDR_BITS(TILE_NUM_BITS), .WORD_BITS(8),
+		.NUM_WORDS(TEXT_COLS * TEXT_ROWS), .ALL_WRITE(1'b0))
+	textmem_mod (.in_clk(clk27), .in_rst(rst),
+		// port 1
+		.in_read_ena_1(1'b0), .in_write_ena_1(write_textmem),
+		.in_addr_1(tile_num_write), .in_data_1(char_write), .out_data_1(),
+		// port 2
+		.in_read_ena_2(1'b1), .in_write_ena_2(1'b0),
+		.in_addr_2(tile_num), .in_data_2(8'b0), .out_data_2(cur_char));
+
+	/*ram_1port #(.ADDR_BITS(TILE_NUM_BITS), .WORD_BITS(8), .NUM_WORDS(TEXT_COLS * TEXT_ROWS))
+	textmem_mod (.in_clk(clk27), .in_rst(rst),
+		.in_read_ena(1'b1), .in_write_ena(write_textmem),
+		.in_addr_read(tile_num), .out_data_read(cur_char),
+		.in_addr_write(tile_num_write), .in_data_write(char_write));*/
+
+	// slowly write some letters as test
+	always_ff@(posedge slow_clk, posedge rst) begin
+		if(rst == 1'b1) begin
+			tile_num_write <= $size(tile_num_write)'(1'b0);
+		end else begin
+			if(tile_num_write < TEXT_COLS * TEXT_ROWS)
+				tile_num_write <= $size(tile_num_write)'(tile_num_write + 1'b1);
+			else
+				tile_num_write <= $size(tile_num_write)'(1'b0);
+		end
+	end
+
+	//always_comb begin
+	//	write_textmem = 1'b1;
+	//	char_write = 8'(8'd32 + tile_num_write);
+	//end
+`endif
+
 
 generate
 if(USE_COLOUR_MEM == 1'b0) begin
@@ -151,16 +208,12 @@ endgenerate
 
 
 // ----------------------------------------------------------------------------
-// output test clock
+// leds
 // ----------------------------------------------------------------------------
-logic test_clk;
-assign led[0] = ~test_clk;
+assign led[0] = ~slow_clk;
 assign led[1] = ~rst;
 assign led[2] = ~show_tp;
 assign led[5:3] = 3'b111;
-
-clkgen #(.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(1))
-clk_test (.in_clk(clk27), .in_rst(rst), .out_clk(test_clk));
 // ----------------------------------------------------------------------------
 
 
