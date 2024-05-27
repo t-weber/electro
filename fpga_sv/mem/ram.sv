@@ -54,17 +54,17 @@ begin : gen_ports
 	assign out_data[port_idx] = data[port_idx];
 
 
-	always@(posedge in_clk, posedge in_rst)
+	always@(posedge in_clk/*, posedge in_rst*/)
 	begin
 		if(in_rst == 1'b1) begin
 			data[port_idx] <= { WORD_BITS{ 1'b0 } };
 
 			// fill ram with zeros
-			if(port_idx == 0) begin
+			/*if(port_idx == 0) begin
 				for(logic [WORD_BITS : 0] i = 0; i < NUM_WORDS; ++i) begin
 					words[i] <= { WORD_BITS{ 1'b0 } };
 				end
-			end
+			end*/
 		end
 
 		else begin

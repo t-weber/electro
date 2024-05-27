@@ -217,12 +217,14 @@ begin
 	--txt_ram : entity work.textram
 		generic map(NUM_PORTS => 2, NUM_WORDS => NUM_TEXT_ROWS * NUM_TEXT_COLS,
 			ADDR_BITS => 12, WORD_BITS => 8)
-		port map(in_clk => pixel_clk, in_rst => reset,
+		port map(in_rst => reset,
 			-- port 0
+			in_clk(0) => pixel_clk,
 			in_addr(0) => tile_num, out_data(0) => cur_char,
 			in_read_ena(0) => '1', in_write_ena(0) => '0',
 			in_data(0) => (others => '0'),
 			-- port 1
+			in_clk(1) => pixel_clk,
 			in_addr(1) => int_to_logvec(15*80 + 40, 12),
 			in_read_ena(1) => '0', in_write_ena(1) => write_char,
 			in_data(1) => char_to_write_stable);
@@ -233,7 +235,7 @@ begin
 		--txt_fgram : entity work.textcolourram(textfgcolram_impl)
 			generic map(NUM_PORTS => 1, NUM_WORDS => NUM_TEXT_ROWS * NUM_TEXT_COLS,
 				ADDR_BITS => 12, WORD_BITS => 3*8)
-			port map(in_clk => pixel_clk, in_rst => reset,
+			port map(in_clk(0) => pixel_clk, in_rst => reset,
 				in_addr(0) => tile_num, out_data(0) => cur_fgcol,
 				in_read_ena(0) => '1', in_write_ena(0) => '0',
 				in_data(0) => (others => '0'));
@@ -243,7 +245,7 @@ begin
 		--txt_bgram : entity work.textcolourram(textbgcolram_impl)
 			generic map(NUM_PORTS => 1, NUM_WORDS => NUM_TEXT_ROWS * NUM_TEXT_COLS,
 				ADDR_BITS => 12, WORD_BITS => 3*8)
-			port map(in_clk => pixel_clk, in_rst => reset,
+			port map(in_clk(0) => pixel_clk, in_rst => reset,
 				in_addr(0) => tile_num, out_data(0) => cur_bgcol,
 				in_read_ena(0) => '1', in_write_ena(0) => '0',
 				in_data(0) => (others => '0'));

@@ -24,11 +24,14 @@ entity ram is
 	);
 
 	port(
-		-- clock and reset
-		in_clk, in_rst : in std_logic;
+		-- reset
+		in_rst : in std_logic;
 
 		-- enable signals
 		in_read_ena, in_write_ena : in t_logicarray(0 to NUM_PORTS - 1);
+
+		-- clocks
+		in_clk   : in t_logicarray(0 to NUM_PORTS - 1);
 
 		-- address and data
 		in_addr  : in  t_logicvecarray(0 to NUM_PORTS - 1)(ADDR_BITS - 1 downto 0);
@@ -54,33 +57,36 @@ begin
 	--gen_port0 : if NUM_PORTS >= 1 generate
 	--	constant portidx : natural := 0;
 
-	-- optional output register
-	--signal outreg : std_logic_vector(WORD_BITS - 1 downto 0);
+	-- output registers
+	signal outreg : t_logicvecarray(0 to NUM_PORTS - 1)(WORD_BITS - 1 downto 0)
+		:= (others => (others => '0'));
 
 	begin
-		--out_data(portidx) <= outreg;
+		out_data(portidx) <= outreg(portidx);
 
-		process(in_clk, in_rst)
+		process(in_clk(portidx))
 		begin
-			if in_rst = '1' then
-				-- fill ram with zeros
-				words <= (others => (others => '0'));
-				--outreg <= (others => '0');
+			if rising_edge(in_clk(portidx)) then
+				if in_rst = '1' then
+					-- fill ram with zeros
+					--words <= (others => (others => '0'));
+					outreg(portidx) <= (others => '0');
+				else
+					-- write data to ram: will be written in the next cycle
+					-- if NUM_WORDS == 2**ADDR_BITS the range check against NUM_WORDS is not needed
+					if in_write_ena(portidx) = '1' and to_int(in_addr(portidx)) < NUM_WORDS then
+						words(to_int(in_addr(portidx))) <= in_data(portidx);
+					end if;
 
-			elsif rising_edge(in_clk) then
-				-- write data to ram: will be written in the next cycle
-				-- if NUM_WORDS == 2**ADDR_BITS the range check against NUM_WORDS is not needed
-				if in_write_ena(portidx) = '1' and to_int(in_addr(portidx)) < NUM_WORDS then
-					words(to_int(in_addr(portidx))) <= in_data(portidx);
-				end if;
-
-				-- read data from ram: will be available in the next cycle
-				-- if NUM_WORDS == 2**ADDR_BITS the range check against NUM_WORDS is not needed
-				if in_read_ena(portidx) = '1' and to_int(in_addr(portidx)) < NUM_WORDS then
-					--outreg <= words(to_int(in_addr(portidx)));
-					out_data(portidx) <= words(to_int(in_addr(portidx)));
-				--else
-				--	out_data(portidx) <= (others => '0');
+					-- read data from ram: will be available in the next cycle
+					-- if NUM_WORDS == 2**ADDR_BITS the range check against NUM_WORDS is not needed
+					if in_read_ena(portidx) = '1' and to_int(in_addr(portidx)) < NUM_WORDS then
+						outreg(portidx) <= words(to_int(in_addr(portidx)));
+						--out_data(portidx) <= words(to_int(in_addr(portidx)));
+					else
+						outreg(portidx) <= (others => '0');
+						--out_data(portidx) <= (others => '0');
+					end if;
 				end if;
 			end if;
 		end process;

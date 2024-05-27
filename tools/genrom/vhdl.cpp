@@ -199,20 +199,35 @@ end architecture;)raw";
 	boost::replace_all(rom_vhdl, "%%ADDR_BITS%%", std::to_string(addr_bits));
 	boost::replace_all(rom_vhdl, "%%ROM_DATA%%", ostr_data.str());
 
+	const std::string proc_end = "\nend if;\nend process;\n";
+	auto proc_begin = [](int port_nr = -1) -> std::string
+	{
+		if(port_nr < 0)
+			return "process(in_clk) begin\nif rising_edge(in_clk) then\n";
+
+		std::ostringstream ostr;
+		ostr << "process(in_clk_" << port_nr << ") begin\n";
+		ostr << "if rising_edge(in_clk_" << port_nr << ") then\n";
+		return ostr.str();
+	};
+
 	if(cfg.direct_ports && cfg.num_ports == 1)
 	{
 		// only one port
 		std::ostringstream ostrPorts;
 
 		ostrPorts << "\n";
+		if(cfg.sync)
+			ostrPorts << "\t\tin_clk   : in std_logic;\n";
 		ostrPorts << "\t\tin_addr  : in  std_logic_vector(ADDR_BITS - 1 downto 0);\n";
 		ostrPorts << "\t\tout_data : out std_logic_vector(WORD_BITS - 1 downto 0)\n";
 		ostrPorts << "\t";
 
 		boost::replace_all(rom_vhdl, "%%PORTS_DEF%%", ostrPorts.str());
+
 		boost::replace_all(rom_vhdl, "%%PORTS_ASSIGN%%", check_bounds
-			? "\tout_data <= words(to_int(in_addr)) when to_int(in_addr) < NUM_WORDS else (others => '0');"
-			: "\tout_data <= words(to_int(in_addr));");
+			? proc_begin() + "\tout_data <= words(to_int(in_addr)) when to_int(in_addr) < NUM_WORDS else (others => '0');" + proc_end
+			: proc_begin() + "\tout_data <= words(to_int(in_addr));" + proc_end);
 	}
 	else if(cfg.direct_ports && cfg.num_ports > 1)
 	{
@@ -222,20 +237,26 @@ end architecture;)raw";
 		ostrPorts << "\n";
 		for(std::size_t port = 0; port < cfg.num_ports; ++port)
 		{
+			if(cfg.sync)
+				ostrPorts << "\t\tin_clk_" << (port+1) << "   : in  std_logic;\n";
 			ostrPorts << "\t\tin_addr_" << (port+1) << "  : in  std_logic_vector(ADDR_BITS - 1 downto 0);\n";
 			ostrPorts << "\t\tout_data_" << (port+1) << " : out std_logic_vector(WORD_BITS - 1 downto 0)";
 
 			if(check_bounds)
 			{
-				ostrAssign << "\tout_data_" << (port+1)
+				ostrAssign << proc_begin(port+1)
+					<< "\tout_data_" << (port+1)
 					<< " <= words(to_int(in_addr_" << (port+1)<< "))"
 					<< "\n\t\twhen to_int(in_addr_" << (port+1)<< ") < NUM_WORDS"
-					<< "\n\t\telse (others => '0');";
+					<< "\n\t\telse (others => '0');"
+					<< proc_end;
 			}
 			else
 			{
-				ostrAssign << "\tout_data_" << (port+1)
-					<< " <= words(to_int(in_addr_" << (port+1)<< "));";
+				ostrAssign << proc_begin(port+1)
+					<< "\tout_data_" << (port+1)
+					<< " <= words(to_int(in_addr_" << (port+1)<< "));"
+					<< proc_end;
 			}
 
 			if(port + 1 < cfg.num_ports)
@@ -253,10 +274,22 @@ end architecture;)raw";
 	else
 	{
 		// rom generic port definitions
-		std::string rom_ports_vhdl = R"raw(
+		std::string rom_ports_vhdl;
+		if(cfg.sync)
+		{
+			rom_ports_vhdl = R"raw(
+		in_clk  :  in t_logicarray(0 to NUM_PORTS - 1);
 		in_addr  : in  t_logicvecarray(0 to NUM_PORTS - 1)(ADDR_BITS - 1 downto 0);
 		out_data : out t_logicvecarray(0 to NUM_PORTS - 1)(WORD_BITS - 1 downto 0)
 	)raw";
+		}
+		else
+		{
+			rom_ports_vhdl = R"raw(
+		in_addr  : in  t_logicvecarray(0 to NUM_PORTS - 1)(ADDR_BITS - 1 downto 0);
+		out_data : out t_logicvecarray(0 to NUM_PORTS - 1)(WORD_BITS - 1 downto 0)
+	)raw";
+		}
 
 
 		// rom generic port assignment
@@ -264,21 +297,53 @@ end architecture;)raw";
 
 		if(check_bounds)
 		{
-			rom_ports_assign_vhdl = R"raw(
+			if(cfg.sync)
+			{
+				rom_ports_assign_vhdl = R"raw(
+	gen_ports : for portidx in 0 to NUM_PORTS - 1 generate
+	begin
+		process(in_clk(portidx)) begin
+			if rising_edge(in_clk(portidx)) then
+				out_data(portidx) <= words(to_int(in_addr(portidx)))
+					when to_int(in_addr(portidx)) < NUM_WORDS
+					else (others => '0');
+			end if;
+		end process;
+	end generate;)raw";
+			}
+			else
+			{
+				rom_ports_assign_vhdl = R"raw(
 	gen_ports : for portidx in 0 to NUM_PORTS - 1 generate
 	begin
 		out_data(portidx) <= words(to_int(in_addr(portidx)))
 			when to_int(in_addr(portidx)) < NUM_WORDS
 			else (others => '0');
 	end generate;)raw";
+			}
 		}
 		else
 		{
-			rom_ports_assign_vhdl = R"raw(
+			if(cfg.sync)
+			{
+				rom_ports_assign_vhdl = R"raw(
+	gen_ports : for portidx in 0 to NUM_PORTS - 1 generate
+	begin
+		process(in_clk(portidx)) begin
+			if rising_edge(in_clk(portidx)) then
+				out_data(portidx) <= words(to_int(in_addr(portidx)));
+			end if;
+		end process;
+	end generate;)raw";
+			}
+			else
+			{
+				rom_ports_assign_vhdl = R"raw(
 	gen_ports : for portidx in 0 to NUM_PORTS - 1 generate
 	begin
 		out_data(portidx) <= words(to_int(in_addr(portidx)));
 	end generate;)raw";
+			}
 		}
 
 

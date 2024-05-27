@@ -50,8 +50,10 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 			<< "\t);\n\n";
 	}
 
-	(*ostr) << "\tport(\n"
-		<< "\t\tin_char : in std_logic_vector(" << char_last_bits - 1 << " downto 0);\n"
+	(*ostr) << "\tport(\n";
+	if(cfg.sync)
+		(*ostr) << "\t\tin_clk : in std_logic;\n";
+	(*ostr) << "\t\tin_char : in std_logic_vector(" << char_last_bits - 1 << " downto 0);\n"
 		<< "\t\tin_x : in std_logic_vector(" << char_width_bits - 1 << " downto 0);\n"
 		<< "\t\tin_y : in std_logic_vector(" << char_height_bits - 1 << " downto 0);\n";
 
@@ -129,6 +131,12 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 
 	(*ostr) << "\nbegin\n";
 
+	if(cfg.sync)
+	{
+		(*ostr) << "process(in_clk) begin\n";
+		(*ostr) << "if rising_edge(in_clk) then\n";
+	}
+
 	if(cfg.check_bounds)
 	{
 		(*ostr) << "\n\tout_line <= chars(to_int(in_char))(to_int(in_y))\n"
@@ -143,6 +151,12 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 	{
 		(*ostr) << "\n\tout_line <= chars(to_int(in_char))(to_int(in_y));\n";
 		(*ostr) << "\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x));\n";
+	}
+
+	if(cfg.sync)
+	{
+		(*ostr) << "end if;\n";
+		(*ostr) << "end process;\n";
 	}
 
 	(*ostr) << "\nend architecture;" << std::endl;

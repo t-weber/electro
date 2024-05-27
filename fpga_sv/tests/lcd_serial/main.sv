@@ -7,7 +7,7 @@
 
 
 // use text buffer in rom (or alternatively ram)
-`define USE_TEXTROM
+//`define USE_TEXTROM
 
 
 module lcd_serial
@@ -132,7 +132,7 @@ assign cur_char_chk = tile_num < TEXT_ROWS*TEXT_COLS
 
 // font rom; generate with:
 //   ./genfont -h 20 -w 24 --target_height 20 --target_pitch 2 --target_left 1 --pitch_bits 6 -t sv -o font.sv
-font font_rom(.in_char(cur_char_chk),
+font font_rom(.in_clk(clk27), .in_char(cur_char_chk),
 	.in_x(tile_pix_x), .in_y(tile_pix_y),
 	.out_pixel(font_pixel), .out_line());
 
@@ -150,19 +150,15 @@ font font_rom(.in_char(cur_char_chk),
 	// text buffer as ram
 	ram_2port #(.ADDR_BITS(TILE_NUM_BITS), .WORD_BITS(8),
 		.NUM_WORDS(TEXT_COLS * TEXT_ROWS), .ALL_WRITE(1'b0))
-	textmem_mod (.in_clk(clk27), .in_rst(rst),
+	textmem_mod (.in_rst(rst),
 		// port 1
+		.in_clk_1(clk27),
 		.in_read_ena_1(1'b0), .in_write_ena_1(write_textmem),
 		.in_addr_1(tile_num_write), .in_data_1(char_write), .out_data_1(),
 		// port 2
+		.in_clk_2(clk27),
 		.in_read_ena_2(1'b1), .in_write_ena_2(1'b0),
 		.in_addr_2(tile_num), .in_data_2(8'b0), .out_data_2(cur_char));
-
-	/*ram_1port #(.ADDR_BITS(TILE_NUM_BITS), .WORD_BITS(8), .NUM_WORDS(TEXT_COLS * TEXT_ROWS))
-	textmem_mod (.in_clk(clk27), .in_rst(rst),
-		.in_read_ena(1'b1), .in_write_ena(write_textmem),
-		.in_addr_read(tile_num), .out_data_read(cur_char),
-		.in_addr_write(tile_num_write), .in_data_write(char_write));*/
 
 	// slowly write some letters as test
 	always_ff@(posedge slow_clk, posedge rst) begin
@@ -176,10 +172,10 @@ font font_rom(.in_char(cur_char_chk),
 		end
 	end
 
-	//always_comb begin
-	//	write_textmem = 1'b1;
-	//	char_write = 8'(8'd32 + tile_num_write);
-	//end
+	always_comb begin
+		write_textmem = 1'b1;
+		char_write = 8'(8'd32 + tile_num_write);
+	end
 `endif
 
 

@@ -28,6 +28,7 @@ struct Config
 	bool fill_rom = true;
 	bool print_chars = true;
 	bool check_bounds = true;
+	bool sync = false;
 
 	std::string module_name = "rom";
 };

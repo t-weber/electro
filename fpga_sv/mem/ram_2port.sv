@@ -14,7 +14,9 @@
  * pins for a port
  */
 `define PORT_PINS(PORT_NR)  \
-	input  wire in_read_ena_``PORT_NR``, in_write_ena_``PORT_NR``,  \
+	input  wire in_clk_``PORT_NR``,  \
+	input  wire in_read_ena_``PORT_NR``, \
+	input  wire in_write_ena_``PORT_NR``,  \
 	input  wire [ADDR_BITS - 1 : 0] in_addr_``PORT_NR``,  \
 	input  wire [WORD_BITS - 1 : 0] in_data_``PORT_NR``,  \
 	output wire [WORD_BITS - 1 : 0] out_data_``PORT_NR``
@@ -27,25 +29,23 @@
 	logic [WORD_BITS - 1 : 0] data_``PORT_NR``;  \
 	assign out_data_``PORT_NR`` = data_``PORT_NR``;  \
 \
-	always@(posedge in_clk, posedge in_rst)  \
+	always@(posedge in_clk_``PORT_NR``)  \
 	begin  \
 		if(in_rst == 1'b1) begin  \
 			data_``PORT_NR`` <= { WORD_BITS{ 1'b0 } };  \
-			if(PORT_NR == 1) begin  \
-				for(logic [WORD_BITS : 0] i = 0; i < NUM_WORDS; ++i) begin  \
-					words[i] <= { WORD_BITS{ 1'b0 } };  \
-				end  \
-			end  \
+			/*if(PORT_NR == 1'b1) begin*/  \
+				/*for(logic [WORD_BITS : 0] i = 0; i < NUM_WORDS; ++i)*/  \
+					/*words[i] <= { WORD_BITS{ 1'b0 } };*/  \
+			/*end*/  \
 		end else begin  \
-			data_``PORT_NR`` <= { WORD_BITS{ 1'b0 } };  \
-			if(in_addr_``PORT_NR`` < NUM_WORDS) begin \
-				if((ALL_WRITE == 1'b1 || PORT_NR == 1'b1) && in_write_ena_``PORT_NR`` == 1'b1) begin  \
-					words[in_addr_``PORT_NR``] <= in_data_``PORT_NR``;  \
-				end  \
-				if(in_read_ena_``PORT_NR`` == 1'b1) begin  \
-					data_``PORT_NR`` <= words[in_addr_``PORT_NR``];  \
-				end  \
-			end \
+			if((ALL_WRITE == 1'b1 || PORT_NR == 1'b1)  \
+				&& in_write_ena_``PORT_NR`` == 1'b1  \
+				&& in_addr_``PORT_NR`` < NUM_WORDS)  \
+				words[in_addr_``PORT_NR``] <= in_data_``PORT_NR``;  \
+			if(in_read_ena_``PORT_NR`` == 1'b1 && in_addr_``PORT_NR`` < NUM_WORDS)  \
+				data_``PORT_NR`` <= words[in_addr_``PORT_NR``];  \
+			else  \
+				data_``PORT_NR`` <= { WORD_BITS{ 1'b0 } };  \
 		end  \
 	end
 
@@ -58,8 +58,8 @@ module ram_2port
 	parameter ALL_WRITE = 1'b1  // enable write for all ports
 )
 (
-	// clock and reset
-	input  wire in_clk, in_rst,
+	// reset
+	input wire in_rst,
 
 	// port 1
 	`PORT_PINS(1),
@@ -77,6 +77,10 @@ module ram_2port
 	// memory flip-flops as packed array (contiguous ram)
 	logic [0 : NUM_WORDS - 1][WORD_BITS - 1 : 0] words;
 `endif
+
+initial begin
+	words[0] <= { WORD_BITS{ 1'b1 } };
+end
 
 
 // port 1

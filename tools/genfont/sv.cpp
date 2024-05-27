@@ -58,10 +58,13 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 			<< ")\n";
 	}
 
+	(*ostr) << "(\n";
+	if(cfg.sync)
+		(*ostr) << "\tinput wire in_clk,\n";
+
 	if(!cfg.local_params)
 	{
-		(*ostr) << "(\n"
-			<< "\tinput wire [CHAR_LAST_BITS - 1 : 0] in_char,\n"
+		(*ostr) << "\tinput wire [CHAR_LAST_BITS - 1 : 0] in_char,\n"
 			<< "\tinput wire [CHAR_WIDTH_BITS - 1 : 0] in_x,\n"
 			<< "\tinput wire [CHAR_HEIGHT_BITS - 1 : 0] in_y,\n";
 
@@ -69,8 +72,7 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 	}
 	else
 	{
-		(*ostr) << "(\n"
-			<< "\tinput wire [" << char_last_bits - 1 << " : 0] in_char,\n"
+		(*ostr) << "\tinput wire [" << char_last_bits - 1 << " : 0] in_char,\n"
 			<< "\tinput wire [" << char_width_bits - 1 << " : 0] in_x,\n"
 			<< "\tinput wire [" << char_height_bits - 1 << " : 0] in_y,\n";
 
@@ -141,29 +143,64 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 
 
 	(*ostr) << "\nwire [CHAR_IDX_BITS - 1 : 0] char_idx;\n"
-		<< "wire [0 : CHAR_WIDTH - 1] line;\n";
+		<< "logic [0 : CHAR_WIDTH - 1] line;\n"
+		<< "logic pixel;\n";
 
 	if(cfg.check_bounds)
 	{
 		(*ostr) << "\nassign char_idx = in_char >= FIRST_CHAR && in_char < LAST_CHAR\n"
 			<< "\t? CHAR_IDX_BITS'(in_char - FIRST_CHAR)\n"
-			<< "\t: CHAR_IDX_BITS'(1'b0);\n";
-
-		(*ostr) << "\nassign line = char_idx < NUM_CHARS\n"
-			<< "\t? chars[char_idx*CHAR_HEIGHT + in_y]\n"
-			<< "\t: CHAR_WIDTH'(1'b0);\n"
-			<< "\nassign out_line = line;\n";
-
-		(*ostr) << "\nassign out_pixel = in_x < CHAR_WIDTH\n"
-			<< "\t? line[in_x]\n"
-			<< "\t: 1'b0;\n";
+			<< "\t: CHAR_IDX_BITS'(1'b0);\n\n";
 	}
 	else
 	{
-		(*ostr) << "\nassign char_idx = CHAR_IDX_BITS'(in_char - FIRST_CHAR);\n"
-			<< "assign line = chars[char_idx*CHAR_HEIGHT + in_y];\n"
-			<< "\nassign out_line = line;\n"
-			<< "assign out_pixel = line[in_x];\n";
+		(*ostr) << "\nassign char_idx = CHAR_IDX_BITS'(in_char - FIRST_CHAR);\n";
+	}
+
+        (*ostr) << "assign out_line = line;\n";
+        (*ostr) << "assign out_pixel = pixel;\n";
+
+	if(cfg.check_bounds)
+	{
+		if(cfg.sync)
+		{
+			(*ostr) << "\n\nalways_ff@(posedge in_clk) begin\n";
+
+			(*ostr) << "\tline <= chars[char_idx*CHAR_HEIGHT + in_y];\n";
+
+			(*ostr) << "\n\tpixel <= in_x < CHAR_WIDTH\n"
+				<< "\t\t? line[in_x]\n"
+				<< "\t\t: 1'b0;\n";
+
+			(*ostr) << "end\n";
+		}
+		else
+		{
+			(*ostr) << "\nassign line = char_idx < NUM_CHARS\n"
+				<< "\t? chars[char_idx*CHAR_HEIGHT + in_y]\n"
+				<< "\t: CHAR_WIDTH'(1'b0);\n";
+
+			(*ostr) << "\nassign pixel = in_x < CHAR_WIDTH\n"
+				<< "\t? line[in_x]\n"
+				<< "\t: 1'b0;\n";
+		}
+	}
+	else
+	{
+		if(cfg.sync)
+		{
+			(*ostr) << "\n\nalways_ff@(posedge in_clk) begin\n";
+
+			(*ostr) << "\tline <= chars[char_idx*CHAR_HEIGHT + in_y];\n"
+				<< "\tpixel <= line[in_x];\n";
+
+			(*ostr) << "end\n";
+		}
+		else
+		{
+			(*ostr) << "assign line = chars[char_idx*CHAR_HEIGHT + in_y];\n"
+				<< "assign pixel = line[in_x];\n";
+		}
 	}
 
 	(*ostr) << "\nendmodule" << std::endl;

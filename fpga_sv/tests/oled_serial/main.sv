@@ -126,7 +126,7 @@ assign tile_pix_x = TILE_WIDTH_BITS'(x_pix % TILE_WIDTH);
 assign tile_num = TILE_NUM_BITS'(y_page*NUM_TILES_X + tile_x);
 
 // font rom
-font font_rom(.in_char(7'(cur_char)),
+font font_rom(/*.in_clk(clk27),*/ .in_char(7'(cur_char)),
 	.in_x(3'b0), .in_y(tile_pix_x),
 	.out_line(char_line), .out_pixel());
 
@@ -142,19 +142,15 @@ font font_rom(.in_char(7'(cur_char)),
 	wire [7 : 0] char_write = 8'(8'd32 + tile_num_write);
 
 	ram_2port #(.ADDR_BITS(TILE_NUM_BITS), .WORD_BITS(8), .ALL_WRITE(1'b0))
-	textmem_mod (.in_clk(clk27), .in_rst(rst),
+	textmem_mod (.in_rst(rst),
 		// port 1
+		.in_clk_1(clk27),
 		.in_read_ena_1(1'b0), .in_write_ena_1(write_textmem),
 		.in_addr_1(tile_num_write), .in_data_1(char_write), .out_data_1(),
 		// port 2
+		.in_clk_2(clk27),
 		.in_read_ena_2(1'b1), .in_write_ena_2(1'b0),
 		.in_addr_2(tile_num), .in_data_2(8'b0), .out_data_2(cur_char));  
-
-	/*ram_1port #(.ADDR_BITS(TILE_NUM_BITS), .WORD_BITS(8))
-	textmem_mod (.in_clk(clk27), .in_rst(rst),
-		.in_read_ena(1'b1), .in_write_ena(write_textmem),
-		.in_addr_read(tile_num), .out_data_read(cur_char),
-		.in_addr_write(tile_num_write), .in_data_write(char_write));*/
 
 	// slowly write some letters as test
 	always_ff@(posedge slow_clk, posedge rst) begin

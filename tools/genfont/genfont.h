@@ -43,6 +43,7 @@ struct Config
 
 	bool local_params = true;
 	bool check_bounds = true;
+	bool sync = false;
 };
 
 

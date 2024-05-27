@@ -64,6 +64,7 @@ if [ $build_roms -ne 0 ]; then
 		--target_height 8 --target_pitch 1 --pitch_bits 8 \
 		--transpose --reverse_cols \
 		--target_top 0 --target_left 0 \
+		--sync 0 \
 		-t $gen_type -o font.sv
 
 	echo -e "Creating text buffer..."
@@ -76,7 +77,8 @@ if [ $build_roms -ne 0 ]; then
 	txt+="|    Line 6    |"
 	txt+="----------------"
 	echo -en "$txt" > textmem.txt
-	${GENROM} -l 16 -t $gen_type -p 1 -d 1 -f 0 -m textmem \
+	${GENROM} -l 16 -t $gen_type -p 1 -d 1 -f 0 \
+		--sync 0 -m textmem \
 		textmem.txt -o textmem.sv
 fi
 
@@ -103,7 +105,7 @@ if [ $run_pnr -ne 0 ]; then
 	if ! ${NEXTPNR} --threads $num_threads -q --detailed-timing-report -l $pnr_log \
 		--family $target_fpga --device $target_board --freq $target_freq \
 		--cst $target_pins_file --json $synth_file --write $pnr_file --top $top_module \
-		--parallel-refine --enable-auto-longwires --disable-globals \
+		--parallel-refine --enable-auto-longwires \
 		--placer-heap-cell-placement-timeout 4 \
 		--placed-svg output/placed.svg --routed-svg output/routed.svg --sdf output/delay.sdf
 	then

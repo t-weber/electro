@@ -67,6 +67,8 @@ int main(int argc, char **argv)
 			("use local parameters, default: " + std::to_string(cfg.local_params)).c_str())
 		("check_bounds", args::value<decltype(cfg.check_bounds)>(&cfg.check_bounds),
 			("check index bounds, default: " + std::to_string(cfg.check_bounds)).c_str())
+		("sync", args::value<decltype(cfg.sync)>(&cfg.sync),
+			("produce synchronous design, default: " + std::to_string(cfg.sync)).c_str())
 		("reverse_lines", args::bool_switch(&reverse_lines), "reverse line order")
 		("reverse_cols", args::bool_switch(&reverse_cols), "reverse column order")
 		("transpose", args::bool_switch(&transpose), "transpose bits");

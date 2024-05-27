@@ -65,7 +65,7 @@ if [ $build_roms -ne 0 ]; then
 	${GENFONT} -f DejaVuSansMono.ttf \
 		-h 20 -w 24 \
 		--target_height 20 --target_pitch 2 --target_left 1 \
-		--pitch_bits 6 -t $gen_type -o font.sv
+		--pitch_bits 6 --sync 1 -t $gen_type -o font.sv
 
 
 	echo -e "Creating text buffer..."
