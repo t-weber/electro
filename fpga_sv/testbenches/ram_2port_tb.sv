@@ -32,13 +32,15 @@ module ram_tb;
 	// instantiate ram
 	ram_2port #(.ADDR_BITS(ADDR_BITS), .WORD_BITS(DATA_BITS))
 		ram_mod(
-			.in_clk(clock), .in_rst(reset),
+			.in_rst(reset),
 
 			// port 1 (reading and writing)
+			.in_clk_1(clock),
 			.in_read_ena_1(read_enable_1), .in_write_ena_1(write_enable_1),
 			.in_addr_1(addr_1), .in_data_1(data_1), .out_data_1(out_data_1),
 
 			// port 2 (reading)
+			.in_clk_2(clock),
 			.in_read_ena_2(1'b1), .in_write_ena_2(1'b0),
 			.in_addr_2(addr_2), .in_data_2(), .out_data_2(out_data_2)
 		);

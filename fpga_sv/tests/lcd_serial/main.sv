@@ -8,6 +8,7 @@
 
 // use text buffer in rom (or alternatively ram)
 //`define USE_TEXTROM
+`define USE_TEXTCOLROM
 
 
 module lcd_serial
@@ -191,13 +192,55 @@ end else begin
 	// set pixel colour using memories
 	assign cur_pixel_col = font_pixel==1'b1 ? cur_pixel_col_fg : cur_pixel_col_bg;
 
-	// set pixel foreground colour from a memory
+`ifdef USE_TEXTCOLROM
+	// set pixel foreground colour from a rom
 	textmem_fgcol #(.ADDR_BITS(TILE_NUM_BITS))
 	textmem_fgcol_mod (.in_addr(tile_num), .out_data(cur_pixel_col_fg));
 
-	// set pixel background colour from a memory
+	// set pixel background colour from a rom
 	textmem_bgcol #(.ADDR_BITS(TILE_NUM_BITS))
 	textmem_bgcol_mod (.in_addr(tile_num), .out_data(cur_pixel_col_bg));
+`else
+	logic [TILE_NUM_BITS - 1 : 0] tile_num_col_write = 0;
+
+	// set pixel foreground colour from a ram
+	ram_2port #(.ADDR_BITS(TILE_NUM_BITS), .WORD_BITS(PIXEL_BITS),
+		.NUM_WORDS(TEXT_COLS * TEXT_ROWS), .ALL_WRITE(1'b0))
+	textmem_fgcol (.in_rst(rst),
+		// port 1
+		.in_clk_1(clk27),
+		.in_read_ena_1(1'b0), .in_write_ena_1(1'b1),
+		.in_addr_1(tile_num_col_write), .in_data_1(16'hffff), .out_data_1(),
+		// port 2
+		.in_clk_2(clk27),
+		.in_read_ena_2(1'b1), .in_write_ena_2(1'b0),
+		.in_addr_2(tile_num), .in_data_2(16'b0), .out_data_2(cur_pixel_col_fg));
+
+	// set pixel background colour from a ram
+	ram_2port #(.ADDR_BITS(TILE_NUM_BITS), .WORD_BITS(PIXEL_BITS),
+		.NUM_WORDS(TEXT_COLS * TEXT_ROWS), .ALL_WRITE(1'b0))
+	textmem_bgcol (.in_rst(rst),
+		// port 1
+		.in_clk_1(clk27),
+		.in_read_ena_1(1'b0), .in_write_ena_1(1'b1),
+		.in_addr_1(tile_num_col_write), .in_data_1(16'h001f), .out_data_1(),
+		// port 2
+		.in_clk_2(clk27),
+		.in_read_ena_2(1'b1), .in_write_ena_2(1'b0),
+		.in_addr_2(tile_num), .in_data_2(16'b0), .out_data_2(cur_pixel_col_bg));
+
+	// fill text foreground and background colours
+	always_ff@(posedge clk27, posedge rst) begin
+		if(rst == 1'b1) begin
+			tile_num_col_write <= $size(tile_num_col_write)'(1'b0);
+		end else begin
+			if(tile_num_col_write < TEXT_COLS * TEXT_ROWS)
+				tile_num_col_write <= $size(tile_num_col_write)'(tile_num_col_write + 1'b1);
+			else
+				tile_num_col_write <= $size(tile_num_col_write)'(1'b0);
+		end
+	end
+`endif
 end
 endgenerate
 // ----------------------------------------------------------------------------

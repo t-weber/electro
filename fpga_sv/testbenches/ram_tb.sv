@@ -16,9 +16,9 @@ module ram_tb;
 	localparam ADDR_BITS = 8;
 	localparam DATA_BITS = 8;
 
-	logic clock = 0;
 	logic reset = 0;
-	logic read_enable, write_enable;
+	logic [1] clock = 0;
+	logic [1] read_enable, write_enable;
 	logic [1][ADDR_BITS-1 : 0] addr;
 	logic [1][DATA_BITS-1 : 0] data, out_data;
 
@@ -35,61 +35,61 @@ module ram_tb;
 
 	initial begin
 		addr <= 8'h00;
-		read_enable <= 1'b1;
-		write_enable <= 1'b0;
+		read_enable[0] <= 1'b1;
+		write_enable[0] <= 1'b0;
 
 		$display("-- RESET --");
 		reset <= 1'b1;
-		#1; clock <= ~clock;  // 0 -> 1
-		#1; clock <= ~clock;  // 1 -> 0
+		#1; clock[0] <= ~clock[0];  // 0 -> 1
+		#1; clock[0] <= ~clock[0];  // 1 -> 0
 
 		$display("-- WRITE DATA --");
 		reset <= 1'b0;
 		addr <= 8'h12;
-		read_enable <= 1'b0;
-		write_enable <= 1'b1;
+		read_enable[0] <= 1'b0;
+		write_enable[0] <= 1'b1;
 		data <= 8'hab;
-		#1; clock <= ~clock;  // 0 -> 1
-		#1; clock <= ~clock;  // 1 -> 0
+		#1; clock[0] <= ~clock[0];  // 0 -> 1
+		#1; clock[0] <= ~clock[0];  // 1 -> 0
 
 		$display("-- READ BACK DATA --");
-		read_enable <= 1'b1;
-		write_enable <= 1'b0;
+		read_enable[0] <= 1'b1;
+		write_enable[0] <= 1'b0;
 		data <= 8'h00;
 		addr <= 8'h12;
-		#1; clock <= ~clock;  // 0 -> 1
-		#1; clock <= ~clock;  // 1 -> 0
+		#1; clock[0] <= ~clock[0];  // 0 -> 1
+		#1; clock[0] <= ~clock[0];  // 1 -> 0
 
 		$display("-- READ OTHER DATA --");
-		read_enable <= 1'b1;
-		write_enable <= 1'b0;
+		read_enable[0] <= 1'b1;
+		write_enable[0] <= 1'b0;
 		data <= 8'h00;
-		addr <= 8'h00;
-		#1; clock <= ~clock;  // 0 -> 1
-		#1; clock <= ~clock;  // 1 -> 0
+		addr <= 8'hff;
+		#1; clock[0] <= ~clock[0];  // 0 -> 1
+		#1; clock[0] <= ~clock[0];  // 1 -> 0
 
 		$display("-- READ BACK DATA --");
-		read_enable <= 1'b1;
-		write_enable <= 1'b0;
+		read_enable[0] <= 1'b1;
+		write_enable[0] <= 1'b0;
 		data <= 8'h00;
 		addr <= 8'h12;
-		#1; clock <= ~clock;  // 0 -> 1
-		#1; clock <= ~clock;  // 1 -> 0
+		#1; clock[0] <= ~clock[0];  // 0 -> 1
+		#1; clock[0] <= ~clock[0];  // 1 -> 0
 
 		$display("-- FINISHED --");
-		read_enable <= 1'b0;
-		write_enable <= 1'b0;
+		read_enable[0] <= 1'b0;
+		write_enable[0] <= 1'b0;
 		data <= 8'h00;
 		addr <= 8'h00;
-		#1; clock <= ~clock;  // 0 -> 1
-		#1; clock <= ~clock;  // 1 -> 0
+		#1; clock[0] <= ~clock[0];  // 0 -> 1
+		#1; clock[0] <= ~clock[0];  // 1 -> 0
 	end
 
 
 	// debug output
-	always@(clock) begin
+	always@(clock[0]) begin
 		$display("clk=%b, addr=%b (%h), in: %b (%h), out: %b (%h)",
-			clock, addr, addr, data, data, out_data, out_data);
+			clock[0], addr, addr, data, data, out_data, out_data);
 	end
 
 endmodule

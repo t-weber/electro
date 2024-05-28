@@ -34,7 +34,7 @@
 		if(in_rst == 1'b1) begin  \
 			data_``PORT_NR`` <= { WORD_BITS{ 1'b0 } };  \
 			/*if(PORT_NR == 1'b1) begin*/  \
-				/*for(logic [WORD_BITS : 0] i = 0; i < NUM_WORDS; ++i)*/  \
+				/*for(bit [ADDR_BITS : 0] i = 0; i < NUM_WORDS; ++i)*/  \
 					/*words[i] <= { WORD_BITS{ 1'b0 } };*/  \
 			/*end*/  \
 		end else begin  \
@@ -79,7 +79,8 @@ module ram_2port
 `endif
 
 initial begin
-	words[0] <= { WORD_BITS{ 1'b1 } };
+	for(bit [ADDR_BITS : 0] i = 0; i < NUM_WORDS; ++i)
+		words[i] <= { WORD_BITS{ 1'b1 } };
 end
 
 

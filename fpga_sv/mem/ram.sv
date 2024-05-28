@@ -42,6 +42,12 @@ module ram
 `endif
 
 
+initial begin
+	for(bit [ADDR_BITS : 0] i = 0; i < NUM_WORDS; ++i)
+		words[i] <= { WORD_BITS{ 1'b1 } };
+end
+
+
 // output data register
 logic [0 : NUM_PORTS - 1][WORD_BITS - 1 : 0] data;
 
@@ -61,7 +67,7 @@ begin : gen_ports
 
 			// fill ram with zeros
 			/*if(port_idx == 0) begin
-				for(logic [WORD_BITS : 0] i = 0; i < NUM_WORDS; ++i) begin
+				for(bit [ADDR_BITS : 0] i = 0; i < NUM_WORDS; ++i) begin
 					words[i] <= { WORD_BITS{ 1'b0 } };
 				end
 			end*/

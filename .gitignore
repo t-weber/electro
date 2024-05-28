@@ -40,6 +40,8 @@
 # hdl files
 *.cf
 *.vcd
+*.sdf
+*.fs
 
 # temporary files
 *.c_
@@ -48,13 +50,18 @@
 *.log
 *.svg
 *.png
+*.ttf
 
 # generated files
 micro_proc/lib/characters.c
 fpga_sv/tests/lcd_serial/font.?v
 fpga_sv/tests/lcd_serial/textmem*.?v
+fpga_sv/tests/lcd_serial/textmem*.txt
+fpga_sv/tests/lcd_serial/output/**
 fpga_sv/tests/oled_serial/font.?v
 fpga_sv/tests/oled_serial/textmem*.?v
+fpga_sv/tests/oled_serial/textmem*.txt
+fpga_sv/tests/oled_serial/output/**
 
 tools/cpu/build/**
 tools/float/build/**
