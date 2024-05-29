@@ -32,6 +32,28 @@ static void reverse_bitset(t_bitset& bitset)
 
 
 
+template<class t_bitset>
+static t_bitset unite_bitsets(const std::vector<t_bitset>& bitsets)
+{
+	std::size_t N = 0;
+	for(const t_bitset& bitset : bitsets)
+		N += bitset.size();
+
+	t_bitset bitset_new{N, 0};
+	std::size_t cur_idx = 0;
+
+	for(const t_bitset& bitset : bitsets)
+	{
+		for(std::size_t idx = 0; idx < bitset.size(); ++idx)
+			bitset_new[cur_idx + idx] = bitset[idx];
+		cur_idx += bitset.size();
+	}
+
+	return bitset_new;
+}
+
+
+
 /**
  * create a bitmap of the font
  */
@@ -72,7 +94,7 @@ FontBits create_font(::FT_Face& face, const Config& cfg)
 		auto output_bits = [pitch, bitmap, &cfg, &charbits](
 			unsigned int y, unsigned int shift_x, bool force_zero)
 		{
-			std::vector<boost::dynamic_bitset<>> linebits;
+			CharBits::t_line linebits;
 
 			for(int x = 0; x < std::min(pitch, cfg.target_pitch); ++x)
 			{
@@ -89,7 +111,7 @@ FontBits create_font(::FT_Face& face, const Config& cfg)
 					byte |= prev_byte;
 				}
 
-				linebits.emplace_back(boost::dynamic_bitset{cfg.pitch_bits, byte});
+				linebits.emplace_back(CharBits::t_bits{cfg.pitch_bits, byte});
 			}
 
 			charbits.lines.emplace_back(std::move(linebits));
@@ -196,9 +218,58 @@ static void trafo_char(Config& cfg, CharBits& charbits,
 
 
 
+/**
+ * apply transformations to the font's pixel maps
+ */
 void trafo_font(Config& cfg, FontBits& fontbits,
 	bool reverse_lines, bool reverse_columns, bool transpose)
 {
 	for(CharBits& ch : fontbits.charbits)
 		trafo_char(cfg, ch, reverse_lines, reverse_columns, transpose);
+}
+
+
+
+/**
+ * globally optimise all font character's lines
+ */
+bool optimise_font(const Config& cfg, FontBits& fontbits)
+{
+	fontbits.lines_opt.clear();
+	const unsigned int height = cfg.target_height;
+
+	// iterate characters
+	for(std::size_t charidx = 0; charidx < fontbits.charbits.size(); ++charidx)
+	{
+		const CharBits& charbits = fontbits.charbits[charidx];
+		if(charbits.lines.size() != height)
+		{
+			std::cerr << "Error: Character " << charidx << " height mismatch: "
+				<< "Should be " << height << ", but is " << charbits.lines.size()
+				<< "." << std::endl;
+			return false;
+		}
+
+		// iterate lines
+		for(std::size_t line = 0; line < charbits.lines.size(); ++line)
+		{
+			const CharBits::t_line& linebits_vec = charbits.lines[line];
+
+			CharBits::t_bits linebits = unite_bitsets(linebits_vec);
+			std::size_t line_addr = charidx*height + line;
+
+			if(auto iter = fontbits.lines_opt.find(linebits); iter != fontbits.lines_opt.end())
+			{
+				// add address for this font line
+				iter->second.push_back(line_addr);
+			}
+			else
+			{
+				// new entry
+				fontbits.lines_opt.emplace(std::make_pair(linebits, FontBits::t_addrs{line_addr}));
+			}
+		}
+	}
+
+	return true;
 }

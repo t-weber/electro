@@ -120,7 +120,7 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 		// iterate lines
 		for(std::size_t line = 0; line < charbits.lines.size(); ++line)
 		{
-			const std::vector<boost::dynamic_bitset<>>& linebits = charbits.lines[line];
+			const CharBits::t_line& linebits = charbits.lines[line];
 			(*ostr) << "\t" << linebits.size()*cfg.pitch_bits << "'b";
 
 			// iterate pitch

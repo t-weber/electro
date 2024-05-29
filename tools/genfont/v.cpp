@@ -101,7 +101,7 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 		// iterate lines
 		for(std::size_t line = 0; line < charbits.lines.size(); ++line)
 		{
-			const std::vector<boost::dynamic_bitset<>>& linebits = charbits.lines[line];
+			const CharBits::t_line& linebits = charbits.lines[line];
 
 			if(!cfg.sync)
 				(*ostr) << "assign ";

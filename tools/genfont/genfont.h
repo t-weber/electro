@@ -11,6 +11,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include <boost/dynamic_bitset.hpp>
 
@@ -59,13 +60,20 @@ struct CharBits
 	int left = 0;
 	int top = 0;
 
-	std::vector<std::vector<boost::dynamic_bitset<>>> lines;
+	using t_bits = boost::dynamic_bitset<>;
+	using t_line = std::vector<t_bits>;
+	using t_lines = std::vector<t_line>;
+	t_lines lines;
 };
 
 
 struct FontBits
 {
 	std::vector<CharBits> charbits;
+
+	using t_addrs = std::vector<std::size_t>;
+	using t_linesmap = std::unordered_map<CharBits::t_bits, t_addrs>;
+	t_linesmap lines_opt;
 };
 
 
@@ -76,18 +84,23 @@ extern FontBits create_font(::FT_Face& face, const Config& cfg);
 extern void trafo_font(Config& cfg, FontBits& fontbits,
 	bool reverse_lines, bool reverse_columns, bool transpose);
 
+// optimise lines
+extern bool optimise_font(const Config& cfg, FontBits& fontbits);
+
 
 // output a c file
 extern bool create_font_c(const FontBits& fontbits, const Config& cfg);
 
 // output a vhdl file
 extern bool create_font_vhdl(const FontBits& fontbits, const Config& cfg);
+//extern bool create_font_vhdl_opt(const FontBits& fontbits, const Config& cfg);
 
 // output an sv file
 extern bool create_font_sv(const FontBits& fontbits, const Config& cfg);
 
 // output an v file
 extern bool create_font_v(const FontBits& fontbits, const Config& cfg);
+extern bool create_font_v_opt(const FontBits& fontbits, const Config& cfg);
 
 
 #endif

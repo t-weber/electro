@@ -70,7 +70,7 @@ int main(int argc, char** argv)
 			("repeat_times,n", args::value<decltype(repeat_times)>(&repeat_times),
 				("number of times to repeat data word, default: "
 					+ std::to_string(repeat_times)).c_str())
-			("sync", args::value<decltype(cfg.sync)>(&cfg.sync),
+			("sync,s", args::value<decltype(cfg.sync)>(&cfg.sync),
 				("produce synchronous design, default: " + std::to_string(cfg.sync)).c_str())
 			("input,i", args::value<decltype(in_filename)>(&in_filename),
 				"input data file")

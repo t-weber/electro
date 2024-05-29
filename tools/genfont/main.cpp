@@ -44,7 +44,9 @@ int main(int argc, char **argv)
 		("module,m", args::value<decltype(cfg.entity_name)>(&cfg.entity_name),
 			("module name, default: " + cfg.entity_name).c_str())
 		("type,t", args::value<decltype(rom_type)>(&rom_type),
-			("output type (c/vhdl/sv/v), default: " + rom_type).c_str())
+			("output type (c/vhdl/sv/v/v-opt), default: " + rom_type).c_str())
+		("sync,s", args::value<decltype(cfg.sync)>(&cfg.sync),
+			("produce synchronous design, default: " + std::to_string(cfg.sync)).c_str())
 		("first_char,c", args::value<decltype(cfg.ch_first)>(&cfg.ch_first),
 			("first char, default: " + std::to_string(cfg.ch_first)).c_str())
 		("last_char,l", args::value<decltype(cfg.ch_last)>(&cfg.ch_last),
@@ -67,8 +69,6 @@ int main(int argc, char **argv)
 			("use local parameters, default: " + std::to_string(cfg.local_params)).c_str())
 		("check_bounds", args::value<decltype(cfg.check_bounds)>(&cfg.check_bounds),
 			("check index bounds, default: " + std::to_string(cfg.check_bounds)).c_str())
-		("sync", args::value<decltype(cfg.sync)>(&cfg.sync),
-			("produce synchronous design, default: " + std::to_string(cfg.sync)).c_str())
 		("reverse_lines", args::bool_switch(&reverse_lines), "reverse line order")
 		("reverse_cols", args::bool_switch(&reverse_cols), "reverse column order")
 		("transpose", args::bool_switch(&transpose), "transpose bits");
@@ -122,13 +122,33 @@ int main(int argc, char **argv)
 
 	bool ok = false;
 	if(boost::to_lower_copy(rom_type) == "c")
+	{
 		ok = create_font_c(fontbits, cfg);
+	}
 	else if(boost::to_lower_copy(rom_type) == "vhdl")
+	{
 		ok = create_font_vhdl(fontbits, cfg);
+	}
+	/*else if(boost::to_lower_copy(rom_type) == "vhdl-opt")
+	{
+		ok = optimise_font(cfg, fontbits);
+		if(ok)
+			ok = create_font_vhdl_opt(fontbits, cfg);
+	}*/
 	else if(boost::to_lower_copy(rom_type) == "sv")
+	{
 		ok = create_font_sv(fontbits, cfg);
+	}
 	else if(boost::to_lower_copy(rom_type) == "v")
+	{
 		ok = create_font_v(fontbits, cfg);
+	}
+	else if(boost::to_lower_copy(rom_type) == "v-opt")
+	{
+		ok = optimise_font(cfg, fontbits);
+		if(ok)
+			ok = create_font_v_opt(fontbits, cfg);
+	}
 
 	if(ok)
 	{
