@@ -102,13 +102,10 @@ bool create_font_vhdl_opt(const FontBits& fontbits, const Config& cfg)
 
 	if(cfg.sync)
 	{
-		(*ostr) << "process(in_clk) begin\n";
-		(*ostr) << "if rising_edge(in_clk) then\n";
-	}
+		(*ostr) << "\tprocess(in_clk) begin\n";
+		(*ostr) << "\t\tif rising_edge(in_clk) then\n";
 
-	if(cfg.sync)
-	{
-		(*ostr) << "\tcase line_idx is\n";
+		(*ostr) << "\t\t\tcase line_idx is\n";
 
 		// iterate lines
 		for(const auto& [line, line_addrs] : fontbits.lines_opt)
@@ -117,7 +114,7 @@ bool create_font_vhdl_opt(const FontBits& fontbits, const Config& cfg)
 			if(is_zero(line))
 				continue;
 
-			(*ostr) << "\t\twhen ";
+			(*ostr) << "\t\t\t\twhen ";
 			for(std::size_t idx = 0; idx < line_addrs.size(); ++idx)
 			{
 				(*ostr) << line_idx_bits << "x\"" << std::hex << line_addrs[idx] << "\"" << std::dec;
@@ -125,11 +122,31 @@ bool create_font_vhdl_opt(const FontBits& fontbits, const Config& cfg)
 					(*ostr) << " | ";
 			}
 
-			(*ostr) << " =>\n\t\t\tline <= \"" << line << "\";\n";
+			(*ostr) << " =>\n\t\t\t\t\tline <= \"" << line << "\";\n";
 		}
 
-		(*ostr) << "\t\twhen others =>\n\t\t\tline <= (others => '0');\n";
-		(*ostr) << "\tend case;\n\n";
+		(*ostr) << "\t\t\t\twhen others =>\n\t\t\t\t\tline <= (others => '0');\n";
+		(*ostr) << "\t\t\tend case;\n\n";
+
+
+		(*ostr) << "\t\t\tout_line <= line;\n";
+
+		if(cfg.check_bounds)
+		{
+			(*ostr) << "\t\t\tif to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR then\n"
+				<< "\t\t\t\tout_pixel <= line(to_int(in_x));\n"
+				<< "\t\t\telse\n"
+				<< "\t\t\t\tout_pixel <= '0';\n"
+				<< "\t\t\tend if;\n";
+		}
+		else
+		{
+			(*ostr) << "\t\t\tout_pixel <= line(to_int(in_x));\n";
+		}
+
+
+		(*ostr) << "\t\tend if;\n";
+		(*ostr) << "\tend process;\n";
 	}
 	else
 	{
@@ -155,27 +172,22 @@ bool create_font_vhdl_opt(const FontBits& fontbits, const Config& cfg)
 		}
 
 		(*ostr) << "\t\t(others => '0') when others;\n\n";
-	}
 
 
-	(*ostr) << "\tout_line <= line;\n";
+		(*ostr) << "\tout_line <= line;\n";
 
-	if(cfg.check_bounds)
-	{
-		(*ostr) << "\tout_pixel <= line(to_int(in_x))\n"
-			<< "\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR\n"
-			<< "\t\telse '0';\n";
-	}
-	else
-	{
-		(*ostr) << "\tout_pixel <= line(to_int(in_x));\n";
+		if(cfg.check_bounds)
+		{
+			(*ostr) << "\tout_pixel <= line(to_int(in_x))\n"
+				<< "\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR\n"
+				<< "\t\telse '0';\n";
+		}
+		else
+		{
+			(*ostr) << "\tout_pixel <= line(to_int(in_x));\n";
+		}
 	}
 
-	if(cfg.sync)
-	{
-		(*ostr) << "end if;\n";
-		(*ostr) << "end process;\n";
-	}
 
 	(*ostr) << "\nend architecture;" << std::endl;
 

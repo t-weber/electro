@@ -199,9 +199,11 @@ end architecture;)raw";
 	boost::replace_all(rom_vhdl, "%%ADDR_BITS%%", std::to_string(addr_bits));
 	boost::replace_all(rom_vhdl, "%%ROM_DATA%%", ostr_data.str());
 
-	const std::string proc_end = "\nend if;\nend process;\n";
-	auto proc_begin = [](int port_nr = -1) -> std::string
+	auto proc_begin = [](bool sync = true, int port_nr = -1) -> std::string
 	{
+		if(!sync)
+			return "";
+
 		if(port_nr < 0)
 			return "process(in_clk) begin\nif rising_edge(in_clk) then\n";
 
@@ -209,6 +211,34 @@ end architecture;)raw";
 		ostr << "process(in_clk_" << port_nr << ") begin\n";
 		ostr << "if rising_edge(in_clk_" << port_nr << ") then\n";
 		return ostr.str();
+	};
+
+	auto proc_end = [](bool sync = true) -> std::string
+	{
+		if(!sync)
+			return "";
+
+		return "\nend if;\nend process;\n";
+	};
+
+	auto conditional = [](bool sync,
+		const std::string& to_assign, const std::string& cond,
+		const std::string& expr, const std::string& else_expr) -> std::string
+	{
+		if(sync)
+		{
+			return "if " + cond
+				+ " then " + to_assign + " <= " + expr + ";"
+				+ " else " + to_assign + " <= " + else_expr + ";"
+				+ " end if;";
+		}
+		else
+		{
+			return to_assign + " <= " + expr
+				+ " when " + cond
+				+ " else " + else_expr
+				+ ";";
+		}
 	};
 
 	if(cfg.direct_ports && cfg.num_ports == 1)
@@ -226,8 +256,10 @@ end architecture;)raw";
 		boost::replace_all(rom_vhdl, "%%PORTS_DEF%%", ostrPorts.str());
 
 		boost::replace_all(rom_vhdl, "%%PORTS_ASSIGN%%", check_bounds
-			? proc_begin() + "\tout_data <= words(to_int(in_addr)) when to_int(in_addr) < NUM_WORDS else (others => '0');" + proc_end
-			: proc_begin() + "\tout_data <= words(to_int(in_addr));" + proc_end);
+			? proc_begin(cfg.sync)
+				+ conditional(cfg.sync, "out_data", "to_int(in_addr) < NUM_WORDS", "words(to_int(in_addr))", "(others => '0')")
+				+ proc_end(cfg.sync)
+			: proc_begin(cfg.sync) + "\tout_data <= words(to_int(in_addr));" + proc_end(cfg.sync));
 	}
 	else if(cfg.direct_ports && cfg.num_ports > 1)
 	{
@@ -244,19 +276,23 @@ end architecture;)raw";
 
 			if(check_bounds)
 			{
-				ostrAssign << proc_begin(port+1)
-					<< "\tout_data_" << (port+1)
-					<< " <= words(to_int(in_addr_" << (port+1)<< "))"
-					<< "\n\t\twhen to_int(in_addr_" << (port+1)<< ") < NUM_WORDS"
-					<< "\n\t\telse (others => '0');"
-					<< proc_end;
+				std::ostringstream outdata, inaddr;
+				outdata << "out_data_" << (port+1);
+				inaddr << "in_addr_" << (port+1);
+
+				ostrAssign << proc_begin(cfg.sync, port+1)
+					<< "\t" << conditional(cfg.sync, outdata.str(),
+						"to_int(" + inaddr.str() + ") < NUM_WORDS",
+						"words(to_int(" + inaddr.str() + "))",
+						"(others => '0')")
+					<< proc_end(cfg.sync);
 			}
 			else
 			{
-				ostrAssign << proc_begin(port+1)
+				ostrAssign << proc_begin(cfg.sync, port+1)
 					<< "\tout_data_" << (port+1)
 					<< " <= words(to_int(in_addr_" << (port+1)<< "));"
-					<< proc_end;
+					<< proc_end(cfg.sync);
 			}
 
 			if(port + 1 < cfg.num_ports)
@@ -304,9 +340,11 @@ end architecture;)raw";
 	begin
 		process(in_clk(portidx)) begin
 			if rising_edge(in_clk(portidx)) then
-				out_data(portidx) <= words(to_int(in_addr(portidx)))
-					when to_int(in_addr(portidx)) < NUM_WORDS
-					else (others => '0');
+					if to_int(in_addr(portidx)) < NUM_WORDS then
+						out_data(portidx) <= words(to_int(in_addr(portidx)));
+					else
+						out_data(portidx) <= (others => '0');
+					end if;
 			end if;
 		end process;
 	end generate;)raw";

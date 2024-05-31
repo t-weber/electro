@@ -200,10 +200,10 @@ begin
 			out_tile_num => tile_num,
 			out_tile_pix_x => tile_pix_x, out_tile_pix_y => tile_pix_y);
 
-	-- font rom; generate with:
-	--   ./genfont -h 24 -w 24 --target_height 24 --target_pitch 2 -t vhdl -o font.vhdl
+	-- font rom
 	font_rom : entity work.font
-		port map(in_char => cur_char(6 downto 0),
+		port map(in_clk => pixel_clk,
+			in_char => cur_char(6 downto 0),
 			in_x => tile_pix_x, in_y => tile_pix_y,
 			out_pixel => font_pixel);
 

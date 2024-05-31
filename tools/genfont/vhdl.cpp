@@ -133,30 +133,49 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 
 	if(cfg.sync)
 	{
-		(*ostr) << "process(in_clk) begin\n";
-		(*ostr) << "if rising_edge(in_clk) then\n";
-	}
+		(*ostr) << "\tprocess(in_clk) begin\n";
+		(*ostr) << "\t\tif rising_edge(in_clk) then\n";
 
-	if(cfg.check_bounds)
-	{
-		(*ostr) << "\n\tout_line <= chars(to_int(in_char))(to_int(in_y))\n"
-			<< "\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR\n"
-			<< "\t\telse (others => '0');\n";
+		if(cfg.check_bounds)
+		{
+			(*ostr) << "\t\t\t\tif to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR then\n"
+				<< "\t\t\t\t\tout_line <= chars(to_int(in_char))(to_int(in_y));\n"
+				<< "\t\t\t\telse\n"
+				<< "\t\t\t\t\tout_line <= (others => '0');\n"
+				<< "\t\t\t\tend if;\n";
 
-		(*ostr) << "\n\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x))\n"
-			<< "\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR\n"
-			<< "\t\telse '0';\n";
+			(*ostr) << "\t\t\t\tif to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR then\n"
+				<< "\t\t\t\t\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x));\n"
+				<< "\t\t\t\telse\n"
+				<< "\t\t\t\t\tout_pixel <= '0';\n"
+				<< "\t\t\t\tend if;\n";
+		}
+		else
+		{
+			(*ostr) << "\t\t\t\tout_line <= chars(to_int(in_char))(to_int(in_y));\n";
+			(*ostr) << "\t\t\t\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x));\n";
+		}
+
+		(*ostr) << "\t\tend if;\n";
+		(*ostr) << "\tend process;\n";
 	}
 	else
 	{
-		(*ostr) << "\n\tout_line <= chars(to_int(in_char))(to_int(in_y));\n";
-		(*ostr) << "\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x));\n";
-	}
+		if(cfg.check_bounds)
+		{
+			(*ostr) << "\n\tout_line <= chars(to_int(in_char))(to_int(in_y))\n"
+				<< "\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR\n"
+				<< "\t\telse (others => '0');\n";
 
-	if(cfg.sync)
-	{
-		(*ostr) << "end if;\n";
-		(*ostr) << "end process;\n";
+			(*ostr) << "\n\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x))\n"
+				<< "\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR\n"
+				<< "\t\telse '0';\n";
+		}
+		else
+		{
+			(*ostr) << "\n\tout_line <= chars(to_int(in_char))(to_int(in_y));\n";
+			(*ostr) << "\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x));\n";
+		}
 	}
 
 	(*ostr) << "\nend architecture;" << std::endl;

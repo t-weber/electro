@@ -80,7 +80,7 @@ if [ $build_roms -ne 0 ]; then
 	txt+="|      Line 3      |"
 	txt+="|      Line 4      |"
 	txt+="--------------------"
-        echo -en "$txt" > textmem.txt
+	echo -en "$txt" > textmem.txt
 
 	${GENROM} -l 20 -t $gen_type -p 1 -d 1 -f 0 -m textmem \
 		textmem.txt -o textmem.sv

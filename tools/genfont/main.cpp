@@ -93,8 +93,7 @@ int main(int argc, char **argv)
 	::FT_Library freetype{};
 	if(::FT_Init_FreeType(&freetype))
 	{
-		std::cerr << "Error: Cannot initialise Freetype."
-			<< std::endl;
+		std::cerr << "Error: Cannot initialise Freetype." << std::endl;
 		return -1;
 	}
 
@@ -103,14 +102,14 @@ int main(int argc, char **argv)
 	{
 		std::cerr << "Error: Cannot load font \""
 			<< cfg.font_file << "\"."
-			<< std::endl;
+			<< "\nPlease specify a font file via the --font argument:\n\n"
+			<< arg_descr << std::endl;
 		return -1;
 	}
 
 	if(::FT_Set_Pixel_Sizes(face, cfg.font_width, cfg.font_height))
 	{
-		std::cerr << "Error: Cannot set font size."
-			<< std::endl;
+		std::cerr << "Error: Cannot set font size." << std::endl;
 		return -1;
 	}
 
