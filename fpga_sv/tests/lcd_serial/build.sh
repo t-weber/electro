@@ -24,6 +24,8 @@ pnr_file=output/pnr.json
 pack_file=output/${top_module}.fs
 pack_cst_file=output/${top_module}.cst
 pack_png_file=output/${top_module}.png
+synth_log=output/synth.log
+pnr_log=output/pnr.log
 src_files="../../sync/debounce_button.sv \
 	../../sync/debounce_switch.sv \
 	../../clock/clkgen.sv \
@@ -35,9 +37,6 @@ src_files="../../sync/debounce_button.sv \
 	font.sv textmem.sv \
 	textmem_fgcol.sv textmem_bgcol.sv \
 	main.sv"
-
-synth_log=output/synth.log
-pnr_log=output/pnr.log
 
 # 9k board
 target_board=GW1NR-LV9QN88PC6/I5
@@ -58,6 +57,12 @@ PACK=gowin_pack
 GENFONT=../../../tools/genfont/build/genfont
 GENROM=../../../tools/genrom/build/genrom
 gen_type=sv
+
+echo -e "Using tool: $(which $YOSYS)"
+echo -e "Using tool: $(which $NEXTPNR)"
+echo -e "Using tool: $(which $PACK)"
+echo -e "Using tool: $(which $GENFONT)"
+echo -e "Using tool: $(which $GENROM)"
 
 
 if [ $build_roms -ne 0 ]; then
@@ -121,7 +126,7 @@ fi
 if [ $run_pack -ne 0 ]; then
 	echo -e "Generating bit stream for $target_fpga: $pnr_file -> $pack_file..."
 	if ! ${PACK} -d $target_fpga \
-		-o $pack_file --cst $pack_cst_file $pnr_file --png $pack_png_file
+		-o $pack_file --cst $pack_cst_file $pnr_file #--png $pack_png_file
 	then
 		echo -e "Bit stream generation failed!"
 		exit -1

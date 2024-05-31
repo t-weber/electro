@@ -23,13 +23,12 @@ pnr_file=output/pnr.json
 pack_file=output/${top_module}.fs
 pack_cst_file=output/${top_module}.cst
 pack_png_file=output/${top_module}.png
+synth_log=output/synth.log
+pnr_log=output/pnr.log
 src_files="../../sync/debounce_button.sv \
 	../../sync/debounce_switch.sv \
 	../../clock/clkgen.sv \
 	main.sv"
-
-synth_log=output/synth.log
-pnr_log=output/pnr.log
 
 # 9k board
 #target_board=GW1NR-LV9QN88PC6/I5
@@ -47,6 +46,10 @@ target_pins_file=pins1k.cst
 YOSYS=yosys
 NEXTPNR=nextpnr-gowin
 PACK=gowin_pack
+
+echo -e "Using tool: $(which $YOSYS)"
+echo -e "Using tool: $(which $NEXTPNR)"
+echo -e "Using tool: $(which $PACK)"
 
 
 if [ ! -e output ]; then
@@ -82,7 +85,7 @@ fi
 if [ $run_pack -ne 0 ]; then
 	echo -e "Generating bit stream for $target_fpga: $pnr_file -> $pack_file..."
 	if ! ${PACK} -d $target_fpga \
-		-o $pack_file --cst $pack_cst_file $pnr_file --png $pack_png_file
+		-o $pack_file --cst $pack_cst_file $pnr_file #--png $pack_png_file
 	then
 		echo -e "Bit stream generation failed!"
 		exit -1

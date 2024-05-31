@@ -44,7 +44,7 @@ int main(int argc, char **argv)
 		("module,m", args::value<decltype(cfg.entity_name)>(&cfg.entity_name),
 			("module name, default: " + cfg.entity_name).c_str())
 		("type,t", args::value<decltype(rom_type)>(&rom_type),
-			("output type (c/vhdl/sv/v/v-opt), default: " + rom_type).c_str())
+			("output type (c/vhdl/vhdl-opt/sv/v/v-opt), default: " + rom_type).c_str())
 		("sync,s", args::value<decltype(cfg.sync)>(&cfg.sync),
 			("produce synchronous design, default: " + std::to_string(cfg.sync)).c_str())
 		("first_char,c", args::value<decltype(cfg.ch_first)>(&cfg.ch_first),
@@ -129,12 +129,12 @@ int main(int argc, char **argv)
 	{
 		ok = create_font_vhdl(fontbits, cfg);
 	}
-	/*else if(boost::to_lower_copy(rom_type) == "vhdl-opt")
+	else if(boost::to_lower_copy(rom_type) == "vhdl-opt" || boost::to_lower_copy(rom_type) == "vhdl_opt")
 	{
 		ok = optimise_font(cfg, fontbits);
 		if(ok)
 			ok = create_font_vhdl_opt(fontbits, cfg);
-	}*/
+	}
 	else if(boost::to_lower_copy(rom_type) == "sv")
 	{
 		ok = create_font_sv(fontbits, cfg);
@@ -143,7 +143,7 @@ int main(int argc, char **argv)
 	{
 		ok = create_font_v(fontbits, cfg);
 	}
-	else if(boost::to_lower_copy(rom_type) == "v-opt")
+	else if(boost::to_lower_copy(rom_type) == "v-opt" || boost::to_lower_copy(rom_type) == "v_opt")
 	{
 		ok = optimise_font(cfg, fontbits);
 		if(ok)

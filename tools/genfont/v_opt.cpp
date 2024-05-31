@@ -6,23 +6,12 @@
  */
 
 #include "genfont.h"
+#include "helpers.h"
 
 #include <iostream>
 #include <fstream>
 #include <iomanip>
 
-
-template<class t_bitset>
-static bool is_zero(t_bitset& bitset)
-{
-	for(std::size_t i = 0; i < bitset.size(); ++i)
-	{
-		if(bitset[i])
-			return false;
-	}
-
-	return true;
-}
 
 
 /**
@@ -81,8 +70,6 @@ bool create_font_v_opt(const FontBits& fontbits, const Config& cfg)
 			<< "\n";
 	}
 
-	//(*ostr) << "\n reg [0 : CHAR_WIDTH - 1] chars [0 : NUM_CHARS*CHAR_HEIGHT - 1];\n\n";
-
 
 	const unsigned int char_idx_bits = std::ceil(std::log2(cfg.ch_last - cfg.ch_first));
 	const unsigned int line_idx_bits = std::ceil(std::log2((cfg.ch_last - cfg.ch_first) * cfg.target_height));
@@ -122,8 +109,8 @@ bool create_font_v_opt(const FontBits& fontbits, const Config& cfg)
 		(*ostr) << "\t\t";
 		for(std::size_t idx = 0; idx < line_addrs.size(); ++idx)
 		{
-			const auto& line_idx = line_addrs[idx];
-			(*ostr) << line_idx_bits << "'h" << std::hex << line_idx << std::dec;
+			(*ostr) << line_idx_bits << "'h"
+				<< std::hex << line_addrs[idx] << std::dec;
 			if(idx < line_addrs.size() - 1)
 				(*ostr) << ", ";
 		}

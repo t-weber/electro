@@ -11,7 +11,7 @@
 
 #include <string>
 #include <vector>
-#include <unordered_map>
+#include <map>
 
 #include <boost/dynamic_bitset.hpp>
 
@@ -72,7 +72,7 @@ struct FontBits
 	std::vector<CharBits> charbits;
 
 	using t_addrs = std::vector<std::size_t>;
-	using t_linesmap = std::unordered_map<CharBits::t_bits, t_addrs>;
+	using t_linesmap = std::map<CharBits::t_bits, t_addrs>;
 	t_linesmap lines_opt;
 };
 
@@ -93,7 +93,7 @@ extern bool create_font_c(const FontBits& fontbits, const Config& cfg);
 
 // output a vhdl file
 extern bool create_font_vhdl(const FontBits& fontbits, const Config& cfg);
-//extern bool create_font_vhdl_opt(const FontBits& fontbits, const Config& cfg);
+extern bool create_font_vhdl_opt(const FontBits& fontbits, const Config& cfg);
 
 // output an sv file
 extern bool create_font_sv(const FontBits& fontbits, const Config& cfg);

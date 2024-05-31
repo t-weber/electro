@@ -14,43 +14,10 @@
  */
 
 #include "genfont.h"
+#include "helpers.h"
 
 #include <iostream>
 #include <algorithm>
-
-
-
-template<class t_bitset>
-static void reverse_bitset(t_bitset& bitset)
-{
-	std::size_t N = bitset.size();
-	t_bitset bitset_cpy = bitset;
-
-	for(std::size_t i = 0; i < N; ++i)
-		bitset[N - i - 1] = bitset_cpy[i];
-}
-
-
-
-template<class t_bitset>
-static t_bitset unite_bitsets(const std::vector<t_bitset>& bitsets)
-{
-	std::size_t N = 0;
-	for(const t_bitset& bitset : bitsets)
-		N += bitset.size();
-
-	t_bitset bitset_new{N, 0};
-	std::size_t cur_idx = 0;
-
-	for(const t_bitset& bitset : bitsets)
-	{
-		for(std::size_t idx = 0; idx < bitset.size(); ++idx)
-			bitset_new[cur_idx + idx] = bitset[idx];
-		cur_idx += bitset.size();
-	}
-
-	return bitset_new;
-}
 
 
 
@@ -251,12 +218,10 @@ bool optimise_font(const Config& cfg, FontBits& fontbits)
 		}
 
 		// iterate lines
-		for(std::size_t line = 0; line < charbits.lines.size(); ++line)
+		for(std::size_t line = 0; line < height; ++line)
 		{
-			const CharBits::t_line& linebits_vec = charbits.lines[line];
-
-			CharBits::t_bits linebits = unite_bitsets(linebits_vec);
-			std::size_t line_addr = charidx*height + line;
+			CharBits::t_bits linebits = unite_bitsets(charbits.lines[line]);
+			const std::size_t line_addr = charidx*height + line;
 
 			if(auto iter = fontbits.lines_opt.find(linebits); iter != fontbits.lines_opt.end())
 			{
@@ -266,7 +231,8 @@ bool optimise_font(const Config& cfg, FontBits& fontbits)
 			else
 			{
 				// new entry
-				fontbits.lines_opt.emplace(std::make_pair(linebits, FontBits::t_addrs{line_addr}));
+				fontbits.lines_opt.emplace(std::make_pair(linebits,
+					FontBits::t_addrs{line_addr}));
 			}
 		}
 	}
