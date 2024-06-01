@@ -85,14 +85,18 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 	if(cfg.local_params)
 	{
 		(*ostr) << "\n"
-			<< "localparam FIRST_CHAR    = " << cfg.ch_first << ";\n"
-			<< "localparam LAST_CHAR     = " << cfg.ch_last << ";\n"
-			<< "localparam NUM_CHARS     = LAST_CHAR - FIRST_CHAR"
+			<< "localparam FIRST_CHAR       = " << cfg.ch_first << ";\n"
+			<< "localparam LAST_CHAR        = " << cfg.ch_last << ";\n"
+			<< "localparam NUM_CHARS        = LAST_CHAR - FIRST_CHAR"
 				<< " /* " << num_chars << " */;\n"
-			<< "localparam CHAR_WIDTH    = " << char_width << ";\n"
-			<< "localparam CHAR_HEIGHT   = " << cfg.target_height << ";\n"
-			<< "localparam CHAR_IDX_BITS = $clog2(NUM_CHARS)"
+			<< "localparam CHAR_WIDTH       = " << char_width << ";\n"
+			<< "localparam CHAR_HEIGHT      = " << cfg.target_height << ";\n"
+			<< "localparam CHAR_IDX_BITS    = $clog2(NUM_CHARS)"
 				<< " /* " << char_idx_bits << " */;\n"
+			<< "localparam CHAR_WIDTH_BITS  = $clog2(CHAR_WIDTH)"
+				<< " /* " << char_width_bits << " */;\n"
+			<< "localparam CHAR_HEIGHT_BITS = $clog2(CHAR_HEIGHT)"
+				<< " /* " << char_height_bits << " */;\n"
 			<< "\n";
 	}
 
@@ -115,8 +119,6 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 			<< ", top: " << charbits.top
 			<< "\n";
 
-		//(*ostr) << "\t{\n";
-
 		// iterate lines
 		for(std::size_t line = 0; line < charbits.lines.size(); ++line)
 		{
@@ -132,75 +134,50 @@ bool create_font_sv(const FontBits& fontbits, const Config& cfg)
 				(*ostr) << ",";
 			(*ostr) << "\n";
 		}
-
-		/*(*ostr) << "\t}";
-		if(charbits.ch_num < cfg.ch_last - 1)
-			(*ostr) << ",";
-		(*ostr) << "\n";*/
 	}
 
-	(*ostr) << "\n};\n";
+	(*ostr) << "\n};\n\n";
 
 
-	(*ostr) << "\nwire [CHAR_IDX_BITS - 1 : 0] char_idx;\n"
-		<< "logic [0 : CHAR_WIDTH - 1] line;\n"
+	(*ostr) << "\nwire [CHAR_IDX_BITS - 1 : 0]    char_idx;\n"
+		<< "wire [CHAR_WIDTH_BITS - 1 : 0]  xpix;\n"
+		<< "wire [CHAR_HEIGHT_BITS - 1 : 0] ypix;\n";
+
+	(*ostr) << "\nlogic [0 : CHAR_WIDTH - 1] line;\n"
 		<< "logic pixel;\n";
 
 	if(cfg.check_bounds)
 	{
 		(*ostr) << "\nassign char_idx = in_char >= FIRST_CHAR && in_char < LAST_CHAR\n"
 			<< "\t? CHAR_IDX_BITS'(in_char - FIRST_CHAR)\n"
-			<< "\t: CHAR_IDX_BITS'(1'b0);\n\n";
+			<< "\t: CHAR_IDX_BITS'(1'b0);\n";
+
+		(*ostr) << "\nassign xpix = in_x < CHAR_WIDTH ? in_x : CHAR_WIDTH_BITS'(1'b0);\n";
+		(*ostr) << "assign ypix = in_y < CHAR_HEIGHT ? in_y : CHAR_HEIGHT_BITS'(1'b0);\n\n";
 	}
 	else
 	{
-		(*ostr) << "\nassign char_idx = CHAR_IDX_BITS'(in_char - FIRST_CHAR);\n";
+		(*ostr) << "\nassign char_idx = CHAR_IDX_BITS'(in_char - FIRST_CHAR);"
+			<< "\nassign xpix = in_x;"
+			<< "\nassign ypix = in_y;\n";
 	}
 
-        (*ostr) << "assign out_line = line;\n";
-        (*ostr) << "assign out_pixel = pixel;\n";
+        (*ostr) << "\nassign out_line = line;\n";
+        (*ostr) << "assign out_pixel = pixel;\n\n";
 
-	if(cfg.check_bounds)
+	if(cfg.sync)
 	{
-		if(cfg.sync)
-		{
-			(*ostr) << "\n\nalways_ff@(posedge in_clk) begin\n";
+		(*ostr) << "\nalways_ff@(posedge in_clk) begin\n";
 
-			(*ostr) << "\tline <= chars[char_idx*CHAR_HEIGHT + in_y];\n";
+		(*ostr) << "\tline <= chars[char_idx*CHAR_HEIGHT + ypix];\n"
+			<< "\tpixel <= line[xpix];\n";
 
-			(*ostr) << "\n\tpixel <= in_x < CHAR_WIDTH\n"
-				<< "\t\t? line[in_x]\n"
-				<< "\t\t: 1'b0;\n";
-
-			(*ostr) << "end\n";
-		}
-		else
-		{
-			(*ostr) << "\nassign line = char_idx < NUM_CHARS\n"
-				<< "\t? chars[char_idx*CHAR_HEIGHT + in_y]\n"
-				<< "\t: CHAR_WIDTH'(1'b0);\n";
-
-			(*ostr) << "\nassign pixel = in_x < CHAR_WIDTH\n"
-				<< "\t? line[in_x]\n"
-				<< "\t: 1'b0;\n";
-		}
+		(*ostr) << "end\n";
 	}
 	else
 	{
-		if(cfg.sync)
-		{
-			(*ostr) << "\n\nalways_ff@(posedge in_clk) begin\n";
-
-			(*ostr) << "\tline <= chars[char_idx*CHAR_HEIGHT + in_y];\n"
-				<< "\tpixel <= line[in_x];\n";
-
-			(*ostr) << "end\n";
-		}
-		else
-		{
-			(*ostr) << "assign line = chars[char_idx*CHAR_HEIGHT + in_y];\n"
-				<< "assign pixel = line[in_x];\n";
-		}
+		(*ostr) << "\nassign line = chars[char_idx*CHAR_HEIGHT + ypix];\n"
+			<< "assign pixel = line[xpix];\n";
 	}
 
 	(*ostr) << "\nendmodule" << std::endl;

@@ -29,14 +29,21 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 
 	(*ostr) << "module " << cfg.entity_name << "\n";
 
-	int char_width = cfg.target_pitch * static_cast<int>(cfg.pitch_bits);
+	const int char_width = cfg.target_pitch * static_cast<int>(cfg.pitch_bits);
+	const unsigned int num_chars = cfg.ch_last - cfg.ch_first;
+
+	const unsigned int char_idx_bits = std::ceil(std::log2(num_chars));
+	const unsigned int char_last_bits = std::ceil(std::log2(cfg.ch_last));
+	const unsigned int char_width_bits = std::ceil(std::log2(char_width));
+	const unsigned int char_height_bits = std::ceil(std::log2(cfg.target_height));
+
 	if(!cfg.local_params)
 	{
 		(*ostr) << "#(\n"
-			<< "\tparameter FIRST_CHAR  = " << cfg.ch_first << ",\n"
+			<< "\tparameter [" << char_last_bits - 1 << " : 0]"
+			<< " FIRST_CHAR = " << cfg.ch_first << ",\n"
 			<< "\tparameter LAST_CHAR   = " << cfg.ch_last << ",\n"
-			<< "\tparameter NUM_CHARS   = " << cfg.ch_last - cfg.ch_first << ",\n"
-			<< "\tparameter CHAR_PITCH  = " << cfg.target_pitch << ",\n"
+			<< "\tparameter NUM_CHARS   = " << num_chars << ",\n"
 			<< "\tparameter CHAR_WIDTH  = " << char_width << ",\n"
 			<< "\tparameter CHAR_HEIGHT = " << cfg.target_height << "\n"
 			<< ")\n";
@@ -45,12 +52,12 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 	(*ostr) << "(\n";
 	if(cfg.sync)
 		(*ostr) << "\tinput wire in_clk,\n";
-	(*ostr) << "\tinput wire [" << std::ceil(std::log2(cfg.ch_last)) - 1 << " : 0] in_char,\n"
-		<< "\tinput wire [" << std::ceil(std::log2(char_width)) - 1 << " : 0] in_x,\n"
-		<< "\tinput wire [" << std::ceil(std::log2(cfg.target_height)) - 1 << " : 0] in_y,\n";
+	(*ostr) << "\tinput wire [" << char_last_bits - 1 << " : 0] in_char,\n"
+		<< "\tinput wire [" << char_width_bits - 1 << " : 0] in_x,\n"
+		<< "\tinput wire [" << char_height_bits - 1 << " : 0] in_y,\n";
 
 	if(!cfg.local_params)
-		(*ostr) << "\n\toutput wire [0 : CHAR_WIDTH - 1] out_line,\n";
+		(*ostr) << "\n\toutput wire [0 : CHAR_WIDTH - 1'b1] out_line,\n";
 	else
 		(*ostr) << "\n\toutput wire [0 : " << char_width - 1 << "] out_line,\n";
 
@@ -60,10 +67,10 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 	if(cfg.local_params)
 	{
 		(*ostr) << "\n"
-			<< "localparam FIRST_CHAR  = " << cfg.ch_first << ";\n"
+			<< "localparam [" << char_last_bits - 1 << " : 0]"
+			<< " FIRST_CHAR = " << cfg.ch_first << ";\n"
 			<< "localparam LAST_CHAR   = " << cfg.ch_last << ";\n"
 			<< "localparam NUM_CHARS   = LAST_CHAR - FIRST_CHAR;\n"
-			<< "localparam CHAR_PITCH  = " << cfg.target_pitch << ";\n"
 			<< "localparam CHAR_WIDTH  = " << char_width << ";\n"
 			<< "localparam CHAR_HEIGHT = " << cfg.target_height << ";\n"
 			<< "\n";
@@ -73,7 +80,7 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 		(*ostr) << "\nreg ";
 	else
 		(*ostr) << "\nwire ";
-	(*ostr) << "[0 : CHAR_WIDTH - 1] chars [0 : NUM_CHARS*CHAR_HEIGHT - 1];\n\n";
+	(*ostr) << "[0 : CHAR_WIDTH - 1'b1] chars [0 : NUM_CHARS*CHAR_HEIGHT - 1'b1];\n\n";
 
 	if(cfg.sync)
 		(*ostr) << "\ninitial begin\n";
@@ -131,17 +138,18 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 	(*ostr) << "\n";
 
 
-	const unsigned int char_idx_bits = std::ceil(std::log2(cfg.ch_last - cfg.ch_first));
-	(*ostr) << "\nwire [" << char_idx_bits - 1 << " : 0] char_idx;\n";
+	(*ostr) << "\nwire [" << char_idx_bits - 1 << " : 0]    char_idx;\n"
+		<< "wire [" << char_width_bits - 1 << " : 0]  xpix;\n"
+		<< "wire [" << char_height_bits - 1 << " : 0] ypix;\n\n";
 
 	if(cfg.sync)
 	{
-		(*ostr) << "reg [0 : CHAR_WIDTH - 1] line;\n";
+		(*ostr) << "reg [0 : CHAR_WIDTH - 1'b1] line;\n";
 		(*ostr) << "reg pixel;\n";
 	}
 	else
 	{
-		(*ostr) << "wire [0 : CHAR_WIDTH - 1] line;\n";
+		(*ostr) << "wire [0 : CHAR_WIDTH - 1'b1] line;\n";
 		(*ostr) << "wire pixel;\n";
 	}
 
@@ -149,59 +157,36 @@ bool create_font_v(const FontBits& fontbits, const Config& cfg)
 	{
 		(*ostr) << "\nassign char_idx = in_char >= FIRST_CHAR && in_char < LAST_CHAR\n"
 			<< "\t? in_char - FIRST_CHAR\n"
-			<< "\t: " << char_idx_bits << "'b0;\n\n";
+			<< "\t: " << char_idx_bits << "'b0;\n";
+
+		(*ostr) << "\nassign xpix = in_x < CHAR_WIDTH ? in_x : "
+			<< char_width_bits << "'b0;\n";
+		(*ostr) << "assign ypix = in_y < CHAR_HEIGHT ? in_y : "
+			<< char_height_bits << "'b0;\n";
 	}
 	else
 	{
-		(*ostr) << "\nassign char_idx = in_char - FIRST_CHAR;\n";
+		(*ostr) << "\nassign char_idx = in_char - FIRST_CHAR;"
+			<< "\nassign xpix = in_x;"
+			<< "\nassign ypix = in_y;\n";
 	}
 
-	(*ostr) << "assign out_line = line;\n";
+	(*ostr) << "\nassign out_line = line;\n";
 	(*ostr) << "assign out_pixel = pixel;\n";
 
-	if(cfg.check_bounds)
+	if(cfg.sync)
 	{
-		if(cfg.sync)
-		{
-			(*ostr) << "\n\nalways@(posedge in_clk) begin\n";
+		(*ostr) << "\n\nalways@(posedge in_clk) begin\n";
 
-			(*ostr) << "\tline <= char_idx < NUM_CHARS\n"
-				<< "\t\t? chars[char_idx*CHAR_HEIGHT + in_y]\n"
-				<< "\t\t: " << char_width << "'b0;\n";
+		(*ostr) << "\tline <= chars[char_idx*CHAR_HEIGHT + ypix];\n"
+			<< "\tpixel <= line[xpix];\n";
 
-			(*ostr) << "\n\tpixel <= in_x < CHAR_WIDTH && char_idx < NUM_CHARS\n"
-				<< "\t\t? chars[char_idx*CHAR_HEIGHT + in_y][in_x]\n"
-				<< "\t\t: 1'b0;\n";
-
-			(*ostr) << "end\n";
-		}
-		else
-		{
-			(*ostr) << "\nassign line = char_idx < NUM_CHARS\n"
-				<< "\t? chars[char_idx*CHAR_HEIGHT + in_y]\n"
-				<< "\t: " << char_width << "'b0;\n";
-
-			(*ostr) << "\nassign pixel = in_x < CHAR_WIDTH\n"
-				<< "\t? line[in_x]\n"
-				<< "\t: 1'b0;\n";
-		}
+		(*ostr) << "end\n";
 	}
 	else
 	{
-		if(cfg.sync)
-		{
-			(*ostr) << "\n\nalways@(posedge in_clk) begin\n";
-
-			(*ostr) << "\tline <= chars[char_idx*CHAR_HEIGHT + in_y];\n"
-				<< "\tpixel <= chars[char_idx*CHAR_HEIGHT + in_y][in_x];\n";
-
-			(*ostr) << "end\n";
-		}
-		else
-		{
-			(*ostr) << "\nassign line = chars[char_idx*CHAR_HEIGHT + in_y];\n"
-				<< "assign pixel = line[in_x];\n";
-		}
+		(*ostr) << "\nassign line = chars[char_idx*CHAR_HEIGHT + ypix];\n"
+			<< "assign pixel = line[xpix];\n";
 	}
 
 	(*ostr) << "\nendmodule" << std::endl;

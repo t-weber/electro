@@ -43,8 +43,6 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 		(*ostr) << "\tgeneric(\n"
 			<< "\t\tconstant FIRST_CHAR  : natural := " << cfg.ch_first << ";\n"
 			<< "\t\tconstant LAST_CHAR   : natural := " << cfg.ch_last << ";\n"
-			//<< "\t\tconstant NUM_CHARS   : natural := " << cfg.ch_last - cfg.ch_first << ";\n"
-			//<< "\t\tconstant CHAR_PITCH  : natural := " << cfg.target_pitch << ";\n"
 			<< "\t\tconstant CHAR_WIDTH  : natural := " << char_width << ";\n"
 			<< "\t\tconstant CHAR_HEIGHT : natural := " << cfg.target_height << "\n"
 			<< "\t);\n\n";
@@ -73,8 +71,6 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 		(*ostr) << "\n"
 			<< "\tconstant FIRST_CHAR  : natural := " << cfg.ch_first << ";\n"
 			<< "\tconstant LAST_CHAR   : natural := " << cfg.ch_last << ";\n"
-			//<< "\tconstant NUM_CHARS   : natural := LAST_CHAR - FIRST_CHAR;\n"
-			//<< "\tconstant CHAR_PITCH  : natural := " << cfg.target_pitch << ";\n"
 			<< "\tconstant CHAR_WIDTH  : natural := " << char_width << ";\n"
 			<< "\tconstant CHAR_HEIGHT : natural := " << cfg.target_height << ";\n"
 			<< "\n";
@@ -84,10 +80,10 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 		<< "\ttype t_char is array(0 to CHAR_HEIGHT - 1) of t_line;\n"
 		<< "\ttype t_chars is array(FIRST_CHAR to LAST_CHAR - 1) of t_char;\n";
 
-	(*ostr) << "\n\tconstant chars : t_chars :=\n\t(";
-
 
 	// iterate characters
+	(*ostr) << "\n\tconstant chars : t_chars :=\n\t(";
+
 	for(const CharBits& charbits : fontbits.charbits)
 	{
 		(*ostr) << "\n\t\t-- char #" << charbits.ch_num
@@ -126,56 +122,52 @@ bool create_font_vhdl(const FontBits& fontbits, const Config& cfg)
 		(*ostr) << "\n";
 	}
 
+	(*ostr) << "\n\t);\n\n";
 
-	(*ostr) << "\n\t);\n";
 
-	(*ostr) << "\nbegin\n";
+	(*ostr) << "\tsignal ch   : std_logic_vector(" << char_last_bits - 1 << " downto 0);\n"
+		<< "\tsignal xpix : std_logic_vector(" << char_width_bits - 1 << " downto 0);\n"
+		<< "\tsignal ypix : std_logic_vector(" << char_height_bits - 1 << " downto 0);\n";
 
-	if(cfg.sync)
+	(*ostr) << "\nbegin\n\n";
+
+	if(cfg.check_bounds)
 	{
-		(*ostr) << "\tprocess(in_clk) begin\n";
-		(*ostr) << "\t\tif rising_edge(in_clk) then\n";
+		(*ostr) << "\tch <= in_char"
+			<< " when to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR\n"
+			<< "\t\telse nat_to_logvec(FIRST_CHAR, ch'length);\n\n";
 
-		if(cfg.check_bounds)
-		{
-			(*ostr) << "\t\t\t\tif to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR then\n"
-				<< "\t\t\t\t\tout_line <= chars(to_int(in_char))(to_int(in_y));\n"
-				<< "\t\t\t\telse\n"
-				<< "\t\t\t\t\tout_line <= (others => '0');\n"
-				<< "\t\t\t\tend if;\n";
+		(*ostr) << "\txpix <= in_x"
+			<< " when to_int(in_x) < CHAR_WIDTH\n"
+			<< "\t\telse (others => '0');\n\n";
 
-			(*ostr) << "\t\t\t\tif to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR then\n"
-				<< "\t\t\t\t\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x));\n"
-				<< "\t\t\t\telse\n"
-				<< "\t\t\t\t\tout_pixel <= '0';\n"
-				<< "\t\t\t\tend if;\n";
-		}
-		else
-		{
-			(*ostr) << "\t\t\t\tout_line <= chars(to_int(in_char))(to_int(in_y));\n";
-			(*ostr) << "\t\t\t\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x));\n";
-		}
-
-		(*ostr) << "\t\tend if;\n";
-		(*ostr) << "\tend process;\n";
+		(*ostr) << "\typix <= in_y"
+			<< " when to_int(in_y) < CHAR_HEIGHT\n"
+			<< "\t\telse (others => '0');\n\n";
 	}
 	else
 	{
-		if(cfg.check_bounds)
-		{
-			(*ostr) << "\n\tout_line <= chars(to_int(in_char))(to_int(in_y))\n"
-				<< "\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR\n"
-				<< "\t\telse (others => '0');\n";
+		(*ostr) << "\tch <= in_char;\n"
+			<< "\txpix <= in_x;\n"
+			<< "\typix <= in_y;\n\n";
+	}
 
-			(*ostr) << "\n\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x))\n"
-				<< "\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR\n"
-				<< "\t\telse '0';\n";
-		}
-		else
-		{
-			(*ostr) << "\n\tout_line <= chars(to_int(in_char))(to_int(in_y));\n";
-			(*ostr) << "\tout_pixel <= chars(to_int(in_char))(to_int(in_y))(to_int(in_x));\n";
-		}
+
+	if(cfg.sync)
+	{
+		(*ostr) << "\tprocess(in_clk) begin\n"
+			<< "\t\tif rising_edge(in_clk) then\n";
+
+		(*ostr) << "\t\t\tout_line <= chars(to_int(ch))(to_int(ypix));\n"
+			<< "\t\t\tout_pixel <= chars(to_int(ch))(to_int(ypix))(to_int(xpix));\n";
+
+		(*ostr) << "\t\tend if;\n"
+			<< "\tend process;\n";
+	}
+	else
+	{
+		(*ostr) << "\n\tout_line <= chars(to_int(ch))(to_int(ypix));\n"
+			<< "\tout_pixel <= chars(to_int(ch))(to_int(ypix))(to_int(xpix));\n";
 	}
 
 	(*ostr) << "\nend architecture;" << std::endl;

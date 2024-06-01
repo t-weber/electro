@@ -52,7 +52,7 @@ bool create_font_v_opt(const FontBits& fontbits, const Config& cfg)
 		<< "\tinput wire [" << std::ceil(std::log2(cfg.target_height)) - 1 << " : 0] in_y,\n";
 
 	if(!cfg.local_params)
-		(*ostr) << "\n\toutput wire [0 : CHAR_WIDTH - 1] out_line,\n";
+		(*ostr) << "\n\toutput wire [0 : CHAR_WIDTH - 1'b1] out_line,\n";
 	else
 		(*ostr) << "\n\toutput wire [0 : " << char_width - 1 << "] out_line,\n";
 
@@ -77,7 +77,7 @@ bool create_font_v_opt(const FontBits& fontbits, const Config& cfg)
 	(*ostr) << "\nwire [" << char_idx_bits - 1 << " : 0] char_idx;\n";
 	(*ostr) << "wire [" << line_idx_bits - 1 << " : 0] line_idx;\n";
 
-	(*ostr) << "reg [0 : CHAR_WIDTH - 1] line;\n";
+	(*ostr) << "reg [0 : CHAR_WIDTH - 1'b1] line;\n";
 	(*ostr) << "reg pixel;\n";
 
 	if(cfg.check_bounds)
