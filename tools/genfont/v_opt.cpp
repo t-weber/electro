@@ -73,27 +73,38 @@ bool create_font_v_opt(const FontBits& fontbits, const Config& cfg)
 
 	const unsigned int char_idx_bits = std::ceil(std::log2(cfg.ch_last - cfg.ch_first));
 	const unsigned int line_idx_bits = std::ceil(std::log2((cfg.ch_last - cfg.ch_first) * cfg.target_height));
+	const unsigned int col_idx_bits = std::ceil(std::log2(char_width));
 
-	(*ostr) << "\nwire [" << char_idx_bits - 1 << " : 0] char_idx;\n";
-	(*ostr) << "wire [" << line_idx_bits - 1 << " : 0] line_idx;\n";
+	(*ostr) << "\nwire [" << char_idx_bits - 1 << " : 0] char_idx;\n"
+		<< "wire [" << line_idx_bits - 1 << " : 0] line_idx;\n"
+		<< "wire [" << col_idx_bits - 1 << " : 0] col_idx;\n";
 
-	(*ostr) << "reg [0 : CHAR_WIDTH - 1'b1] line;\n";
-	(*ostr) << "reg pixel;\n";
+	(*ostr) << "\nreg [0 : CHAR_WIDTH - 1'b1] line;\n"
+		<< "reg pixel;\n";
 
 	if(cfg.check_bounds)
 	{
 		(*ostr) << "\nassign char_idx = in_char >= FIRST_CHAR && in_char < LAST_CHAR\n"
 			<< "\t? in_char - FIRST_CHAR\n"
-			<< "\t: " << char_idx_bits << "'b0;\n\n";
+			<< "\t: " << char_idx_bits << "'b0;\n";
+
+		(*ostr) << "\nassign line_idx = in_y < CHAR_HEIGHT\n"
+			<< "\t? char_idx*CHAR_HEIGHT + in_y\n"
+			<< "\t: " << line_idx_bits << "'b0;\n";
+
+		(*ostr) << "\nassign col_idx = in_x < CHAR_WIDTH\n"
+			<< "\t? in_x\n"
+			<< "\t: " << col_idx_bits << "'b0;\n\n";
 	}
 	else
 	{
-		(*ostr) << "\nassign char_idx = in_char - FIRST_CHAR;\n";
+		(*ostr) << "\nassign char_idx = in_char - FIRST_CHAR;\n"
+			<< "assign line_idx = char_idx*CHAR_HEIGHT + in_y;\n"
+			<< "assign col_idx = in_x;\n\n";
 	}
 
-	(*ostr) << "assign line_idx = char_idx*CHAR_HEIGHT + in_y;\n";
-	(*ostr) << "assign out_line = line;\n";
-	(*ostr) << "assign out_pixel = pixel;\n";
+	(*ostr) << "assign out_line = line;\n"
+		<< "assign out_pixel = pixel;\n";
 
 	// create process
 	(*ostr) << "\n\nalways@(posedge in_clk) begin\n";
@@ -118,19 +129,10 @@ bool create_font_v_opt(const FontBits& fontbits, const Config& cfg)
 		(*ostr) << ": line <= " << char_width << "'b" << line << ";\n";
 	}
 
-	(*ostr) << "\t\tdefault: line <= " << char_width << "'b0;\n";
-	(*ostr) << "\tendcase\n";
+	(*ostr) << "\t\tdefault: line <= " << char_width << "'b0;\n"
+		<< "\tendcase\n";
 
-	if(cfg.check_bounds)
-	{
-		(*ostr) << "\n\tpixel <= in_x < CHAR_WIDTH\n"
-			<< "\t\t? line[in_x]\n"
-			<< "\t\t: 1'b0;\n";
-	}
-	else
-	{
-		(*ostr) << "\n\tpixel <= line[in_x];\n";
-	}
+	(*ostr) << "\n\tpixel <= line[col_idx];\n";
 
 	(*ostr) << "end\n";
 

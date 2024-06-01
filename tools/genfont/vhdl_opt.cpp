@@ -79,9 +79,11 @@ bool create_font_vhdl_opt(const FontBits& fontbits, const Config& cfg)
 
 	const unsigned int char_idx_bits = std::ceil(std::log2(cfg.ch_last - cfg.ch_first));
 	const unsigned int line_idx_bits = std::ceil(std::log2((cfg.ch_last - cfg.ch_first) * cfg.target_height));
+	const unsigned int col_idx_bits = std::ceil(std::log2(char_width));
 
-	(*ostr) << "\tsignal char_idx : std_logic_vector(" << char_idx_bits - 1 << " downto 0);\n";
-	(*ostr) << "\tsignal line_idx : std_logic_vector(" << line_idx_bits - 1 << " downto 0);\n";
+	(*ostr) << "\tsignal char_idx : std_logic_vector(" << char_idx_bits - 1 << " downto 0);\n"
+		<< "\tsignal line_idx : std_logic_vector(" << line_idx_bits - 1 << " downto 0);\n"
+		<< "\tsignal col_idx  : std_logic_vector(" << col_idx_bits - 1 << " downto 0);\n";
 
 	(*ostr) << "\tsignal line : std_logic_vector(0 to " << char_width - 1 << ") := (others => '0');\n";
 
@@ -92,12 +94,27 @@ bool create_font_vhdl_opt(const FontBits& fontbits, const Config& cfg)
 	(*ostr) << "\tchar_idx <= int_to_logvec(to_int(in_char) - FIRST_CHAR, " << char_idx_bits << ")";
 	if(cfg.check_bounds)
 	{
-		(*ostr) << "\n\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR";
-		(*ostr) << "\n\t\telse (others => '0')";
+		(*ostr) << "\n\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR"
+			<< "\n\t\telse (others => '0')";
 	}
 	(*ostr) << ";\n";
 
-	(*ostr) << "\tline_idx <= int_to_logvec(to_int(char_idx)*CHAR_HEIGHT + to_int(in_y), " << line_idx_bits << ");\n\n";
+	(*ostr) << "\tline_idx <= int_to_logvec(to_int(char_idx)*CHAR_HEIGHT + to_int(in_y), "
+		<< line_idx_bits << ")";
+	if(cfg.check_bounds)
+	{
+		(*ostr) << "\n\t\twhen to_int(in_y) < CHAR_HEIGHT"
+			<< "\n\t\telse (others => '0')";
+	}
+	(*ostr) << ";\n";
+
+	(*ostr) << "\tcol_idx <= int_to_logvec(to_int(in_x), " << col_idx_bits << ")";
+	if(cfg.check_bounds)
+	{
+		(*ostr) << "\n\t\twhen to_int(in_x) < CHAR_WIDTH"
+			<< "\n\t\telse (others => '0')";
+	}
+	(*ostr) << ";\n\n";
 
 
 	if(cfg.sync)
@@ -125,28 +142,14 @@ bool create_font_vhdl_opt(const FontBits& fontbits, const Config& cfg)
 			(*ostr) << " =>\n\t\t\t\t\tline <= \"" << line << "\";\n";
 		}
 
-		(*ostr) << "\t\t\t\twhen others =>\n\t\t\t\t\tline <= (others => '0');\n";
-		(*ostr) << "\t\t\tend case;\n\n";
+		(*ostr) << "\t\t\t\twhen others =>\n\t\t\t\t\tline <= (others => '0');\n"
+			<< "\t\t\tend case;\n\n";
 
+		(*ostr) << "\t\t\tout_line <= line;\n"
+			<< "\t\t\tout_pixel <= line(to_int(col_idx));\n";
 
-		(*ostr) << "\t\t\tout_line <= line;\n";
-
-		if(cfg.check_bounds)
-		{
-			(*ostr) << "\t\t\tif to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR then\n"
-				<< "\t\t\t\tout_pixel <= line(to_int(in_x));\n"
-				<< "\t\t\telse\n"
-				<< "\t\t\t\tout_pixel <= '0';\n"
-				<< "\t\t\tend if;\n";
-		}
-		else
-		{
-			(*ostr) << "\t\t\tout_pixel <= line(to_int(in_x));\n";
-		}
-
-
-		(*ostr) << "\t\tend if;\n";
-		(*ostr) << "\tend process;\n";
+		(*ostr) << "\t\tend if;\n"
+			<< "\tend process;\n";
 	}
 	else
 	{
@@ -173,19 +176,8 @@ bool create_font_vhdl_opt(const FontBits& fontbits, const Config& cfg)
 
 		(*ostr) << "\t\t(others => '0') when others;\n\n";
 
-
-		(*ostr) << "\tout_line <= line;\n";
-
-		if(cfg.check_bounds)
-		{
-			(*ostr) << "\tout_pixel <= line(to_int(in_x))\n"
-				<< "\t\twhen to_int(in_char) >= FIRST_CHAR and to_int(in_char) < LAST_CHAR\n"
-				<< "\t\telse '0';\n";
-		}
-		else
-		{
-			(*ostr) << "\tout_pixel <= line(to_int(in_x));\n";
-		}
+		(*ostr) << "\tout_line <= line;\n"
+			<< "\tout_pixel <= line(to_int(col_idx));\n";
 	}
 
 
