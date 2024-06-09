@@ -14,8 +14,10 @@ module serial_async_tx
 	parameter MAIN_CLK_HZ   = 50_000_000,
 	parameter SERIAL_CLK_HZ = 9_600,
 
-	// inactive signal
-	parameter SERIAL_DATA_INACTIVE = 1'b1,
+	// constants
+	parameter SERIAL_INACTIVE = 1'b1,
+	parameter SERIAL_START    = 1'b0,
+	parameter SERIAL_STOP     = 1'b1,
 
 	// word lengths
 	parameter BITS         = 8,
@@ -67,7 +69,7 @@ generate
 	if(LOWBIT_FIRST == 1'b1) begin
 		assign actual_bit_ctr = bit_ctr;
 	end else begin
-		assign actual_bit_ctr = $size(bit_ctr)'(BITS - bit_ctr - 1);
+		assign actual_bit_ctr = $size(bit_ctr)'(BITS - bit_ctr - 1'b1);
 	end
 endgenerate
 
@@ -78,10 +80,10 @@ reg [BITS-1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
 // serial output (FPGA -> IC)
 assign out_serial =
 	tx_state == TransmitData ? parallel_fromfpga[actual_bit_ctr] :
-	tx_state == TransmitStart ? 1'b0 :
+	tx_state == TransmitStart ? SERIAL_START :
 	tx_state == TransmitParity ? 1'b0 :  // TODO
-	tx_state == TransmitStop ? 1'b1 :
-	SERIAL_DATA_INACTIVE;
+	tx_state == TransmitStop ? SERIAL_STOP :
+	SERIAL_INACTIVE;
 
 
 reg request_word = 1'b0;
@@ -155,6 +157,15 @@ function t_tx_state state_after_ready(bit enable);
 endfunction
 
 
+function t_tx_state state_after_start(bit enable);
+	if(enable == 1'b1) begin
+		state_after_start = TransmitData;
+	end else begin
+		state_after_start = Ready;
+	end
+endfunction
+
+
 function t_tx_state state_after_stop(bit enable);
 	if(enable == 1'b1) begin
 		if(START_BITS != 1'b0)
@@ -191,7 +202,7 @@ always_comb begin
 	request_word = 1'b0;
 
 `ifdef __IN_SIMULATION__
-	$display("** serial: %s, bit %d. **", tx_state.name(), actual_bit_ctr);
+	$display("** serial_async_tx: %s, bit %d. **", tx_state.name(), actual_bit_ctr);
 `endif
 
 	// state machine
@@ -207,7 +218,7 @@ always_comb begin
 			// end of word?
 			if(bit_ctr == START_BITS - 1) begin
 				next_bit_ctr = 0;
-				next_tx_state = TransmitData;
+				next_tx_state = state_after_start(in_enable);
 			end else begin
 				next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1'b1);
 			end
