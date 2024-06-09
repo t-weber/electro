@@ -12,8 +12,8 @@ module serial
 	parameter SERIAL_CLK_HZ = 10_000,
 
 	// inactive signals
-	parameter SERIAL_CLK_INACTIVE  = 1'b1,
-	parameter SERIAL_DATA_INACTIVE = 1'b1,
+	parameter SERIAL_CLK_INACTIVE     = 1'b1,
+	parameter SERIAL_DATA_INACTIVE    = 1'b1,
 	parameter KEEP_SERIAL_CLK_RUNNING = 1'b0,
 
 	// word length
@@ -52,7 +52,7 @@ module serial
 
 
 // serial states and next-state logic
-typedef enum bit [1 : 0] { Ready, Transmit } t_serial_state;
+typedef enum bit [0 : 0] { Ready, Transmit } t_serial_state;
 t_serial_state serial_state      = Ready;
 t_serial_state next_serial_state = Ready;
 
@@ -85,7 +85,7 @@ assign out_serial = serial_state == Transmit
 reg [BITS-1 : 0] parallel_tofpga = 0, next_parallel_tofpga = 0;
 assign out_parallel = parallel_tofpga;
 
-reg request_word = 0;
+reg request_word = 1'b0;
 assign out_next_word = request_word;
 
 
@@ -185,7 +185,7 @@ always_comb begin
 	// defaults
 	next_serial_state = serial_state;
 	next_bit_ctr = bit_ctr;
-	request_word = 0;
+	request_word = 1'b0;
 
 `ifdef __IN_SIMULATION__
 	$display("** serial: %s, bit %d. **", serial_state.name(), actual_bit_ctr);
@@ -205,7 +205,7 @@ always_comb begin
 		Transmit: begin
 			// end of word?
 			if(bit_ctr == BITS - 1) begin
-				request_word = 1;
+				request_word = 1'b1;
 				next_bit_ctr = 0;
 			end else begin
 				next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1'b1);
