@@ -1,7 +1,7 @@
 /**
  * serial controller testbench
  * @author Tobias Weber
- * @date 1-may-2024
+ * @date 8-june-2024
  * @license see 'LICENSE' file
  *
  * iverilog -g2012 -D __IN_SIMULATION__ -o serial_async_tx_tb ../comm/serial_async_tx.sv ../clock/clkgen.sv serial_async_tx_tb.sv
