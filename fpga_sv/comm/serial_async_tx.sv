@@ -108,7 +108,7 @@ assign out_ready = tx_state == Ready;
 
 
 // state and data flip-flops for serial clock
-always_ff@(negedge serial_clk, posedge in_rst) begin
+always_ff@(posedge serial_clk, posedge in_rst) begin
 	// reset
 	if(in_rst == 1'b1) begin
 		// state register

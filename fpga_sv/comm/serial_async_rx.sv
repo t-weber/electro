@@ -59,9 +59,10 @@ typedef enum bit [3 : 0]
 	ReceiveParity, ReceiveStop
 } t_rx_state;
 
-t_rx_state rx_state         = Ready;
-t_rx_state next_rx_state    = Ready;
-t_rx_state state_after_wait = Ready;
+t_rx_state rx_state              = Ready;
+t_rx_state next_rx_state         = Ready;
+t_rx_state state_after_wait      = Ready;
+t_rx_state next_state_after_wait = Ready;
 
 
 // clock multipe counter
@@ -112,8 +113,9 @@ assign out_ready = rx_state == Ready;
 always_ff@(posedge serial_clk, posedge in_rst) begin
 	// reset
 	if(in_rst == 1'b1) begin
-		// state register
+		// state registers
 		rx_state <= Ready;
+		state_after_wait = Ready;
 
 		// counter registers
 		bit_ctr <= 0;
@@ -125,8 +127,9 @@ always_ff@(posedge serial_clk, posedge in_rst) begin
 
 	// clock
 	else begin
-		// state register
+		// state registers
 		rx_state <= next_rx_state;
+		state_after_wait = next_state_after_wait;
 
 		// counter registers
 		bit_ctr <= next_bit_ctr;
@@ -194,6 +197,7 @@ always_comb begin
 	next_bit_ctr = bit_ctr;
 	next_multi_ctr = multi_ctr;
 	next_parallel_tofpga = parallel_tofpga;
+	next_state_after_wait = state_after_wait;
 	request_word = 1'b0;
 
 `ifdef __IN_SIMULATION__
@@ -231,7 +235,7 @@ always_comb begin
 				// at the middle of the last start bit?
 				if(multi_ctr == CLK_MULTIPLE / 2 //- 1'b1
 					&& bit_ctr == START_BITS - 1'b1) begin
-					state_after_wait = state_after_start(in_enable);
+					next_state_after_wait = state_after_start(in_enable);
 					next_rx_state = WaitCycle;
 					next_bit_ctr = 0;
 					next_multi_ctr = 0;
@@ -262,16 +266,16 @@ always_comb begin
 				// end of word?
 				if(bit_ctr == START_BITS - 1'b1) begin
 					next_bit_ctr = 0;
-					state_after_wait = state_after_start(in_enable);
+					next_state_after_wait = state_after_start(in_enable);
 				end else begin
 					next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1'b1);
-					state_after_wait = ReceiveStart;
+					next_state_after_wait = ReceiveStart;
 				end
 			end else begin
 				if(in_enable == 1'b0)
 					next_rx_state = Ready;
 				else
-					state_after_wait = ReceiveStart;
+					next_state_after_wait = ReceiveStart;
 			end
 		end
 
@@ -284,10 +288,10 @@ always_comb begin
 			if(bit_ctr == BITS - 1'b1) begin
 				request_word = 1'b1;
 				next_bit_ctr = 0;
-				state_after_wait = state_after_receive(in_enable);
+				next_state_after_wait = state_after_receive(in_enable);
 			end else begin
 				next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1'b1);
-				state_after_wait = ReceiveData;
+				next_state_after_wait = ReceiveData;
 			end
 		end
 
@@ -299,10 +303,10 @@ always_comb begin
 			// end of word?
 			if(bit_ctr == PARITY_BITS - 1'b1) begin
 				next_bit_ctr = 0;
-				state_after_wait = state_after_parity(in_enable);
+				next_state_after_wait = state_after_parity(in_enable);
 			end else begin
 				next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1'b1);
-				state_after_wait = ReceiveParity;
+				next_state_after_wait = ReceiveParity;
 			end
 		end
 
@@ -314,10 +318,10 @@ always_comb begin
 				// end of word?
 				if(bit_ctr == STOP_BITS - 1'b1) begin
 					next_bit_ctr = 0;
-					state_after_wait = state_after_stop(in_enable);
+					next_state_after_wait = state_after_stop(in_enable);
 				end else begin
 					next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1'b1);
-					state_after_wait = ReceiveStop;
+					next_state_after_wait = ReceiveStop;
 				end
 			end else begin
 				next_rx_state = Error;
