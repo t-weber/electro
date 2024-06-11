@@ -58,11 +58,11 @@ logic [BITS - 1 : 0] char_rx;
 logic enabled_tx, enabled_rx;
 logic ready_tx, ready_rx;
 
-logic word_finished_tx, last_word_finished_tx = 1'b1;
-logic word_finished_rx, last_word_finished_rx = 1'b1;
+logic word_finished_tx, last_word_finished_tx = 1'b0;
+logic word_finished_rx, last_word_finished_rx = 1'b0;
 
-wire bus_cycle_tx = word_finished_tx && ~last_word_finished_tx;
-wire bus_cycle_rx = word_finished_rx && ~last_word_finished_rx;
+wire bus_cycle_tx_next = ~word_finished_tx && last_word_finished_tx;
+wire bus_cycle_rx_next = ~word_finished_rx && last_word_finished_rx;
 
 // instantiate serial transmitter
 serial_async_tx #(
@@ -82,7 +82,8 @@ serial_tx_mod(
 serial_async_rx #(
 	.BITS(BITS), .LOWBIT_FIRST(1'b1),
 	.MAIN_CLK_HZ(MAIN_CLK),
-	.SERIAL_CLK_HZ(SERIAL_CLK)
+	.SERIAL_CLK_HZ(SERIAL_CLK),
+	.CLK_MULTIPLE(16), .CLK_TOCHECK(8)
 )
 serial_rx_mod(
 	.in_clk(clk27), .in_rst(rst),
@@ -106,8 +107,8 @@ always_ff@(posedge clk27, posedge rst) begin
 	if(rst == 1'b1) begin
 		state <= Idle;
 		char_tx <= 0;
-		last_word_finished_tx <= 1'b1;
-		last_word_finished_rx <= 1'b1;
+		last_word_finished_tx <= 1'b0;
+		last_word_finished_rx <= 1'b0;
 	end
 
 	// clock
@@ -132,7 +133,7 @@ always_comb begin
 	case(state)
 		Idle: begin
 			enabled_rx = 1'b1;
-			if(bus_cycle_rx == 1'b1)
+			if(bus_cycle_rx_next == 1'b1)
 				next_state = ReceiveData;
 		end
 
@@ -144,7 +145,7 @@ always_comb begin
 
 		TransmitData: begin
 			enabled_tx = 1'b1;
-			if(bus_cycle_tx == 1'b1)
+			if(bus_cycle_tx_next == 1'b1)
 				next_state = Idle;
 		end
 	endcase

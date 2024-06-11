@@ -16,6 +16,8 @@ module serial_async_rx
 
 	// sampling clock multiplier
 	parameter CLK_MULTIPLE  = 8,
+	// portion of multiplier to check for the last start bit
+	parameter CLK_TOCHECK   = 6,
 
 	// constants
 	parameter SERIAL_START  = 1'b0,
@@ -53,7 +55,8 @@ module serial_async_rx
 // serial states and next-state logic
 typedef enum bit [3 : 0]
 {
-	Ready, Error, WaitCycle,
+	Ready, Error,
+	WaitCycle, WaitCycleAfterCheck,
 	ReceiveData,
 	ReceiveStartCont, ReceiveStart,
 	ReceiveParity, ReceiveStop
@@ -110,7 +113,7 @@ assign out_ready = rx_state == Ready;
 
 
 // state and data flip-flops for serial clock
-always_ff@(posedge serial_clk, posedge in_rst) begin
+always_ff@(negedge serial_clk, posedge in_rst) begin
 	// reset
 	if(in_rst == 1'b1) begin
 		// state registers
@@ -228,15 +231,28 @@ always_comb begin
 			end
 		end
 
+
+		// move to the middle of the next serial signal
+		WaitCycleAfterCheck: begin
+			// also count in the clock cycle lost by changing states
+			if(multi_ctr == CLK_MULTIPLE - (CLK_TOCHECK - CLK_MULTIPLE/2) - 2'd2) begin
+				next_rx_state = state_after_wait;
+				next_multi_ctr = 0;
+			end else begin
+				next_multi_ctr = $size(multi_ctr)'(multi_ctr + 1'b1);
+			end
+		end
+
+
 		// receive start bit(s), probing at every cycle
-		// until the middle of the last start bit
+		// until the given fraction of the last start bit
 		ReceiveStartCont: begin
 			if(in_serial == SERIAL_START) begin
-				// at the middle of the last start bit?
-				if(multi_ctr == CLK_MULTIPLE / 2 //- 1'b1
+				// at the given fraction of the last start bit?
+				if(multi_ctr == CLK_TOCHECK - 1'b1
 					&& bit_ctr == START_BITS - 1'b1) begin
 					next_state_after_wait = state_after_start(in_enable);
-					next_rx_state = WaitCycle;
+					next_rx_state = WaitCycleAfterCheck;
 					next_bit_ctr = 0;
 					next_multi_ctr = 0;
 
@@ -261,6 +277,7 @@ always_comb begin
 		// receive start bit(s), only probing once
 		ReceiveStart: begin
 			next_rx_state = WaitCycle;
+			next_multi_ctr = 0;
 
 			if(in_serial == SERIAL_START) begin
 				// end of word?
@@ -283,6 +300,7 @@ always_comb begin
 		ReceiveData: begin
 			next_parallel_tofpga[actual_bit_ctr] = in_serial;
 			next_rx_state = WaitCycle;
+			next_multi_ctr = 0;
 
 			// end of word?
 			if(bit_ctr == BITS - 1'b1) begin
@@ -299,6 +317,7 @@ always_comb begin
 		ReceiveParity: begin
 			// TODO: test parity
 			next_rx_state = WaitCycle;
+			next_multi_ctr = 0;
 
 			// end of word?
 			if(bit_ctr == PARITY_BITS - 1'b1) begin
@@ -314,6 +333,7 @@ always_comb begin
 		ReceiveStop: begin
 			if(in_serial == SERIAL_STOP) begin
 				next_rx_state = WaitCycle;
+				next_multi_ctr = 0;
 
 				// end of word?
 				if(bit_ctr == STOP_BITS - 1'b1) begin
