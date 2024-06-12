@@ -28,7 +28,9 @@ module serial_async_rx
 	parameter START_BITS    = 1,
 	parameter PARITY_BITS   = 0,
 	parameter STOP_BITS     = 1,
-	parameter LOWBIT_FIRST  = 1'b1
+
+	parameter LOWBIT_FIRST  = 1'b1,
+	parameter EVEN_PARITY   = 1'b1
  )
 (
 	// main clock and reset
@@ -52,6 +54,7 @@ module serial_async_rx
 );
 
 
+// ----------------------------------------------------------------------------
 // serial states and next-state logic
 typedef enum bit [3 : 0]
 {
@@ -66,34 +69,46 @@ t_rx_state rx_state              = Ready;
 t_rx_state next_rx_state         = Ready;
 t_rx_state state_after_wait      = Ready;
 t_rx_state next_state_after_wait = Ready;
+// ----------------------------------------------------------------------------
 
 
+// ----------------------------------------------------------------------------
 // clock multipe counter
 reg [$clog2(CLK_MULTIPLE) : 0] multi_ctr = 0, next_multi_ctr = 0;
 
 // bit counter
-reg [$clog2(BITS) : 0] bit_ctr = 0, next_bit_ctr = 0;
+reg [$clog2(BITS) : 0] bit_ctr = 0, next_bit_ctr = 0, last_bit_ctr = 0;
 
 // bit counter with correct ordering
-wire [$clog2(BITS) : 0] actual_bit_ctr;
+wire [$clog2(BITS) : 0] actual_bit_ctr, last_actual_bit_ctr;
 
 generate
 	if(LOWBIT_FIRST == 1'b1) begin
 		assign actual_bit_ctr = bit_ctr;
+		assign last_actual_bit_ctr = last_bit_ctr;
 	end else begin
 		assign actual_bit_ctr = $size(bit_ctr)'(BITS - bit_ctr - 1'b1);
+		assign last_actual_bit_ctr = $size(last_bit_ctr)'(BITS - last_bit_ctr - 1'b1);
 	end
 endgenerate
+// ----------------------------------------------------------------------------
 
 
+// ----------------------------------------------------------------------------
 // parallel output buffer (IC -> FPGA)
 reg [BITS-1 : 0] parallel_tofpga = 0, next_parallel_tofpga = 0;
 assign out_parallel = parallel_tofpga;
 
 reg request_word = 1'b0;
+reg parity, next_parity = 1'b0;
+reg calc_parity, next_calc_parity = 1'b0;
+
 assign out_next_word = request_word;
+assign out_ready = rx_state == Ready;
+// ----------------------------------------------------------------------------
 
 
+// ----------------------------------------------------------------------------
 // generate serial clock
 reg serial_clk;
 
@@ -107,43 +122,11 @@ clkgen #(
 		.in_clk(in_clk), .in_rst(in_rst),
 		.out_clk(serial_clk)
 	);
+// ----------------------------------------------------------------------------
 
 
-assign out_ready = rx_state == Ready;
-
-
-// state and data flip-flops for serial clock
-always_ff@(negedge serial_clk, posedge in_rst) begin
-	// reset
-	if(in_rst == 1'b1) begin
-		// state registers
-		rx_state <= Ready;
-		state_after_wait = Ready;
-
-		// counter registers
-		bit_ctr <= 0;
-		multi_ctr <= 0;
-
-		// parallel data register
-		parallel_tofpga <= 0;
-	end
-
-	// clock
-	else begin
-		// state registers
-		rx_state <= next_rx_state;
-		state_after_wait = next_state_after_wait;
-
-		// counter registers
-		bit_ctr <= next_bit_ctr;
-		multi_ctr <= next_multi_ctr;
-
-		// parallel data registers
-		parallel_tofpga <= next_parallel_tofpga;
-	end
-end
-
-
+// ----------------------------------------------------------------------------
+// next-state determination
 function t_rx_state state_after_ready(bit enable);
 	if(enable == 1'b0) begin
 		state_after_ready = Ready;
@@ -191,6 +174,49 @@ function t_rx_state state_after_receive(bit enable);
 	else
 		state_after_receive = state_after_parity(enable);
 endfunction
+// ----------------------------------------------------------------------------
+
+
+// state and data flip-flops for serial clock
+always_ff@(negedge serial_clk, posedge in_rst) begin
+	// reset
+	if(in_rst == 1'b1) begin
+		// state registers
+		rx_state <= Ready;
+		state_after_wait = Ready;
+
+		// counter registers
+		bit_ctr <= 0;
+		last_bit_ctr <= 0;
+		multi_ctr <= 0;
+
+		// parity
+		parity <= EVEN_PARITY == 1'b1 ? 1'b0 : 1'b1;
+		calc_parity <= 1'b0;
+
+		// parallel data register
+		parallel_tofpga <= 0;
+	end
+
+	// clock
+	else begin
+		// state registers
+		rx_state <= next_rx_state;
+		state_after_wait = next_state_after_wait;
+
+		// counter registers
+		last_bit_ctr <= bit_ctr;
+		bit_ctr <= next_bit_ctr;
+		multi_ctr <= next_multi_ctr;
+
+		// parity
+		parity <= next_parity;
+		calc_parity <= next_calc_parity;
+
+		// parallel data registers
+		parallel_tofpga <= next_parallel_tofpga;
+	end
+end
 
 
 // state combinatorics
@@ -199,13 +225,12 @@ always_comb begin
 	next_rx_state = rx_state;
 	next_bit_ctr = bit_ctr;
 	next_multi_ctr = multi_ctr;
-	next_parallel_tofpga = parallel_tofpga;
 	next_state_after_wait = state_after_wait;
 	request_word = 1'b0;
 
 `ifdef __IN_SIMULATION__
-	$display("**** serial_async_rx: %s, bit %d, clk_mult %d. ****",
-		rx_state.name(), actual_bit_ctr, multi_ctr);
+	$display("**** serial_async_rx: %s, bit %d, clk_mult %d, parity %b. ****",
+		rx_state.name(), actual_bit_ctr, multi_ctr, parity);
 `endif
 
 	// state machine
@@ -298,7 +323,6 @@ always_comb begin
 
 		// serialise parallel data
 		ReceiveData: begin
-			next_parallel_tofpga[actual_bit_ctr] = in_serial;
 			next_rx_state = WaitCycle;
 			next_multi_ctr = 0;
 
@@ -315,8 +339,10 @@ always_comb begin
 
 		// receive parity bit(s)
 		ReceiveParity: begin
-			// TODO: test parity
-			next_rx_state = WaitCycle;
+			if(parity != in_serial)
+				next_rx_state = Error;
+			else
+				next_rx_state = WaitCycle;
 			next_multi_ctr = 0;
 
 			// end of word?
@@ -352,6 +378,39 @@ always_comb begin
 			next_rx_state = Ready;
 		end
 	endcase
+end
+
+
+// input serial data to register (IC -> FPGA)
+always_comb begin
+	next_parallel_tofpga = parallel_tofpga;
+
+	if(rx_state == ReceiveData) begin
+		next_parallel_tofpga[actual_bit_ctr] = in_serial;
+	end
+end
+
+
+// parity calculation
+always_comb begin
+	next_parity = parity;
+	next_calc_parity = calc_parity;
+
+	case(rx_state)
+		Ready, ReceiveStartCont, ReceiveStart, ReceiveStop: begin
+			next_parity = EVEN_PARITY == 1'b1 ? 1'b0 : 1'b1;
+		end
+
+		ReceiveData: begin
+			next_calc_parity = 1'b1;
+		end
+	endcase
+
+	if(calc_parity == 1'b1) begin
+		if(parallel_tofpga[last_actual_bit_ctr] == 1'b1)
+			next_parity = ~parity;
+		next_calc_parity = 1'b0;
+	end
 end
 
 

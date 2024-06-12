@@ -14,9 +14,10 @@
 
 module serial_async_rx_tb;
 	localparam VERBOSE    = 1'b1;
-	localparam ITERS      = 750;
+	localparam ITERS      = 800;
 
 	localparam BITS       = 8;
+	localparam PARITY     = 1;
 	localparam MAIN_CLK   = 80_000;
 	localparam SERIAL_CLK = 10_000;
 
@@ -47,6 +48,7 @@ module serial_async_rx_tb;
 	// instantiate serial transmitter
 	serial_async_tx #(
 		.BITS(BITS), .LOWBIT_FIRST(1'b1),
+		.PARITY_BITS(PARITY),
 		.MAIN_CLK_HZ(MAIN_CLK),
 		.SERIAL_CLK_HZ(SERIAL_CLK)
 	)
@@ -60,6 +62,7 @@ module serial_async_rx_tb;
 	// instantiate serial receiver
 	serial_async_rx #(
 		.BITS(BITS), .LOWBIT_FIRST(1'b1),
+		.PARITY_BITS(PARITY),
 		.MAIN_CLK_HZ(MAIN_CLK),
 		.SERIAL_CLK_HZ(SERIAL_CLK)
 	)

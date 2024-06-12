@@ -83,7 +83,7 @@ serial_async_rx #(
 	.BITS(BITS), .LOWBIT_FIRST(1'b1),
 	.MAIN_CLK_HZ(MAIN_CLK),
 	.SERIAL_CLK_HZ(SERIAL_CLK),
-	.CLK_MULTIPLE(16), .CLK_TOCHECK(8)
+	.CLK_MULTIPLE(16), .CLK_TOCHECK(14)
 )
 serial_rx_mod(
 	.in_clk(clk27), .in_rst(rst),

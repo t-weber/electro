@@ -24,7 +24,9 @@ module serial_async_tx
 	parameter START_BITS   = 1,
 	parameter PARITY_BITS  = 0,
 	parameter STOP_BITS    = 1,
-	parameter LOWBIT_FIRST = 1'b1
+
+	parameter LOWBIT_FIRST = 1'b1,
+	parameter EVEN_PARITY  = 1'b1
  )
 (
 	// main clock and reset
@@ -48,6 +50,7 @@ module serial_async_tx
 );
 
 
+// ----------------------------------------------------------------------------
 // serial states and next-state logic
 typedef enum bit [2 : 0]
 {
@@ -57,8 +60,10 @@ typedef enum bit [2 : 0]
 
 t_tx_state tx_state      = Ready;
 t_tx_state next_tx_state = Ready;
+// ----------------------------------------------------------------------------
 
 
+// ----------------------------------------------------------------------------
 // bit counter
 reg [$clog2(BITS) : 0] bit_ctr = 0, next_bit_ctr = 0;
 
@@ -72,8 +77,19 @@ generate
 		assign actual_bit_ctr = $size(bit_ctr)'(BITS - bit_ctr - 1'b1);
 	end
 endgenerate
+// ----------------------------------------------------------------------------
 
 
+// ----------------------------------------------------------------------------
+reg request_word = 1'b0;
+reg parity, next_parity = 1'b0;
+
+assign out_next_word = request_word;
+assign out_ready = tx_state == Ready;
+// ----------------------------------------------------------------------------
+
+
+// ----------------------------------------------------------------------------
 // parallel input buffer (FPGA -> IC)
 reg [BITS-1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
 
@@ -81,70 +97,30 @@ reg [BITS-1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
 assign out_serial =
 	tx_state == TransmitData ? parallel_fromfpga[actual_bit_ctr] :
 	tx_state == TransmitStart ? SERIAL_START :
-	tx_state == TransmitParity ? 1'b0 :  // TODO
+	tx_state == TransmitParity ? parity :
 	tx_state == TransmitStop ? SERIAL_STOP :
 	SERIAL_INACTIVE;
+// ----------------------------------------------------------------------------
 
 
-reg request_word = 1'b0;
-assign out_next_word = request_word;
-
-
+// ----------------------------------------------------------------------------
 // generate serial clock
 reg serial_clk;
 
 clkgen #(
 		.MAIN_CLK_HZ(MAIN_CLK_HZ), .CLK_HZ(SERIAL_CLK_HZ),
-		.CLK_INIT(1)
+		.CLK_INIT(1'b1)
 	)
 	serial_clk_mod
 	(
 		.in_clk(in_clk), .in_rst(in_rst),
 		.out_clk(serial_clk)
 	);
+// ----------------------------------------------------------------------------
 
 
-assign out_ready = tx_state == Ready;
-
-
-// state and data flip-flops for serial clock
-always_ff@(posedge serial_clk, posedge in_rst) begin
-	// reset
-	if(in_rst == 1'b1) begin
-		// state register
-		tx_state <= Ready;
-
-		// counter register
-		bit_ctr <= 0;
-
-		// parallel data register
-		parallel_fromfpga <= 0;
-	end
-
-	// clock
-	else begin
-		// state register
-		tx_state <= next_tx_state;
-
-		// counter register
-		bit_ctr <= next_bit_ctr;
-
-		// parallel data registers
-		parallel_fromfpga <= next_parallel_fromfpga;
-	end
-end
-
-
-// input parallel data to register (FPGA -> IC)
-always@(in_enable, in_parallel, parallel_fromfpga) begin
-	next_parallel_fromfpga <= parallel_fromfpga;
-
-	if(in_enable == 1'b1) begin
-		next_parallel_fromfpga <= in_parallel;
-	end
-end
-
-
+// ----------------------------------------------------------------------------
+// next-state determination
 function t_tx_state state_after_ready(bit enable);
 	if(enable == 1'b0) begin
 		state_after_ready = Ready;
@@ -192,6 +168,41 @@ function t_tx_state state_after_transmit(bit enable);
 	else
 		state_after_transmit = state_after_parity(enable);
 endfunction
+// ----------------------------------------------------------------------------
+
+
+// state and data flip-flops for serial clock
+always_ff@(posedge serial_clk, posedge in_rst) begin
+	// reset
+	if(in_rst == 1'b1) begin
+		// state register
+		tx_state <= Ready;
+
+		// counter register
+		bit_ctr <= 0;
+
+		// parity
+		parity <= EVEN_PARITY == 1'b1 ? 1'b0 : 1'b1;
+
+		// parallel data register
+		parallel_fromfpga <= 0;
+	end
+
+	// clock
+	else begin
+		// state register
+		tx_state <= next_tx_state;
+
+		// counter register
+		bit_ctr <= next_bit_ctr;
+
+		// parity
+		parity <= next_parity;
+
+		// parallel data registers
+		parallel_fromfpga <= next_parallel_fromfpga;
+	end
+end
 
 
 // state combinatorics
@@ -202,7 +213,8 @@ always_comb begin
 	request_word = 1'b0;
 
 `ifdef __IN_SIMULATION__
-	$display("** serial_async_tx: %s, bit %d. **", tx_state.name(), actual_bit_ctr);
+	$display("** serial_async_tx: %s, bit %d, parity %b. **",
+		tx_state.name(), actual_bit_ctr, parity);
 `endif
 
 	// state machine
@@ -260,6 +272,33 @@ always_comb begin
 
 		default: begin
 			next_tx_state = Ready;
+		end
+	endcase
+end
+
+
+// input parallel data to register (FPGA -> IC)
+always_comb begin
+	next_parallel_fromfpga = parallel_fromfpga;
+
+	if(in_enable == 1'b1) begin
+		next_parallel_fromfpga = in_parallel;
+	end
+end
+
+
+// parity calculation
+always_comb begin
+	next_parity = parity;
+
+	case(tx_state)
+		Ready, TransmitStart, TransmitStop: begin
+			next_parity = EVEN_PARITY == 1'b1 ? 1'b0 : 1'b1;
+		end
+
+		TransmitData: begin
+			if(parallel_fromfpga[actual_bit_ctr] == 1'b1)
+				next_parity = ~parity;
 		end
 	endcase
 end
