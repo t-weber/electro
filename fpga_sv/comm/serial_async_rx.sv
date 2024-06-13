@@ -43,8 +43,10 @@ module serial_async_rx
 	// enable reception
 	input wire in_enable,
 
-	// next word ready
+	// request next word (one cycle before current word is finished)
 	output wire out_next_word,
+	// current word finished
+	output wire out_word_finished,
 
 	// serial input data (IC -> FPGA)
 	input wire in_serial,
@@ -99,11 +101,12 @@ endgenerate
 reg [BITS-1 : 0] parallel_tofpga = 0, next_parallel_tofpga = 0;
 assign out_parallel = parallel_tofpga;
 
-reg request_word = 1'b0;
+reg request_word, next_request_word = 1'b0;
 reg parity, next_parity = 1'b0;
 reg calc_parity, next_calc_parity = 1'b0;
 
-assign out_next_word = request_word;
+assign out_word_finished = request_word;
+assign out_next_word = next_request_word;
 assign out_ready = rx_state == Ready;
 // ----------------------------------------------------------------------------
 
@@ -196,6 +199,8 @@ always_ff@(negedge serial_clk, posedge in_rst) begin
 
 		// parallel data register
 		parallel_tofpga <= 0;
+
+		request_word <= 1'b0;
 	end
 
 	// clock
@@ -215,6 +220,8 @@ always_ff@(negedge serial_clk, posedge in_rst) begin
 
 		// parallel data registers
 		parallel_tofpga <= next_parallel_tofpga;
+
+		request_word <= next_request_word;
 	end
 end
 
@@ -226,7 +233,7 @@ always_comb begin
 	next_bit_ctr = bit_ctr;
 	next_multi_ctr = multi_ctr;
 	next_state_after_wait = state_after_wait;
-	request_word = 1'b0;
+	next_request_word = 1'b0;
 
 `ifdef __IN_SIMULATION__
 	$display("**** serial_async_rx: %s, bit %d, clk_mult %d, parity %b. ****",
@@ -328,7 +335,7 @@ always_comb begin
 
 			// end of word?
 			if(bit_ctr == BITS - 1'b1) begin
-				request_word = 1'b1;
+				next_request_word = 1'b1;
 				next_bit_ctr = 0;
 				next_state_after_wait = state_after_receive(in_enable);
 			end else begin

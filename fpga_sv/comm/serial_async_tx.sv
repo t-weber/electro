@@ -39,8 +39,10 @@ module serial_async_tx
 	// enable transmission
 	input wire in_enable,
 
-	// request next word
+	// request next word (one cycle before current word is finished)
 	output wire out_next_word,
+	// current word finished
+	output wire out_word_finished,
 
 	// parallel input data (FPGA -> IC)
 	input wire [BITS-1 : 0] in_parallel,
@@ -81,10 +83,12 @@ endgenerate
 
 
 // ----------------------------------------------------------------------------
-reg request_word = 1'b0;
+reg request_word, next_request_word = 1'b0;
 reg parity, next_parity = 1'b0;
 
-assign out_next_word = request_word;
+assign out_word_finished = request_word;
+assign out_next_word = next_request_word;
+
 assign out_ready = tx_state == Ready;
 // ----------------------------------------------------------------------------
 
@@ -186,6 +190,8 @@ always_ff@(posedge serial_clk, posedge in_rst) begin
 
 		// parallel data register
 		parallel_fromfpga <= 0;
+
+		request_word <= 1'b0;
 	end
 
 	// clock
@@ -201,6 +207,8 @@ always_ff@(posedge serial_clk, posedge in_rst) begin
 
 		// parallel data registers
 		parallel_fromfpga <= next_parallel_fromfpga;
+
+		request_word <= next_request_word;
 	end
 end
 
@@ -210,7 +218,7 @@ always_comb begin
 	// defaults
 	next_tx_state = tx_state;
 	next_bit_ctr = bit_ctr;
-	request_word = 1'b0;
+	next_request_word = 1'b0;
 
 `ifdef __IN_SIMULATION__
 	$display("** serial_async_tx: %s, bit %d, parity %b. **",
@@ -240,7 +248,7 @@ always_comb begin
 		TransmitData: begin
 			// end of word?
 			if(bit_ctr == BITS - 1) begin
-				request_word = 1'b1;
+				next_request_word = 1'b1;
 				next_bit_ctr = 0;
 				next_tx_state = state_after_transmit(in_enable);
 			end else begin

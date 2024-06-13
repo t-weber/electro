@@ -18,7 +18,7 @@ module serial
 
 	// word length
 	parameter BITS         = 8,
-	parameter LOWBIT_FIRST = 1
+	parameter LOWBIT_FIRST = 1'b1
  )
 (
 	// main clock and reset
@@ -51,12 +51,16 @@ module serial
 );
 
 
+// ----------------------------------------------------------------------------
 // serial states and next-state logic
 typedef enum bit [0 : 0] { Ready, Transmit } t_serial_state;
+
 t_serial_state serial_state      = Ready;
 t_serial_state next_serial_state = Ready;
+// ----------------------------------------------------------------------------
 
 
+// ----------------------------------------------------------------------------
 // bit counter
 reg [$clog2(BITS) : 0] bit_ctr = 0, next_bit_ctr = 0;
 
@@ -70,8 +74,10 @@ generate
 		assign actual_bit_ctr = $size(bit_ctr)'(BITS - bit_ctr - 1);
 	end
 endgenerate
+// ----------------------------------------------------------------------------
 
 
+// ----------------------------------------------------------------------------
 // parallel input buffer (FPGA -> IC)
 reg [BITS-1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
 
@@ -89,12 +95,17 @@ reg request_word = 1'b0;
 assign out_next_word = request_word;
 
 
+assign out_ready = serial_state == Ready;
+// ----------------------------------------------------------------------------
+
+
+// ----------------------------------------------------------------------------
 // generate serial clock
 reg serial_clk;
 
 clkgen #(
 		.MAIN_CLK_HZ(MAIN_CLK_HZ), .CLK_HZ(SERIAL_CLK_HZ),
-		.CLK_INIT(1)
+		.CLK_INIT(1'b1)
 	)
 	serial_clk_mod
 	(
@@ -119,15 +130,14 @@ end else begin
 	// stop serial clock when not transmitting
 	if(SERIAL_CLK_INACTIVE == 1'b1) begin
 		// inactive '1' and trigger on rising edge
-		assign out_clk = serial_state == Transmit ? serial_clk : 1;
+		assign out_clk = serial_state == Transmit ? serial_clk : 1'b1;
 	end else begin
 		// inactive '0' and trigger on falling edge
-		assign out_clk = serial_state == Transmit ? ~serial_clk : 0;
+		assign out_clk = serial_state == Transmit ? ~serial_clk : 1'b0;
 	end
 end
 endgenerate
-
-assign out_ready = serial_state == Ready;
+// ----------------------------------------------------------------------------
 
 
 // state and data flip-flops for serial clock
@@ -161,11 +171,11 @@ end
 
 
 // input parallel data to register (FPGA -> IC)
-always@(in_enable, in_parallel, parallel_fromfpga) begin
-	next_parallel_fromfpga <= parallel_fromfpga;
+always_comb begin
+	next_parallel_fromfpga = parallel_fromfpga;
 
 	if(in_enable == 1'b1) begin
-		next_parallel_fromfpga <= in_parallel;
+		next_parallel_fromfpga = in_parallel;
 	end
 end
 

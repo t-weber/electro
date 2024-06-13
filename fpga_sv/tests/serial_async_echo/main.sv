@@ -1,5 +1,5 @@
 /**
- * serial communication
+ * sends an echo via serial communication (test: screen /dev/tty.usbserial-142101 115200)
  * @author Tobias Weber
  * @date 8-june-2024
  * @license see 'LICENSE' file
@@ -75,6 +75,7 @@ serial_tx_mod(
 	.in_enable(enabled_tx), .out_ready(ready_tx),
 	.in_parallel(char_tx), .out_serial(serial_tx),
 	.out_next_word(word_finished_tx)
+	//.out_word_finished(word_finished_tx)
 );
 
 
@@ -88,8 +89,13 @@ serial_async_rx #(
 serial_rx_mod(
 	.in_clk(clk27), .in_rst(rst),
 	.in_enable(enabled_rx), .in_serial(serial_rx),
-	.out_parallel(char_rx), .out_next_word(word_finished_rx),
-	.out_ready(ready_rx)
+	.out_parallel(char_rx), .out_ready(ready_rx),
+
+	// need to be sure the word is finished now
+	// (and not only in the next cycle) because the
+	// main clock is faster than the serial clock
+	//.out_next_word(word_finished_rx),
+	.out_word_finished(word_finished_rx),
 );
 
 
