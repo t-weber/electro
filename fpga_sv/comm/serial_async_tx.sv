@@ -53,6 +53,22 @@ module serial_async_tx
 
 
 // ----------------------------------------------------------------------------
+// generate serial clock
+reg serial_clk;
+
+clkgen #(
+		.MAIN_CLK_HZ(MAIN_CLK_HZ), .CLK_HZ(SERIAL_CLK_HZ),
+		.CLK_INIT(1'b1)
+	)
+	serial_clk_mod
+	(
+		.in_clk(in_clk), .in_rst(in_rst),
+		.out_clk(serial_clk)
+	);
+// ----------------------------------------------------------------------------
+
+
+// ----------------------------------------------------------------------------
 // serial states and next-state logic
 typedef enum bit [2 : 0]
 {
@@ -104,22 +120,16 @@ assign out_serial =
 	tx_state == TransmitParity ? parity :
 	tx_state == TransmitStop ? SERIAL_STOP :
 	SERIAL_INACTIVE;
-// ----------------------------------------------------------------------------
 
 
-// ----------------------------------------------------------------------------
-// generate serial clock
-reg serial_clk;
+// input parallel data to register (FPGA -> IC)
+always_comb begin
+	next_parallel_fromfpga = parallel_fromfpga;
 
-clkgen #(
-		.MAIN_CLK_HZ(MAIN_CLK_HZ), .CLK_HZ(SERIAL_CLK_HZ),
-		.CLK_INIT(1'b1)
-	)
-	serial_clk_mod
-	(
-		.in_clk(in_clk), .in_rst(in_rst),
-		.out_clk(serial_clk)
-	);
+	if(in_enable == 1'b1) begin
+		next_parallel_fromfpga = in_parallel;
+	end
+end
 // ----------------------------------------------------------------------------
 
 
@@ -282,16 +292,6 @@ always_comb begin
 			next_tx_state = Ready;
 		end
 	endcase
-end
-
-
-// input parallel data to register (FPGA -> IC)
-always_comb begin
-	next_parallel_fromfpga = parallel_fromfpga;
-
-	if(in_enable == 1'b1) begin
-		next_parallel_fromfpga = in_parallel;
-	end
 end
 
 
