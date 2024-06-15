@@ -299,11 +299,6 @@ begin
 					next_bit_ctr <= bit_ctr + 1;
 				end if;
 
-				-- enable signal not active anymore?
-				--if in_enable = '0' then
-				--	next_tx_state <= Ready;
-				--end if;
-
 			-- transmit parity bit(s)
 			when TransmitParity =>
 				-- end of word?
