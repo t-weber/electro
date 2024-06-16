@@ -24,7 +24,7 @@ entity serial_async_tx is
 		constant SERIAL_START    : std_logic := '0';
 		constant SERIAL_STOP     : std_logic := '1';
 
-		-- word length
+		-- word lengths
 		constant BITS        : natural := 8;
 		constant START_BITS  : natural := 1;
 		constant PARITY_BITS : natural := 0;
@@ -103,11 +103,11 @@ architecture serial_async_tx_impl of serial_async_tx is
 			return Ready;
 		end if;
 
-		if START_BITS = 0 then
+		if START_BITS /= 0 then
 			return TransmitStart;
-		else
-			return TransmitData;
 		end if;
+
+		return TransmitData;
 	end function;
 
 	function state_after_start(enable : std_logic)
@@ -127,11 +127,11 @@ architecture serial_async_tx_impl of serial_async_tx is
 			return Ready;
 		end if;
 
-		if START_BITS = 0 then
+		if START_BITS /= 0 then
 			return TransmitStart;
-		else
-			return TransmitData;
 		end if;
+
+		return TransmitData;
 	end function;
 
 	function state_after_parity(enable : std_logic)
@@ -234,15 +234,10 @@ begin
 
 			request_word <= '0';
 
-			if EVEN_PARITY = '1' then
-				parity <= '0';
-			else
-				parity <= '1';
-			end if;
+			parity <= not EVEN_PARITY;
 
 		-- clock
-		elsif falling_edge(serial_clk) then
-		--elsif rising_edge(serial_clk) then
+		elsif rising_edge(serial_clk) then
 			-- state register
 			tx_state <= next_tx_state;
 
@@ -268,6 +263,9 @@ begin
 		next_tx_state <= tx_state;
 		next_bit_ctr <= bit_ctr;
 		next_request_word <= '0';
+
+		report "** serial_async_tx: " & t_tx_state'image(tx_state) &
+			", bit: " & integer'image(bit_ctr);
 
 		-- state machine
 		case tx_state is
@@ -331,19 +329,15 @@ begin
 	--
 	-- parity calculation
 	--
-	parity_comb : process(in_enable, tx_state, bit_ctr)
+	parity_comb : process(tx_state, parity,
+		parallel_fromfpga, actual_bit_ctr)
 	begin
 		-- defaults
 		next_parity <= parity;
 
 		case tx_state is
-			-- wait for enable signal
 			when Ready | TransmitStart | TransmitStop =>
-				if EVEN_PARITY = '1' then
-					parity <= '0';
-				else
-					parity <= '1';
-				end if;
+				next_parity <= not EVEN_PARITY;
 
 			when TransmitData =>
 				if parallel_fromfpga(actual_bit_ctr) = '1' then

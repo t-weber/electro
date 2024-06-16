@@ -263,7 +263,6 @@ always_comb begin
 			end
 		end
 
-
 		// move to the middle of the next serial signal
 		WaitCycleAfterCheck: begin
 			// also count in the clock cycle lost by changing states
@@ -274,7 +273,6 @@ always_comb begin
 				next_multi_ctr = $size(multi_ctr)'(multi_ctr + 1'b1);
 			end
 		end
-
 
 		// receive start bit(s), probing at every cycle
 		// until the given fraction of the last start bit
@@ -328,7 +326,7 @@ always_comb begin
 			end
 		end
 
-		// serialise parallel data
+		// receive serial data bits
 		ReceiveData: begin
 			next_rx_state = WaitCycle;
 			next_multi_ctr = 0;

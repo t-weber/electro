@@ -23,7 +23,7 @@ enum class OpCode : t_byte
 
 	// memory operations
 	PUSH     = 0x10,  // push direct integer data
-	WRMEM    = 0x11,  // write integer dato to memory
+	WRMEM    = 0x11,  // write integer data to memory
 	RDMEM    = 0x12,  // read integer data from memory
 	PUSH_R   = 0x1a,  // push direct real data
 	WRMEM_R  = 0x1b,  // write real data to memory
