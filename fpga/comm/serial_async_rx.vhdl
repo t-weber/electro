@@ -88,7 +88,7 @@ architecture serial_async_rx_impl of serial_async_rx is
 	signal actual_bit_ctr, last_actual_bit_ctr : natural range 0 to BITS-1 := 0;
 
 	-- clock multipe counter
-	signal multi_ctr, next_multi_ctr : natural range 0 to CLK_MULTIPLE-1 := 0;
+	signal multi_ctr, next_multi_ctr : natural range 0 to 3/2*CLK_MULTIPLE-1 := 0;
 	-----------------------------------------------------------------------
 
 	-----------------------------------------------------------------------
@@ -309,7 +309,7 @@ begin
 			-- move to the middle of the next serial signal
 			when WaitCycleAfterCheck =>
 				-- also count in the clock cycle lost by changing states
-				if multi_ctr = CLK_MULTIPLE - (CLK_TOCHECK - CLK_MULTIPLE/2) - 2 then
+				if multi_ctr = CLK_MULTIPLE - CLK_TOCHECK + CLK_MULTIPLE/2 - 2 then
 					next_rx_state <= state_after_wait;
 					next_multi_ctr <= 0;
 				else

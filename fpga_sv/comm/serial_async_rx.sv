@@ -76,7 +76,7 @@ t_rx_state next_state_after_wait = Ready;
 
 // ----------------------------------------------------------------------------
 // clock multipe counter
-reg [$clog2(CLK_MULTIPLE) : 0] multi_ctr = 0, next_multi_ctr = 0;
+reg [$clog2(3/2*CLK_MULTIPLE) : 0] multi_ctr = 0, next_multi_ctr = 0;
 
 // bit counter
 reg [$clog2(BITS) : 0] bit_ctr = 0, next_bit_ctr = 0, last_bit_ctr = 0;
