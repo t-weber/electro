@@ -16,17 +16,17 @@
 
 module serial_async_rx_tb;
 	localparam VERBOSE    = 1'b0;
-	localparam ITERS      = 5000;
 
-	localparam BITS       = 8;
-	localparam PARITY     = 1;
-	localparam MAIN_CLK   = 80_000;
-	localparam SERIAL_CLK = 10_000;
+	localparam BITS          = 8;
+	localparam PARITY        = 1;
+	localparam MAIN_CLK      = 80_000;
+	localparam SERIAL_TX_CLK = 10_000;
+	localparam SERIAL_RX_CLK = 10_000;
 
 	logic clk = 1'b0, rst = 1'b0;
 
 	// random data
-	localparam NUM_BYTES = 16;
+	localparam NUM_BYTES = 256;
 	logic [NUM_BYTES][BITS-1 : 0] data_tosend;
 
 	initial begin
@@ -60,7 +60,7 @@ module serial_async_rx_tb;
 		.BITS(BITS), .LOWBIT_FIRST(1'b1),
 		.PARITY_BITS(PARITY),
 		.MAIN_CLK_HZ(MAIN_CLK),
-		.SERIAL_CLK_HZ(SERIAL_CLK)
+		.SERIAL_CLK_HZ(SERIAL_TX_CLK)
 	)
 	serial_tx_mod(
 		.in_clk(clk), .in_rst(rst_tx),
@@ -153,7 +153,7 @@ module serial_async_rx_tb;
 		.BITS(BITS), .LOWBIT_FIRST(1'b1),
 		.PARITY_BITS(PARITY),
 		.MAIN_CLK_HZ(MAIN_CLK),
-		.SERIAL_CLK_HZ(SERIAL_CLK)
+		.SERIAL_CLK_HZ(SERIAL_RX_CLK)
 	)
 	serial_rx_mod(
 		.in_clk(clk), .in_rst(rst_rx),
@@ -220,13 +220,11 @@ module serial_async_rx_tb;
 
 	// --------------------------------------------------------------------
 	// run simulation
-	integer iter;
-
 	initial begin
 		$dumpfile("serial_async_rx_tb.vcd");
 		$dumpvars(0, serial_async_rx_tb);
 
-		for(iter = 0; iter < ITERS; ++iter) begin
+		while(state_tx != Idle) begin
 			#1;
 			clk = !clk;
 		end

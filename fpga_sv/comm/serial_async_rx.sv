@@ -30,7 +30,9 @@ module serial_async_rx
 	parameter STOP_BITS     = 1,
 
 	parameter LOWBIT_FIRST  = 1'b1,
-	parameter EVEN_PARITY   = 1'b1
+	parameter EVEN_PARITY   = 1'b1,
+
+	parameter STOP_ON_ERROR = 1'b0
  )
 (
 	// main clock and reset
@@ -39,6 +41,9 @@ module serial_async_rx
 
 	// not currently receiving
 	output wire out_ready,
+
+	// reception error
+	output wire out_error,
 
 	// enable reception
 	input wire in_enable,
@@ -60,8 +65,7 @@ module serial_async_rx
 // serial states and next-state logic
 typedef enum bit [3 : 0]
 {
-	Ready, Error,
-	WaitCycle, WaitCycleAfterCheck,
+	Ready, Error, Wait,
 	ReceiveData,
 	ReceiveStartCont, ReceiveStart,
 	ReceiveParity, ReceiveStop
@@ -77,6 +81,7 @@ t_rx_state next_state_after_wait = Ready;
 // ----------------------------------------------------------------------------
 // clock multipe counter
 reg [$clog2(3/2*CLK_MULTIPLE) : 0] multi_ctr = 0, next_multi_ctr = 0;
+reg [$clog2(3/2*CLK_MULTIPLE) : 0] multi_ctr_towait = 0, next_multi_ctr_towait = 0;
 
 // bit counter
 reg [$clog2(BITS) : 0] bit_ctr = 0, next_bit_ctr = 0, last_bit_ctr = 0;
@@ -108,6 +113,7 @@ reg calc_parity, next_calc_parity = 1'b0;
 assign out_word_finished = word_finished;
 assign out_next_word = next_word_finished;
 assign out_ready = rx_state == Ready;
+assign out_error = rx_state == Error;
 // ----------------------------------------------------------------------------
 
 
@@ -192,6 +198,7 @@ always_ff@(negedge serial_clk, posedge in_rst) begin
 		bit_ctr <= 0;
 		last_bit_ctr <= 0;
 		multi_ctr <= 0;
+		multi_ctr_towait <= 0;
 
 		// parity
 		parity <= EVEN_PARITY == 1'b1 ? 1'b0 : 1'b1;
@@ -213,6 +220,7 @@ always_ff@(negedge serial_clk, posedge in_rst) begin
 		last_bit_ctr <= bit_ctr;
 		bit_ctr <= next_bit_ctr;
 		multi_ctr <= next_multi_ctr;
+		multi_ctr_towait <= next_multi_ctr_towait;
 
 		// parity
 		parity <= next_parity;
@@ -232,6 +240,7 @@ always_comb begin
 	next_rx_state = rx_state;
 	next_bit_ctr = bit_ctr;
 	next_multi_ctr = multi_ctr;
+	next_multi_ctr_towait = multi_ctr_towait;
 	next_state_after_wait = state_after_wait;
 	next_word_finished = 1'b0;
 
@@ -245,28 +254,28 @@ always_comb begin
 		// wait for enable signal
 		Ready: begin
 			next_bit_ctr = 0;
+			next_multi_ctr = 0;
 			next_rx_state = state_after_ready(in_enable);
 		end
 
 		// error
 		Error: begin
-		end
+			next_multi_ctr = 0;
+			next_bit_ctr = 0;
 
-		// move to the middle of the next serial signal
-		WaitCycle: begin
-			// also count in the clock cycle lost by changing states
-			if(multi_ctr == CLK_MULTIPLE - 2'd2) begin
-				next_rx_state = state_after_wait;
-				next_multi_ctr = 0;
-			end else begin
-				next_multi_ctr = $size(multi_ctr)'(multi_ctr + 1'b1);
+			if(STOP_ON_ERROR == 1'b0) begin
+				next_rx_state = Wait;
+				next_state_after_wait = Ready;
+				next_multi_ctr_towait =
+					CLK_MULTIPLE - CLK_TOCHECK // remainder of this cycle
+					+ CLK_MULTIPLE/2 - 2'd2;   // half of next cycle
 			end
 		end
 
-		// move to the middle of the next serial signal
-		WaitCycleAfterCheck: begin
-			// also count in the clock cycle lost by changing states
-			if(multi_ctr == CLK_MULTIPLE - (CLK_TOCHECK - CLK_MULTIPLE/2) - 2'd2) begin
+		// move to the given point in the next serial signal
+		Wait: begin
+			// also counting in the clock cycle lost by changing states
+			if(multi_ctr == multi_ctr_towait) begin
 				next_rx_state = state_after_wait;
 				next_multi_ctr = 0;
 			end else begin
@@ -277,12 +286,16 @@ always_comb begin
 		// receive start bit(s), probing at every cycle
 		// until the given fraction of the last start bit
 		ReceiveStartCont: begin
+			// start bit active?
 			if(in_serial == SERIAL_START) begin
 				// at the given fraction of the last start bit?
 				if(multi_ctr == CLK_TOCHECK - 1'b1
 					&& bit_ctr == START_BITS - 1'b1) begin
 					next_state_after_wait = state_after_start(in_enable);
-					next_rx_state = WaitCycleAfterCheck;
+					next_rx_state = Wait;
+					next_multi_ctr_towait =
+						CLK_MULTIPLE - CLK_TOCHECK // remainder of this cycle
+						+ CLK_MULTIPLE/2 - 2'd2;   // half of next cycle
 					next_bit_ctr = 0;
 					next_multi_ctr = 0;
 
@@ -295,6 +308,8 @@ always_comb begin
 				end else begin
 					next_multi_ctr = $size(multi_ctr)'(multi_ctr + 1'b1);
 				end
+
+			// start bit not active?
 			end else begin
 				next_bit_ctr = 0;
 				next_multi_ctr = 0;
@@ -306,7 +321,9 @@ always_comb begin
 
 		// receive start bit(s), only probing once
 		ReceiveStart: begin
-			next_rx_state = WaitCycle;
+			next_rx_state = Wait;
+			next_state_after_wait = ReceiveStart;
+			next_multi_ctr_towait = CLK_MULTIPLE - 2'd2;
 			next_multi_ctr = 0;
 
 			if(in_serial == SERIAL_START) begin
@@ -321,14 +338,13 @@ always_comb begin
 			end else begin
 				if(in_enable == 1'b0)
 					next_rx_state = Ready;
-				else
-					next_state_after_wait = ReceiveStart;
 			end
 		end
 
 		// receive serial data bits
 		ReceiveData: begin
-			next_rx_state = WaitCycle;
+			next_rx_state = Wait;
+			next_multi_ctr_towait = CLK_MULTIPLE - 2'd2;
 			next_multi_ctr = 0;
 
 			// end of word?
@@ -344,35 +360,42 @@ always_comb begin
 
 		// receive parity bit(s)
 		ReceiveParity: begin
-			if(parity != in_serial)
+			if(parity != in_serial) begin
 				next_rx_state = Error;
-			else
-				next_rx_state = WaitCycle;
-			next_multi_ctr = 0;
-
-			// end of word?
-			if(bit_ctr == PARITY_BITS - 1'b1) begin
-				next_bit_ctr = 0;
-				next_state_after_wait = state_after_parity(in_enable);
 			end else begin
-				next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1'b1);
+				next_rx_state = Wait;
 				next_state_after_wait = ReceiveParity;
+				next_multi_ctr_towait = CLK_MULTIPLE - 2'd2;
+				next_multi_ctr = 0;
+
+				// end of word?
+				if(bit_ctr == PARITY_BITS - 1'b1) begin
+					next_bit_ctr = 0;
+					next_state_after_wait = state_after_parity(in_enable);
+				end else begin
+					next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1'b1);
+				end
 			end
 		end
 
 		// receive stop bit(s)
 		ReceiveStop: begin
 			if(in_serial == SERIAL_STOP) begin
-				next_rx_state = WaitCycle;
+				next_rx_state = Wait;
+				next_state_after_wait = ReceiveStop;
+				next_multi_ctr_towait = CLK_MULTIPLE - 2'd2;
 				next_multi_ctr = 0;
 
 				// end of word?
 				if(bit_ctr == STOP_BITS - 1'b1) begin
 					next_bit_ctr = 0;
 					next_state_after_wait = state_after_stop(in_enable);
+					if(state_after_stop(in_enable) == Ready) begin
+						// move to the start (not the middle) of the next bit
+						next_multi_ctr_towait = CLK_MULTIPLE - CLK_TOCHECK - 2'd2;
+					end
 				end else begin
 					next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1'b1);
-					next_state_after_wait = ReceiveStop;
 				end
 			end else begin
 				next_rx_state = Error;
