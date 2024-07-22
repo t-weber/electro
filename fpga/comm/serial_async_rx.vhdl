@@ -36,7 +36,9 @@ entity serial_async_rx is
 		constant STOP_BITS   : natural := 1;
 
 		constant LOWBIT_FIRST : std_logic := '1';
-		constant EVEN_PARITY  : std_logic := '1'
+		constant EVEN_PARITY  : std_logic := '1';
+
+		constant STOP_ON_ERROR : std_logic := '0'
 	);
 
 	port(
@@ -45,6 +47,8 @@ entity serial_async_rx is
 
 		-- not currently receiving
 		out_ready : out std_logic;
+
+		-- reception error
 		out_error : out std_logic;
 
 		-- request next word (one cycle before current word is finished)
@@ -69,8 +73,7 @@ architecture serial_async_rx_impl of serial_async_rx is
 	-----------------------------------------------------------------------
 	-- states and next state logic
 	type t_rx_state is (
-		Ready, Error,
-		WaitCycle, WaitCycleAfterCheck,
+		Ready, Error, WaitCycle,
 		ReceiveData,
 		ReceiveStartCont, ReceiveStart,
 		ReceiveParity, ReceiveStop
@@ -89,6 +92,7 @@ architecture serial_async_rx_impl of serial_async_rx is
 
 	-- clock multipe counter
 	signal multi_ctr, next_multi_ctr : natural range 0 to 3/2*CLK_MULTIPLE-1 := 0;
+	signal multi_ctr_towait, next_multi_ctr_towait : natural range 0 to 3/2*CLK_MULTIPLE-1 := 0;
 	-----------------------------------------------------------------------
 
 	-----------------------------------------------------------------------
@@ -238,6 +242,7 @@ begin
 			bit_ctr <= 0;
 			last_bit_ctr <= 0;
 			multi_ctr <= 0;
+			multi_ctr_towait <= 0;
 
 			-- parity
 			parity <= not EVEN_PARITY;
@@ -259,6 +264,7 @@ begin
 			last_bit_ctr <= bit_ctr;
 			bit_ctr <= next_bit_ctr;
 			multi_ctr <= next_multi_ctr;
+			multi_ctr_towait <= next_multi_ctr_towait;
 
 			-- parity
 			parity <= next_parity;
@@ -276,13 +282,14 @@ begin
 	-- state combinatorics
 	--
 	proc_comb : process(in_enable, rx_state,
-		bit_ctr, multi_ctr, state_after_wait,
-		in_serial, parity)
+		bit_ctr, multi_ctr, multi_ctr_towait,
+		state_after_wait, in_serial, parity)
 	begin
 		-- defaults
 		next_rx_state <= rx_state;
 		next_bit_ctr <= bit_ctr;
 		next_multi_ctr <= multi_ctr;
+		next_multi_ctr_towait <= multi_ctr_towait;
 		next_state_after_wait <= state_after_wait;
 		next_request_word <= '0';
 
@@ -294,22 +301,21 @@ begin
 				next_rx_state <= state_after_ready(enable => in_enable);
 
 			when Error =>
-				null;
+				next_bit_ctr <= 0;
+				next_multi_ctr <= 0;
 
-			-- move to the middle of the next serial signal
-			when WaitCycle =>
-				-- also count in the clock cycle lost by changing states
-				if multi_ctr = CLK_MULTIPLE - 2 then
-					next_rx_state <= state_after_wait;
-					next_multi_ctr <= 0;
-				else
-					next_multi_ctr <= multi_ctr + 1;
+				if STOP_ON_ERROR = '0' then
+					next_rx_state <= WaitCycle;
+					next_state_after_wait <= Ready;
+					next_multi_ctr_towait <=
+						CLK_MULTIPLE - CLK_TOCHECK  -- remainder of this cycle
+						+ CLK_MULTIPLE/2 - 2;       -- half of next cycle
 				end if;
 
-			-- move to the middle of the next serial signal
-			when WaitCycleAfterCheck =>
+			-- move to the specified point of the next serial signal
+			when WaitCycle =>
 				-- also count in the clock cycle lost by changing states
-				if multi_ctr = CLK_MULTIPLE - CLK_TOCHECK + CLK_MULTIPLE/2 - 2 then
+				if multi_ctr = multi_ctr_towait then
 					next_rx_state <= state_after_wait;
 					next_multi_ctr <= 0;
 				else
@@ -323,7 +329,10 @@ begin
 					-- at the given fraction of the last start bit?
 					if multi_ctr = CLK_TOCHECK - 1 and bit_ctr = START_BITS - 1 then
 						next_state_after_wait <= state_after_start(enable => in_enable);
-						next_rx_state <= WaitCycleAfterCheck;
+						next_rx_state <= WaitCycle;
+						next_multi_ctr_towait <=
+							CLK_MULTIPLE - CLK_TOCHECK  -- remainder of this cycle
+							+ CLK_MULTIPLE/2 - 2;       -- half of next cycle
 						next_bit_ctr <= 0;
 						next_multi_ctr <= 0;
 
@@ -348,6 +357,7 @@ begin
 			-- receive start bit(s), only probing once
 			when ReceiveStart =>
 				next_rx_state <= WaitCycle;
+				next_multi_ctr_towait <= CLK_MULTIPLE - 2;
 				next_multi_ctr <= 0;
 
 				if in_serial = SERIAL_START then
@@ -367,9 +377,10 @@ begin
 					end if;
 				end if;
 
-			-- receive serial data bits 
+			-- receive serial data bits
 			when ReceiveData =>
 				next_rx_state <= WaitCycle;
+				next_multi_ctr_towait <= CLK_MULTIPLE - 2;
 				next_multi_ctr <= 0;
 
 				-- end of word?
@@ -388,6 +399,7 @@ begin
 					next_rx_state <= Error;
 				else
 					next_rx_state <= WaitCycle;
+					next_multi_ctr_towait <= CLK_MULTIPLE - 2;
 					next_multi_ctr <= 0;
 				end if;
 
@@ -404,6 +416,7 @@ begin
 			when ReceiveStop =>
 				if in_serial = SERIAL_STOP then
 					next_rx_state <= WaitCycle;
+					next_multi_ctr_towait <= CLK_MULTIPLE - 2;
 					next_multi_ctr <= 0;
 
 					-- end of word?
