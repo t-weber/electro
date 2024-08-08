@@ -88,8 +88,12 @@ module ram_tb;
 
 	// debug output
 	always@(clock[0]) begin
-		$display("clk=%b, addr=%b (%h), in: %b (%h), out: %b (%h)",
-			clock[0], addr, addr, data, data, out_data, out_data);
+		$display("clk=%b, addr=0b%b (0x%h), ",
+			clock[0], addr, addr,
+			"in: 0b%b (0x%h), ",
+			data, data,
+			"out: 0b%b (0x%h).",
+			out_data, out_data);
 	end
 
 endmodule

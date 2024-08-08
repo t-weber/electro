@@ -4,7 +4,7 @@
 -- @date 20-feb-2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../conv/conv.vhdl  &&   ghdl -a --std=08 ../mem/ram.vhdl  &&  ghdl -a --std=08 ram_tb.vhdl  &&  ghdl -e --std=08 ram_tb ram_tb_impl
+-- ghdl -a --std=08 ../conv/conv.vhdl  ../mem/ram.vhdl ram_tb.vhdl  &&  ghdl -e --std=08 ram_tb ram_tb_impl
 -- ghdl -r --std=08 ram_tb ram_tb_impl --vcd=ram_tb.vcd --stop-time=25ns
 -- gtkwave ram_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --
@@ -104,9 +104,9 @@ begin
 		report  lf &
 			"clk = " & std_logic'image(theclk) &
 			", state = " & t_state'image(state) &
-			", addr = " & to_hstring(addr) &
-			", data = " & to_hstring(data) &
-			", out_data = " & to_hstring(out_data);
+			", addr = 0x" & to_hstring(addr) &
+			", data = 0x" & to_hstring(data) & " = 0b" & to_string(data) &
+			", out_data = 0x" & to_hstring(out_data);
 	end process;
 	---------------------------------------------------------------------------
 
