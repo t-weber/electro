@@ -34,8 +34,11 @@ module serial
 	// enable transmission
 	input wire in_enable,
 
-	// request next word
+	// request next word (one cycle before current word is finished)
 	output wire out_next_word,
+
+	// current word finished
+	output wire out_word_finished,
 
 	// parallel input data (FPGA -> IC)
 	input wire [BITS-1 : 0] in_parallel,
@@ -91,8 +94,9 @@ assign out_serial = serial_state == Transmit
 reg [BITS-1 : 0] parallel_tofpga = 0, next_parallel_tofpga = 0;
 assign out_parallel = parallel_tofpga;
 
-reg request_word = 1'b0;
-assign out_next_word = request_word;
+reg request_word = 1'b0, next_request_word = 1'b0;
+assign out_word_finished = request_word;
+assign out_next_word = next_request_word;
 
 
 assign out_ready = serial_state == Ready;
@@ -147,6 +151,8 @@ always_ff@(negedge serial_clk, posedge in_rst) begin
 		// state register
 		serial_state <= Ready;
 
+		request_word <= 1'b0;
+
 		// counter register
 		bit_ctr <= 0;
 
@@ -159,6 +165,8 @@ always_ff@(negedge serial_clk, posedge in_rst) begin
 	else begin
 		// state register
 		serial_state <= next_serial_state;
+
+		request_word <= next_request_word;
 
 		// counter register
 		bit_ctr <= next_bit_ctr;
@@ -195,7 +203,7 @@ always_comb begin
 	// defaults
 	next_serial_state = serial_state;
 	next_bit_ctr = bit_ctr;
-	request_word = 1'b0;
+	next_request_word = 1'b0;
 
 //`ifdef __IN_SIMULATION__
 //	$display("** serial: %s, bit %d. **", serial_state.name(), actual_bit_ctr);
@@ -215,7 +223,7 @@ always_comb begin
 		Transmit: begin
 			// end of word?
 			if(bit_ctr == BITS - 1) begin
-				request_word = 1'b1;
+				next_request_word = 1'b1;
 				next_bit_ctr = 0;
 			end else begin
 				next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1'b1);

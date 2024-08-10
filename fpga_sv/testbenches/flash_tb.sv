@@ -4,16 +4,18 @@
  * @date 10-aug-2024
  * @license see 'LICENSE' file
  *
- * iverilog -g2012 -D__IN_SIMULATION__ -o flash_tb ../mem/flash_serial.sv ../comm/serial.sv ../clock/clkgen.sv flash_tb.sv
+ * iverilog -g2012 -D__IN_SIMULATION__ -o flash_tb flash_tb.sv ../mem/flash_serial.sv ../comm/serial.sv ../clock/clkgen.sv
  * ./flash_tb
  * gtkwave flash_tb.vcd --rcvar "do_initial_zoom_fit yes"
  */
 
 
 `timescale 1ns / 1ns
+`default_nettype /*wire*/ none  // no implicit declarations
+
 
 module flash_tb;
-	localparam VERBOSE    = 1;
+	localparam VERBOSE    = 0;
 	localparam ITERS      = 512;
 
 	localparam BITS       = 8;
@@ -31,9 +33,9 @@ module flash_tb;
 
 	logic enable;
 	logic [BITS - 1 : 0] received;
-	logic [BITS*ADDR_WORDS - 1 : 0] addr;
+	logic [BITS*ADDR_WORDS - 1 : 0] addr, word_ctr;
 
-	logic flash_rst, flash_clk, flash_sel;
+	wire flash_rst, flash_clk, flash_sel;
 	logic flash_data_out, flash_data_in = 1'b1;
 
 
@@ -43,11 +45,16 @@ module flash_tb;
 		.MAIN_CLK(MAIN_CLK), .SERIAL_CLK(SERIAL_CLK)
 	)
 	flash_mod(
-		.in_clk(clk), .in_rst(rst),
-		.in_enable(enable), .in_read(1'b1),
-		.in_addr(addr), .in_data(BITS'(0)),
-		.out_data(received),
+		.in_clk(clk),            // main clock
+		.in_rst(rst),            // reset
+		.in_enable(enable),      // command enable
+		.in_read(1'b1),          // read or write mode
+		.in_addr(addr),          // address to read from
+		.in_data(BITS'(0)),      // input data
+		.out_data(received),     // output data
+		.out_word_ctr(word_ctr), // currently read word index
 
+		// interface with flash memory pins
 		.out_flash_rst(flash_rst), .out_flash_clk(flash_clk),
 		.out_flash_select(flash_sel),
 		.out_flash_data(flash_data_out),
@@ -97,6 +104,14 @@ module flash_tb;
 		end
 
 		$dumpflush();
+	end
+
+
+	// output
+	always@(flash_clk) begin
+		$display("t=%0t: state=%s, ", $time, state.name(),
+			"flash: rst=%b, clk=%b, sel=%b, ", flash_rst, flash_clk, flash_sel,
+			"ctr=%x, tx=%x, rx=%x", word_ctr, flash_data_out, flash_data_in);
 	end
 
 
