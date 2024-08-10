@@ -54,10 +54,26 @@ IO_PORT "serlcd_out" PULL_MODE=UP  IO_TYPE=LVCMOS33;
 IO_LOC "clk27"       52;
 IO_LOC "serial_tx"   17;
 IO_LOC "serial_rx"   18;
+IO_LOC "card_clk"    36;
+IO_LOC "card_sel"    38;
+IO_LOC "card_out"    37;  // fpga -> card
+IO_LOC "card_in"     39;  // card -> fpga
+IO_LOC "flash_clk"   59;
+IO_LOC "flash_sel"   60;
+IO_LOC "flash_out"   61;  // fpga  -> flash
+IO_LOC "flash_in"    62;  // flash -> fpga
 
 IO_PORT "clk27"      PULL_MODE=NONE IO_TYPE=LVCMOS33;
 IO_PORT "serial_tx"  PULL_MODE=NONE IO_TYPE=LVCMOS33;
 IO_PORT "serial_rx"  PULL_MODE=NONE IO_TYPE=LVCMOS33;
+IO_PORT "card_clk"   PULL_MODE=NONE IO_TYPE=LVCMOS33;
+IO_PORT "card_sel"   PULL_MODE=NONE IO_TYPE=LVCMOS33;
+IO_PORT "card_out"   PULL_MODE=NONE IO_TYPE=LVCMOS33;
+IO_PORT "card_in"    PULL_MODE=NONE IO_TYPE=LVCMOS33;
+IO_PORT "flash_clk"  PULL_MODE=NONE IO_TYPE=LVCMOS33;
+IO_PORT "flash_sel"  PULL_MODE=NONE IO_TYPE=LVCMOS33;
+IO_PORT "flash_out"  PULL_MODE=NONE IO_TYPE=LVCMOS33;
+IO_PORT "flash_in"   PULL_MODE=NONE IO_TYPE=LVCMOS33;
 
 
 // available 3.3 V gpios on the left side

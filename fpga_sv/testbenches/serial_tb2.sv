@@ -30,9 +30,7 @@ module serial_tb2;
 	logic enable, ready;
 	logic serial, serial_clk;
 
-	logic [BITS-1 : 0] data;
-	logic [BITS-1 : 0] received;
-	logic [BITS-1 : 0] saved;
+	logic [BITS-1 : 0] data_tx, data_rx, saved;
 
 	logic byte_finished, last_byte_finished = 0;
 	wire bus_cycle = byte_finished && ~last_byte_finished;
@@ -56,10 +54,10 @@ module serial_tb2;
 	)
 	serial_mod(
 		.in_clk(clk), .in_rst(mod_rst),
-		.in_parallel(data), .in_enable(enable),
+		.in_parallel(data_tx), .in_enable(enable),
 		.out_serial(serial), .out_next_word(byte_finished),
 		.out_ready(ready), .out_clk(serial_clk),
-		.in_serial(serial), .out_parallel(received)
+		.in_serial(serial), .out_parallel(data_rx)
 	);
 
 
@@ -81,7 +79,7 @@ module serial_tb2;
 			last_byte_finished <= byte_finished;
 
 			if(bus_cycle_next)
-				saved <= received;
+				saved <= data_rx;
 		end
 	end
 
@@ -94,7 +92,7 @@ module serial_tb2;
 
 		enable = 0;
 		mod_rst = 0;
-		data = 0;
+		data_tx = 0;
 
 		case(state)
 			Reset: begin
@@ -104,7 +102,7 @@ module serial_tb2;
 
 			WriteData: begin
 				enable = 1;
-				data = data_tosend[byte_ctr];
+				data_tx = data_tosend[byte_ctr];
 
 				if(bus_cycle == 1)
 					next_state = NextData;
@@ -152,7 +150,7 @@ module serial_tb2;
 				"serial=%b, next=%b, ready=%b, enable=%b, ",
 				serial, byte_finished, ready, enable,
 				"tx=%x, rx=%x",
-				data, received);
+				data_tx, data_rx);
 		end
 	end
 
@@ -160,7 +158,7 @@ module serial_tb2;
 	// output serial signal
 	always@(negedge serial_clk) begin
 		$display("t=%0t: serial_out=%b, tx=%x, rx=%x, saved=%x, next=%b, ready=%b, ctr=%d",
-			$time, serial, data, received, saved, byte_finished, ready, byte_ctr);
+			$time, serial, data_tx, data_rx, saved, byte_finished, ready, byte_ctr);
 	end
 
 endmodule

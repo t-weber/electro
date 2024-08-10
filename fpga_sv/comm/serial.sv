@@ -197,9 +197,9 @@ always_comb begin
 	next_bit_ctr = bit_ctr;
 	request_word = 1'b0;
 
-`ifdef __IN_SIMULATION__
-	$display("** serial: %s, bit %d. **", serial_state.name(), actual_bit_ctr);
-`endif
+//`ifdef __IN_SIMULATION__
+//	$display("** serial: %s, bit %d. **", serial_state.name(), actual_bit_ctr);
+//`endif
 
 	// state machine
 	case(serial_state)

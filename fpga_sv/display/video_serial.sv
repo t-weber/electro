@@ -171,7 +171,7 @@ if(USE_TESTPATTERN) begin
 		.PIXEL_BITS(PIXEL_BITS), .RED_BITS(RED_BITS),
 		.GREEN_BITS(GREEN_BITS), .BLUE_BITS(BLUE_BITS),
 		.HCTR_BITS(HCTR_BITS), .VCTR_BITS(VCTR_BITS)
-		)
+	)
 	testpattern_mod
 	(
 		.in_hpix(x_ctr), .in_vpix(y_ctr),
