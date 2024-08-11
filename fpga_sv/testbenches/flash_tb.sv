@@ -86,7 +86,8 @@ module flash_tb;
 		case(state)
 			Reset: begin
 				rst = 1'b1;
-				next_state = WriteData;
+				//next_state = WriteData;
+				next_state = ReadData;
 			end
 
 			WriteData: begin

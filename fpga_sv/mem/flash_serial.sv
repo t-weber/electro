@@ -332,7 +332,7 @@ always_comb begin
 			serial_enable = 1'b1;
 			data_tx = cmd;
 
-			if(bus_cycle == 1'b1) begin
+			if(bus_cycle_req == 1'b1) begin
 				next_state = WriteAddress;
 				next_word_ctr = 1'b0;
 			end
@@ -345,17 +345,13 @@ always_comb begin
 
 			// advance word counter one flash clock cycle before transmission ends
 			if(bus_cycle_req == 1'b1) begin
-				if(word_ctr != ADDRESS_WORDS - 1'b1)
+				if(word_ctr != ADDRESS_WORDS - 1'b1) begin
 					next_word_ctr = $size(word_ctr)'(word_ctr + 1'b1);
-				else
+				end else begin
+					next_state = data_state;
 					next_word_fin = 1'b1;
-			end
-
-			// transmission ends -> next state
-			if(bus_cycle == 1'b1 && next_word_fin == 1'b1) begin
-				next_state = data_state;
-				next_word_ctr = 1'b0;
-				next_word_fin = 1'b0;
+					next_word_ctr = 1'b0;
+				end
 			end
 		end
 		// ----------------------------------------------------
