@@ -6,6 +6,8 @@
  * @license see 'LICENSE' file
  */
 
+`default_nettype none  // no implicit declarations
+
 
 module flash_serial_mod
 (
@@ -96,8 +98,8 @@ serial_tx_mod(
 // ----------------------------------------------------------------------------
 // flash interface
 // ----------------------------------------------------------------------------
-logic flash_enabled;
-logic [BITS - 1 : 0] flash_rx;
+logic flash_enabled = 1'b0, flash_read = 1'b1;
+logic [BITS - 1 : 0] flash_rx, flash_tx = BITS'(1'b0);
 logic [BITS*ADDR_WORDS - 1 : 0] flash_addr, next_flash_addr;
 logic [BITS*ADDR_WORDS - 1 : 0] flash_word_ctr;
 
@@ -115,12 +117,12 @@ flash_mod(
 	.in_clk(clk27),                  // main clock
 	.in_rst(rst),                    // reset
 	.in_enable(flash_enabled),       // command enable
-	.in_read(1'b1),                  // read or write mode
+	.in_read(flash_read),            // read or write mode
 	.in_addr(flash_addr),            // address to read from
-	.in_data(BITS'(0)),              // input data
+	.in_data(flash_tx),              // input data
 	.out_data(flash_rx),             // output data
 	.out_word_ctr(flash_word_ctr),   // currently read word index
-	.out_word_ready(flash_word_rdy), // finished reading a word
+	.out_word_ready(flash_word_rdy), // finished reading or writing a word
 
 	// interface with flash memory pins
 	.out_flash_rst(), .out_flash_clk(flash_clk),
@@ -134,20 +136,21 @@ flash_mod(
 // ----------------------------------------------------------------------------
 // states
 // ----------------------------------------------------------------------------
-typedef enum bit [2 : 0]
+typedef enum
 {
-	Wait, ReadFlashData,
+	Start, WriteFlashData,
+	WaitBeforeRead, ReadFlashData,
 	TransmitSerialData, TransmitSerialBit,
 	TransmitSerialSpace, TransmitSerialCR, TransmitSerialNL,
 } t_state;
-t_state state = Wait, next_state = Wait;
+t_state state = Start, next_state = Start;
 
 
 // state flip-flops
 always_ff@(posedge clk27, posedge rst) begin
 	// reset
 	if(rst == 1'b1) begin
-		state <= Wait;
+		state <= Start;
 
 		serial_char_tx <= 0;
 		last_serial_word_finished_tx <= 1'b0;
@@ -170,10 +173,10 @@ always_ff@(posedge clk27, posedge rst) begin
 		flash_addr <= next_flash_addr;
 		last_flash_word_rdy <= flash_word_rdy;
 
-		//if(state == Wait && wait_ctr != WAIT_DELAY)
+		if(state == WaitBeforeRead || state == Start && wait_ctr != WAIT_DELAY)
 			wait_ctr <= $size(wait_ctr)'(wait_ctr + 1'b1);
-		//else
-		//	wait_ctr <= $size(wait_ctr)'(1'b0);
+		else
+			wait_ctr <= $size(wait_ctr)'(1'b0);
 	end
 end
 
@@ -184,21 +187,37 @@ always_comb begin
 	next_state = state;
 	next_serial_char_tx = serial_char_tx;
 	next_serial_bit_ctr = serial_bit_ctr;
-
 	next_flash_addr = flash_addr;
 
 	serial_enabled_tx = 1'b0;
 	flash_enabled = 1'b0;
+	flash_read = 1'b1;
+	flash_tx = BITS'(1'b0);
 
 	case(state)
-		Wait: begin
+		Start: begin
+			next_flash_addr = 1'b0;
+			if(wait_ctr == WAIT_DELAY)
+				next_state = WriteFlashData;
+		end
+
+		WriteFlashData: begin
+			flash_enabled = 1'b1;
+			flash_read = 1'b0;
+			flash_tx = BITS'(8'h58);
+
+			if(flash_bus_cycle_next == 1'b1) begin
+				next_state = WaitBeforeRead;
+			end
+		end
+
+		WaitBeforeRead: begin
 			if(wait_ctr == WAIT_DELAY)
 				next_state = ReadFlashData;
 		end
 
 		ReadFlashData: begin
 			flash_enabled = 1'b1;
-
 			if(flash_bus_cycle_next == 1'b1) begin
 				next_serial_char_tx = flash_rx;
 				next_state = TransmitSerialData;
@@ -250,7 +269,7 @@ always_comb begin
 			serial_enabled_tx = 1'b1;
 			if(serial_bus_cycle_tx_next == 1'b1) begin
 				serial_enabled_tx = 1'b0;
-				next_state = Wait;
+				next_state = WaitBeforeRead;
 			end
 		end
 	endcase
