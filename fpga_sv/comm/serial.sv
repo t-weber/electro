@@ -65,7 +65,7 @@ t_serial_state next_serial_state = Ready;
 
 // ----------------------------------------------------------------------------
 // bit counter
-reg [$clog2(BITS) : 0] bit_ctr = 0, next_bit_ctr = 0;
+reg [$clog2(BITS) : 0] bit_ctr = 1'b0, next_bit_ctr = 1'b0;
 
 // bit counter with correct ordering
 wire [$clog2(BITS) : 0] actual_bit_ctr;
@@ -74,7 +74,7 @@ generate
 	if(LOWBIT_FIRST == 1'b1) begin
 		assign actual_bit_ctr = bit_ctr;
 	end else begin
-		assign actual_bit_ctr = $size(bit_ctr)'(BITS - bit_ctr - 1);
+		assign actual_bit_ctr = $size(bit_ctr)'(BITS - bit_ctr - 1'b1);
 	end
 endgenerate
 // ----------------------------------------------------------------------------
@@ -205,9 +205,10 @@ always_comb begin
 	next_bit_ctr = bit_ctr;
 	next_request_word = 1'b0;
 
-//`ifdef __IN_SIMULATION__
-//	$display("** serial: %s, bit %d. **", serial_state.name(), actual_bit_ctr);
-//`endif
+`ifdef __IN_SIMULATION__
+	$display("** serial: %d, bit %d, ", serial_state/*.name()*/, actual_bit_ctr,
+		"from_fpga: %x. **", parallel_fromfpga);
+`endif
 
 	// state machine
 	case(serial_state)

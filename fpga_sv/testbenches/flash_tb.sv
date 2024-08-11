@@ -16,7 +16,7 @@
 
 module flash_tb;
 	localparam VERBOSE    = 0;
-	localparam ITERS      = 512;
+	localparam ITERS      = 1024;
 
 	localparam BITS       = 8;
 	localparam ADDR_WORDS = 2;
@@ -25,18 +25,21 @@ module flash_tb;
 	localparam SERIAL_CLK = 250_000;
 
 
-	typedef enum bit [1 : 0] { Reset, ReadData } t_state;
+	typedef enum bit [1 : 0] { Reset, WriteData, ReadData } t_state;
 	t_state state = Reset, next_state = Reset;
 
 
 	logic clk = 1'b0, rst = 1'b0;
 
-	logic enable;
-	logic [BITS - 1 : 0] received;
+	logic enable = 1'b0, read_mode = 1'b1;
+	logic [BITS - 1 : 0] received, transmitted;
 	logic [BITS*ADDR_WORDS - 1 : 0] addr, word_ctr;
 
 	wire flash_rst, flash_clk, flash_sel;
 	logic flash_data_out, flash_data_in = 1'b1;
+
+	logic word_rdy, last_word_rdy = 1'b0;
+	wire bus_cycle_next = word_rdy && ~last_word_rdy;
 
 
 	// instantiate flash module
@@ -45,14 +48,15 @@ module flash_tb;
 		.MAIN_CLK(MAIN_CLK), .SERIAL_CLK(SERIAL_CLK)
 	)
 	flash_mod(
-		.in_clk(clk),            // main clock
-		.in_rst(rst),            // reset
-		.in_enable(enable),      // command enable
-		.in_read(1'b1),          // read or write mode
-		.in_addr(addr),          // address to read from
-		.in_data(BITS'(0)),      // input data
-		.out_data(received),     // output data
-		.out_word_ctr(word_ctr), // currently read word index
+		.in_clk(clk),              // main clock
+		.in_rst(rst),              // reset
+		.in_enable(enable),        // command enable
+		.in_read(read_mode),       // read or write mode
+		.in_addr(addr),            // address to read from
+		.in_data(transmitted),     // input data
+		.out_data(received),       // output data
+		.out_word_ctr(word_ctr),   // currently read word index
+		.out_word_ready(word_rdy), // finished reading or writing a word
 
 		// interface with flash memory pins
 		.out_flash_rst(flash_rst), .out_flash_clk(flash_clk),
@@ -65,6 +69,7 @@ module flash_tb;
 	// state flip-flops
 	always_ff@(posedge clk) begin
 		state <= next_state;
+		last_word_rdy <= word_rdy;
 	end
 
 
@@ -74,17 +79,29 @@ module flash_tb;
 		next_state = state;
 
 		enable = 1'b0;
+		read_mode = 1'b1;
 		rst = 1'b0;
+		transmitted = 1'b0;
 
 		case(state)
 			Reset: begin
 				rst = 1'b1;
-				next_state = ReadData;
+				next_state = WriteData;
+			end
+
+			WriteData: begin
+				enable = 1'b1;
+				read_mode = 1'b0;
+				transmitted = 8'h81;
+				addr = 16'h1281;
+
+				if(bus_cycle_next == 1'b1)
+					next_state = ReadData;
 			end
 
 			ReadData: begin
 				enable = 1'b1;
-				addr = 16'h1234;
+				addr = 16'h1281;
 			end
 		endcase
 	end

@@ -37,7 +37,7 @@ localparam BITS       = 8;
 localparam ADDR_WORDS = 3;
 
 
-localparam WAIT_DELAY = MAIN_CLK/1000*250;  // 250 ms
+localparam WAIT_DELAY = MAIN_CLK/1000*200;  // 200 ms
 logic [$clog2(WAIT_DELAY) : 0] wait_ctr = 1'b0;
 
 
@@ -140,8 +140,12 @@ typedef enum
 {
 	Start, WriteFlashData,
 	WaitBeforeRead, ReadFlashData,
+	TransmitSerialAddressByte1, TransmitSerialAddress1Separator,
+	TransmitSerialAddressByte2, TransmitSerialAddress2Separator,
+	TransmitSerialAddressByte3, TransmitSerialSpaceAfterAddress,
 	TransmitSerialData, TransmitSerialBit,
 	TransmitSerialSpace, TransmitSerialCR, TransmitSerialNL,
+	NextFlashAddress
 } t_state;
 t_state state = Start, next_state = Start;
 
@@ -198,7 +202,7 @@ always_comb begin
 		Start: begin
 			next_flash_addr = 1'b0;
 			if(wait_ctr == WAIT_DELAY)
-				next_state = WriteFlashData;
+				next_state = WaitBeforeRead; //WriteFlashData;
 		end
 
 		WriteFlashData: begin
@@ -220,8 +224,79 @@ always_comb begin
 			flash_enabled = 1'b1;
 			if(flash_bus_cycle_next == 1'b1) begin
 				next_serial_char_tx = flash_rx;
+				next_state = TransmitSerialAddressByte1;
+			end
+		end
+
+		TransmitSerialAddressByte1: begin
+			serial_enabled_tx = 1'b1;
+			if(serial_bus_cycle_tx_next == 1'b1) begin
+				serial_enabled_tx = 1'b0;
+
+				if(serial_bit_ctr == BITS - 1) begin
+					next_state = TransmitSerialAddress1Separator;
+					next_serial_bit_ctr = 0;
+				end else begin
+					next_serial_bit_ctr = $size(serial_bit_ctr)'(
+						serial_bit_ctr + 1'b1);
+				end
+			end
+		end
+
+		TransmitSerialAddress1Separator: begin
+			serial_enabled_tx = 1'b1;
+			if(serial_bus_cycle_tx_next == 1'b1) begin
+				serial_enabled_tx = 1'b0;
+				next_serial_bit_ctr <= 0;
+				next_state = TransmitSerialAddressByte2;
+			end
+		end
+
+		TransmitSerialAddressByte2: begin
+			serial_enabled_tx = 1'b1;
+			if(serial_bus_cycle_tx_next == 1'b1) begin
+				serial_enabled_tx = 1'b0;
+
+				if(serial_bit_ctr == BITS - 1) begin
+					next_state = TransmitSerialAddress2Separator;
+					next_serial_bit_ctr = 0;
+				end else begin
+					next_serial_bit_ctr = $size(serial_bit_ctr)'(
+						serial_bit_ctr + 1'b1);
+				end
+			end
+		end
+
+		TransmitSerialAddress2Separator: begin
+			serial_enabled_tx = 1'b1;
+			if(serial_bus_cycle_tx_next == 1'b1) begin
+				serial_enabled_tx = 1'b0;
+				next_serial_bit_ctr <= 0;
+				next_state = TransmitSerialAddressByte3;
+			end
+		end
+
+		TransmitSerialAddressByte3: begin
+			serial_enabled_tx = 1'b1;
+			if(serial_bus_cycle_tx_next == 1'b1) begin
+				serial_enabled_tx = 1'b0;
+
+				if(serial_bit_ctr == BITS - 1) begin
+					next_state = TransmitSerialSpaceAfterAddress;
+					next_serial_bit_ctr = 0;
+				end else begin
+					next_serial_bit_ctr = $size(serial_bit_ctr)'(
+						serial_bit_ctr + 1'b1);
+				end
+			end
+		end
+
+		TransmitSerialSpaceAfterAddress: begin
+			serial_enabled_tx = 1'b1;
+			if(serial_bus_cycle_tx_next == 1'b1) begin
+				serial_enabled_tx = 1'b0;
+				next_serial_bit_ctr <= 0;
 				next_state = TransmitSerialData;
-				next_flash_addr <= $size(flash_addr)'(flash_addr + 1'b1);
 			end
 		end
 
@@ -269,20 +344,34 @@ always_comb begin
 			serial_enabled_tx = 1'b1;
 			if(serial_bus_cycle_tx_next == 1'b1) begin
 				serial_enabled_tx = 1'b0;
-				next_state = WaitBeforeRead;
+				next_state = NextFlashAddress;
 			end
+		end
+
+		NextFlashAddress: begin
+			next_flash_addr <= $size(flash_addr)'(flash_addr + 1'b1);
+			next_state = WaitBeforeRead;
 		end
 	endcase
 end
 
 
 assign serial_char_cur =
+	state == TransmitSerialSpaceAfterAddress ? " " :
 	state == TransmitSerialSpace ? " " :
+	state == TransmitSerialAddress1Separator ? "_" :
+	state == TransmitSerialAddress2Separator ? "_" :
 	state == TransmitSerialCR ? "\r" :
 	state == TransmitSerialNL ? "\n" :
 	state == TransmitSerialData ? serial_char_tx :
 	state == TransmitSerialBit ? 
 		(serial_char_tx[BITS - serial_bit_ctr - 1] == 1'b1 ? "1" : "0") :
+	state == TransmitSerialAddressByte1 ?
+		(flash_addr[3*BITS - serial_bit_ctr - 1] == 1'b1 ? "1" : "0") :
+	state == TransmitSerialAddressByte2 ?
+		(flash_addr[2*BITS - serial_bit_ctr - 1] == 1'b1 ? "1" : "0") :
+	state == TransmitSerialAddressByte3 ?
+		(flash_addr[1*BITS - serial_bit_ctr - 1] == 1'b1 ? "1" : "0") :
 	" ";
 // ----------------------------------------------------------------------------
 

@@ -47,8 +47,10 @@ module flash_serial
 // --------------------------------------------------------------------
 // commands, see [flash], pp. 22-24
 // --------------------------------------------------------------------
-localparam [WORD_BITS - 1 : 0] CMD_WRITE = WORD_BITS'(8'h02);
-localparam [WORD_BITS - 1 : 0] CMD_READ  = WORD_BITS'(8'h03);
+localparam [WORD_BITS - 1 : 0] CMD_NOP           = WORD_BITS'(8'h00);
+localparam [WORD_BITS - 1 : 0] CMD_WRITE_STATUS  = WORD_BITS'(8'h01);
+localparam [WORD_BITS - 1 : 0] CMD_WRITE         = WORD_BITS'(8'h02);
+localparam [WORD_BITS - 1 : 0] CMD_READ          = WORD_BITS'(8'h03);
 localparam [WORD_BITS - 1 : 0] CMD_WRITE_DISABLE = WORD_BITS'(8'h04);
 localparam [WORD_BITS - 1 : 0] CMD_WRITE_ENABLE  = WORD_BITS'(8'h06);
 // --------------------------------------------------------------------
@@ -73,16 +75,16 @@ logic [$clog2(WAIT_AFTER_RESET /*largest value*/) : 0]
 // --------------------------------------------------------------------
 // word counter for addresses
 // --------------------------------------------------------------------
-logic [ADDRESS_WORDS*WORD_BITS - 1 : 0] word_ctr = 0, next_word_ctr = 0;
+logic [ADDRESS_WORDS*WORD_BITS - 1'b1 : 0] word_ctr = 0, next_word_ctr = 0;
 
-wire [WORD_BITS - 1 : 0] cur_addr_word;
+wire [WORD_BITS - 1'b1 : 0] cur_addr_word;
 
 genvar idx;
 generate
 for(idx = 0; idx < WORD_BITS; ++idx)
 begin : addr_gen
 	assign cur_addr_word[idx] =
-		in_addr[WORD_BITS*ADDRESS_WORDS - (word_ctr+1)*WORD_BITS + idx];
+		in_addr[(ADDRESS_WORDS - (word_ctr + 1'b1))*WORD_BITS + idx];
 end
 endgenerate
 // --------------------------------------------------------------------
@@ -97,9 +99,12 @@ logic serial_data_out;
 logic [WORD_BITS - 1 : 0] data_tx, data_rx;
 logic [WORD_BITS - 1 : 0] word_rx, next_word_rx;
 
-logic word_finished, last_word_finished = 0;
+logic word_finished, last_word_finished = 1'b0;
 wire bus_cycle = word_finished && ~last_word_finished;
 //wire bus_cycle_next = ~word_finished && last_word_finished;
+
+logic word_requested, last_word_requested = 1'b0;
+wire bus_cycle_req = word_requested && ~last_word_requested;
 
 serial #(
 	.BITS(WORD_BITS), .LOWBIT_FIRST(1'b0),
@@ -111,7 +116,7 @@ serial_mod(
 	.in_clk(in_clk), .in_rst(in_rst),
 	.in_parallel(data_tx), .in_enable(serial_enable),
 	.in_serial(in_flash_data), .out_serial(serial_data_out),
-	.out_word_finished(word_finished),
+	.out_word_finished(word_finished), .out_next_word(word_requested),
 	.out_ready(serial_ready), .out_clk(serial_clk),
 	.out_parallel(data_rx)
 );
@@ -123,6 +128,7 @@ serial_mod(
 // --------------------------------------------------------------------
 logic flash_rst, flash_write_protect;
 logic word_rdy, next_word_rdy;
+logic word_fin, next_word_fin;
 
 assign out_flash_clk = serial_clk;
 assign out_flash_rst = ~flash_rst;          // active low
@@ -142,16 +148,18 @@ assign out_word_ready = word_rdy;
 typedef enum {
 	Reset, AfterReset,
 	AwaitCommand,
-	WriteCommandNoAddr, WriteCommand,
-	WriteAddress,
+	WriteCommandOnly,
+	WriteCommandOneByte, WriteByte,
+	WriteCommand, WriteAddress,
 	ReadData, WriteData
 } t_state;
 
 t_state state = Reset, next_state = Reset;
 t_state data_state = ReadData, next_data_state = ReadData;
 
-logic [WORD_BITS - 1 : 0] cmd, next_cmd;
-logic [0 : 0] cmd_phase = 1'b0, next_cmd_phase = 1'b0;
+logic [WORD_BITS - 1 : 0] cmd = CMD_NOP, next_cmd = CMD_NOP;
+logic [WORD_BITS - 1 : 0] data = 1'b0, next_data = 1'b0;
+logic [1 : 0] cmd_phase = 1'b0, next_cmd_phase = 1'b0;
 
 
 // state flip-flops
@@ -161,16 +169,19 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 		state <= Reset;
 		data_state <= ReadData;
 
-		cmd <= 1'b0;
+		data <= 1'b0;
+		cmd <= CMD_NOP;
 		cmd_phase <= 1'b0;
 
 		word_rx <= 1'b0;
 		word_ctr <= 1'b0;
+		word_fin <= 1'b0;
 		word_rdy <= 1'b0;
 
 		wait_ctr <= 1'b0;
 
 		last_word_finished <= 1'b0;
+		last_word_requested <= 1'b0;
 	end
 
 	// clock
@@ -178,11 +189,13 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 		state <= next_state;
 		data_state <= next_data_state;
 
+		data <= next_data;
 		cmd <= next_cmd;
 		cmd_phase <= next_cmd_phase;
 
 		word_rx <= next_word_rx;
 		word_ctr <= next_word_ctr;
+		word_fin <= next_word_fin;
 		word_rdy <= next_word_rdy;
 
 		// timer register
@@ -195,6 +208,7 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 		end
 
 		last_word_finished <= word_finished;
+		last_word_requested <= word_requested;
 	end
 end
 
@@ -205,11 +219,13 @@ always_comb begin
 	next_state = state;
 	next_data_state = data_state;
 
+	next_data = data;
 	next_cmd = cmd;
 	next_cmd_phase = cmd_phase;
 
 	next_word_ctr = word_ctr;
 	next_word_rx = word_rx;
+	next_word_fin = word_fin;
 	next_word_rdy = 1'b0;
 
 	wait_ctr_max = WAIT_RESET;
@@ -251,17 +267,31 @@ always_comb begin
 					next_data_state = ReadData;
 					next_cmd = CMD_READ;
 				end else begin
-					if(cmd_phase == 1'b0) begin
+					if(cmd_phase == 2'd0) begin
 						// write enable: [flash], p. 26
-						next_state = WriteCommandNoAddr;
+						next_state = WriteCommandOnly;
+						next_data_state = AwaitCommand;
 						next_cmd = CMD_WRITE_ENABLE;
-						next_cmd_phase = 1'b1;
+						next_cmd_phase = 2'd1;
+					end else if(cmd_phase == 2'd1) begin
+						// unlock: [flash], pp. 33-34
+						next_state = WriteCommandOneByte;
+						next_data_state = AwaitCommand;
+						next_cmd = CMD_WRITE_STATUS;
+						next_data = 8'b0000_0010;
+						next_cmd_phase = 2'd2;
+					end else if(cmd_phase == 2'd2) begin
+						// write enable: [flash], p. 26
+						next_state = WriteCommandOnly;
+						next_data_state = AwaitCommand;
+						next_cmd = CMD_WRITE_ENABLE;
+						next_cmd_phase = 2'd3;
 					end else begin
 						// write operation: [flash], pp. 56-57
 						next_state = WriteCommand;
 						next_data_state = WriteData;
 						next_cmd = CMD_WRITE;
-						next_cmd_phase = 1'b0;
+						next_cmd_phase = 2'd0;
 					end
 				end
 			end
@@ -271,12 +301,30 @@ always_comb begin
 
 		// ----------------------------------------------------
 		// write command word with no address
-		WriteCommandNoAddr: begin
+		WriteCommandOnly: begin
 			serial_enable = 1'b1;
 			data_tx = cmd;
 
 			if(bus_cycle == 1'b1)
-				next_state = AwaitCommand;
+				next_state = data_state;
+		end
+
+		// write command word with one data byte
+		WriteCommandOneByte: begin
+			serial_enable = 1'b1;
+			data_tx = cmd;
+
+			if(bus_cycle == 1'b1)
+				next_state = WriteByte;
+		end
+
+		// write one data byte
+		WriteByte: begin
+			serial_enable = 1'b1;
+			data_tx = data;
+
+			if(bus_cycle == 1'b1)
+				next_state = data_state;
 		end
 
 		// write command word followed by an address
@@ -295,14 +343,19 @@ always_comb begin
 			serial_enable = 1'b1;
 			data_tx = cur_addr_word;
 
-			if(bus_cycle == 1'b1) begin
-				if(word_ctr == ADDRESS_WORDS - 1'b1) begin
-					next_state = data_state;
-					next_word_ctr = 1'b0;
-				end else begin
-					next_state = WriteAddress;
+			// advance word counter one flash clock cycle before transmission ends
+			if(bus_cycle_req == 1'b1) begin
+				if(word_ctr != ADDRESS_WORDS - 1'b1)
 					next_word_ctr = $size(word_ctr)'(word_ctr + 1'b1);
-				end
+				else
+					next_word_fin = 1'b1;
+			end
+
+			// transmission ends -> next state
+			if(bus_cycle == 1'b1 && next_word_fin == 1'b1) begin
+				next_state = data_state;
+				next_word_ctr = 1'b0;
+				next_word_fin = 1'b0;
 			end
 		end
 		// ----------------------------------------------------
@@ -330,10 +383,16 @@ always_comb begin
 			flash_write_protect = 1'b0;
 			data_tx = in_data;
 
-			if(bus_cycle == 1'b1) begin
+			// advance word counter one flash clock cycle before transmission ends
+			if(bus_cycle_req == 1'b1) begin
 				next_word_ctr = $size(word_ctr)'(word_ctr + 1'b1);
 				next_word_rdy = 1'b1;
+				next_word_fin = 1'b1;
 			end
+
+			// transmission ends -> next state
+			if(bus_cycle == 1'b1 && next_word_fin == 1'b1)
+				next_word_fin = 1'b0;
 
 			if(in_enable == 1'b0)
 				next_state = AwaitCommand;
@@ -344,8 +403,8 @@ always_comb begin
 `ifdef __IN_SIMULATION__
 	$display("*** flash_serial: %s, rst=%b, ena=%b, ",
 		state.name(), flash_rst, serial_enable,
-		"rdy=%b, tx=%x, rx=%x, word=%d, cycle=%b. ***",
-		serial_ready, data_tx, data_rx, word_ctr, bus_cycle);
+		"rdy=%b, tx=%x, rx=%x, addr=%x, word=%d, cycle=%b. ***",
+		serial_ready, data_tx, data_rx, cur_addr_word, word_ctr, bus_cycle);
 `endif
 end
 // --------------------------------------------------------------------
