@@ -86,18 +86,18 @@ module flash_tb;
 		case(state)
 			Reset: begin
 				rst = 1'b1;
-				//next_state = WriteData;
-				next_state = ReadData;
+				next_state = WriteData;
+				//next_state = ReadData;
 			end
 
 			WriteData: begin
 				enable = 1'b1;
 				read_mode = 1'b0;
-				transmitted = 8'h81;
+				transmitted = 8'h71;
 				addr = 16'h1281;
 
-				if(bus_cycle_next == 1'b1)
-					next_state = ReadData;
+				//if(bus_cycle_next == 1'b1)
+				//	next_state = ReadData;
 			end
 
 			ReadData: begin

@@ -36,8 +36,11 @@ module serial_2wire
 	output wire out_ready,
 	output wire out_err,
 
-	// request next word
+	// request next word (one cycle before current word is finished)
 	output wire out_next_word,
+
+	// current word finished
+	output wire out_word_finished,
 
 	// target addresses for writing and reading
 	input wire [ADDR_BITS-1 : 0] in_addr_write,
@@ -89,8 +92,9 @@ endgenerate
 // ============================================================================
 
 
-reg request_word = 1'b0;
-assign out_next_word = request_word;
+reg request_word = 1'b0, next_request_word = 1'b0;
+assign out_word_finished = request_word;
+assign out_next_word = next_request_word;
 
 reg ready = 1'b0;
 assign out_ready = ready;
@@ -157,6 +161,8 @@ always_ff@(negedge serial_clk, posedge in_rst) begin
 		state_afterstop <= Ready;
 		state_afterack <= Ready;
 
+		request_word <= 1'b0;
+
 		// counter register
 		bit_ctr <= 0;
 
@@ -172,6 +178,8 @@ always_ff@(negedge serial_clk, posedge in_rst) begin
 		state_afterstart <= next_state_afterstart;
 		state_afterstop <= next_state_afterstop;
 		state_afterack <= next_state_afterack;
+
+		request_word <= next_request_word;
 
 		// counter register
 		bit_ctr <= next_bit_ctr;
@@ -295,7 +303,8 @@ always_comb begin
 	next_state_afterack = state_afterack;
 	next_bit_ctr = bit_ctr;
 
-	request_word = 1'b0;
+	next_request_word = 1'b0;
+
 	ready = 1'b0;
 	err = 1'b0;
 
@@ -355,7 +364,7 @@ always_comb begin
 		Transmit: begin
 			// end of word?
 			if(bit_ctr == BITS - 1) begin
-				request_word = 1'b1;
+				next_request_word = 1'b1;
 				next_bit_ctr = 0;
 
 				next_serial_state = ReceiveAck;
@@ -389,7 +398,7 @@ always_comb begin
 		Receive: begin
 			// end of word?
 			if(bit_ctr == BITS - 1) begin
-				request_word = 1'b1;
+				next_request_word = 1'b1;
 				next_bit_ctr = 0;
 
 				next_serial_state = SendAck;

@@ -30,7 +30,7 @@ module flash_serial_mod
 
 
 localparam MAIN_CLK   = 27_000_000;
-localparam FLASH_CLK  = 10_000_000;
+localparam FLASH_CLK  = MAIN_CLK;
 localparam SERIAL_CLK = 115_200;
 
 localparam BITS       = 8;
@@ -202,13 +202,13 @@ always_comb begin
 		Start: begin
 			next_flash_addr = 1'b0;
 			if(wait_ctr == WAIT_DELAY)
-				next_state = WaitBeforeRead; //WriteFlashData;
+				next_state = /*WaitBeforeRead;*/ WriteFlashData;
 		end
 
 		WriteFlashData: begin
 			flash_enabled = 1'b1;
 			flash_read = 1'b0;
-			flash_tx = BITS'(8'h58);
+			flash_tx = BITS'("Y");
 
 			if(flash_bus_cycle_next == 1'b1) begin
 				next_state = WaitBeforeRead;

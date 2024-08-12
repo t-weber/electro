@@ -11,11 +11,11 @@
 
 module flash_serial
 #(
-	parameter WORD_BITS     = 8,
-	parameter ADDRESS_WORDS = 2,
+	parameter WORD_BITS      = 8,
+	parameter ADDRESS_WORDS  = 2,
 
-	parameter MAIN_CLK   = 50_000_000,
-	parameter SERIAL_CLK = 10_000_000
+	parameter MAIN_CLK       = 50_000_000,
+	parameter SERIAL_CLK     = 10_000_000,
  )
 (
 	// main clock and reset
@@ -110,7 +110,7 @@ serial #(
 	.BITS(WORD_BITS), .LOWBIT_FIRST(1'b0),
 	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SERIAL_CLK),
 	.SERIAL_CLK_INACTIVE(1'b1), .SERIAL_DATA_INACTIVE(1'b0),
-	.KEEP_SERIAL_CLK_RUNNING(1'b0)
+	.KEEP_SERIAL_CLK_RUNNING(1'b1)
 )
 serial_mod(
 	.in_clk(in_clk), .in_rst(in_rst),
@@ -159,15 +159,18 @@ t_state data_state = ReadData, next_data_state = ReadData;
 
 logic [WORD_BITS - 1 : 0] cmd = CMD_NOP, next_cmd = CMD_NOP;
 logic [WORD_BITS - 1 : 0] data = 1'b0, next_data = 1'b0;
-logic [1 : 0] cmd_phase = 1'b0, next_cmd_phase = 1'b0;
+logic [0 : 0] cmd_phase = 1'b0, next_cmd_phase = 1'b0;
+
+logic is_write_protected = 1'b1, next_is_write_protected = 1'b1;
 
 
 // state flip-flops
-always_ff@(posedge in_clk, posedge in_rst) begin
+always_ff@(posedge serial_clk, posedge in_rst) begin
 	// reset
 	if(in_rst == 1'b1) begin
 		state <= Reset;
 		data_state <= ReadData;
+		is_write_protected <= 1'b1;
 
 		data <= 1'b0;
 		cmd <= CMD_NOP;
@@ -188,6 +191,7 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 	else begin
 		state <= next_state;
 		data_state <= next_data_state;
+		is_write_protected <= next_is_write_protected;
 
 		data <= next_data;
 		cmd <= next_cmd;
@@ -218,6 +222,7 @@ always_comb begin
 	// defaults
 	next_state = state;
 	next_data_state = data_state;
+	next_is_write_protected = is_write_protected;
 
 	next_data = data;
 	next_cmd = cmd;
@@ -266,32 +271,37 @@ always_comb begin
 					next_state = WriteCommand;
 					next_data_state = ReadData;
 					next_cmd = CMD_READ;
-				end else begin
-					if(cmd_phase == 2'd0) begin
+				end else if(is_write_protected == 1'b1) begin
+					// remove write protection on first write attempt
+					if(cmd_phase == 1'd0) begin
 						// write enable: [flash], p. 26
 						next_state = WriteCommandOnly;
 						next_data_state = AwaitCommand;
 						next_cmd = CMD_WRITE_ENABLE;
-						next_cmd_phase = 2'd1;
-					end else if(cmd_phase == 2'd1) begin
+						next_cmd_phase = 1'd1;
+					end else begin
 						// unlock: [flash], pp. 33-34
 						next_state = WriteCommandOneByte;
 						next_data_state = AwaitCommand;
 						next_cmd = CMD_WRITE_STATUS;
 						next_data = 8'b0000_0010;
-						next_cmd_phase = 2'd2;
-					end else if(cmd_phase == 2'd2) begin
+						next_cmd_phase = 1'd0;
+						next_is_write_protected = 1'b0;
+					end
+				end else begin
+					// write sequence: [flash], pp. 56-57
+					if(cmd_phase == 1'd0) begin
 						// write enable: [flash], p. 26
 						next_state = WriteCommandOnly;
 						next_data_state = AwaitCommand;
 						next_cmd = CMD_WRITE_ENABLE;
-						next_cmd_phase = 2'd3;
+						next_cmd_phase = 1'd1;
 					end else begin
 						// write operation: [flash], pp. 56-57
 						next_state = WriteCommand;
 						next_data_state = WriteData;
 						next_cmd = CMD_WRITE;
-						next_cmd_phase = 2'd0;
+						next_cmd_phase = 1'd0;
 					end
 				end
 			end
@@ -305,7 +315,7 @@ always_comb begin
 			serial_enable = 1'b1;
 			data_tx = cmd;
 
-			if(bus_cycle == 1'b1)
+			if(bus_cycle_req == 1'b1)
 				next_state = data_state;
 		end
 
@@ -314,7 +324,7 @@ always_comb begin
 			serial_enable = 1'b1;
 			data_tx = cmd;
 
-			if(bus_cycle == 1'b1)
+			if(bus_cycle_req == 1'b1)
 				next_state = WriteByte;
 		end
 
@@ -323,7 +333,7 @@ always_comb begin
 			serial_enable = 1'b1;
 			data_tx = data;
 
-			if(bus_cycle == 1'b1)
+			if(bus_cycle_req == 1'b1)
 				next_state = data_state;
 		end
 
@@ -348,9 +358,8 @@ always_comb begin
 				if(word_ctr != ADDRESS_WORDS - 1'b1) begin
 					next_word_ctr = $size(word_ctr)'(word_ctr + 1'b1);
 				end else begin
-					next_state = data_state;
-					next_word_fin = 1'b1;
 					next_word_ctr = 1'b0;
+					next_state = data_state;
 				end
 			end
 		end
@@ -362,9 +371,16 @@ always_comb begin
 			serial_enable = 1'b1;
 
 			if(bus_cycle == 1'b1) begin
-				next_word_rx = data_rx;
-				next_word_ctr = $size(word_ctr)'(word_ctr + 1'b1);
-				next_word_rdy = 1'b1;
+				// take the second bus_cycle signal (at word_fin == 1),
+				// because the first one still comes from WriteAddress
+				if(word_fin == 1'b1) begin
+					next_word_rx = data_rx;
+					next_word_ctr = $size(word_ctr)'(word_ctr + 1'b1);
+					next_word_rdy = 1'b1;
+					next_word_fin = 1'b0;
+				end else begin
+					next_word_fin = 1'b1;
+				end
 			end
 
 			if(in_enable == 1'b0)
@@ -383,12 +399,8 @@ always_comb begin
 			if(bus_cycle_req == 1'b1) begin
 				next_word_ctr = $size(word_ctr)'(word_ctr + 1'b1);
 				next_word_rdy = 1'b1;
-				next_word_fin = 1'b1;
+				next_state = AwaitCommand;  // TODO: transfer of more than one word
 			end
-
-			// transmission ends -> next state
-			if(bus_cycle == 1'b1 && next_word_fin == 1'b1)
-				next_word_fin = 1'b0;
 
 			if(in_enable == 1'b0)
 				next_state = AwaitCommand;
