@@ -15,7 +15,7 @@ module flash_serial
 	parameter ADDRESS_WORDS  = 2,
 
 	parameter MAIN_CLK       = 50_000_000,
-	parameter SERIAL_CLK     = 10_000_000,
+	parameter SERIAL_CLK     = 10_000_000
  )
 (
 	// main clock and reset
@@ -31,8 +31,10 @@ module flash_serial
 	output wire [WORD_BITS - 1 : 0] out_data,
 	// index of currently read word
 	output wire [ADDRESS_WORDS*WORD_BITS - 1 : 0] out_word_ctr,
-	// indicates that a word has been read or a new word is requested to write
-	output wire out_word_ready,
+	// indicates that a word has been read
+	output wire out_word_finished,
+	// indicates that a new word is requested to write (one cycle before out_word_finished)
+	output wire out_next_word,
 
 	// serial interface to flash controller
 	output wire out_flash_rst,     // reset
@@ -110,7 +112,8 @@ serial #(
 	.BITS(WORD_BITS), .LOWBIT_FIRST(1'b0),
 	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SERIAL_CLK),
 	.SERIAL_CLK_INACTIVE(1'b1), .SERIAL_DATA_INACTIVE(1'b0),
-	.KEEP_SERIAL_CLK_RUNNING(1'b1)
+	.KEEP_SERIAL_CLK_RUNNING(1'b1),
+	.FROM_FPGA_FALLING_EDGE(1'b1), .TO_FPGA_FALLING_EDGE(1'b1)
 )
 serial_mod(
 	.in_clk(in_clk), .in_rst(in_rst),
@@ -138,7 +141,8 @@ assign out_flash_data = serial_data_out;
 
 assign out_data = word_rx;
 assign out_word_ctr = word_ctr;
-assign out_word_ready = word_rdy;
+assign out_word_finished = word_rdy;
+assign out_next_word = next_word_rdy;
 // --------------------------------------------------------------------
 
 
@@ -308,7 +312,6 @@ always_comb begin
 		end
 		// ----------------------------------------------------
 
-
 		// ----------------------------------------------------
 		// write command word with no address
 		WriteCommandOnly: begin
@@ -399,7 +402,7 @@ always_comb begin
 			if(bus_cycle_req == 1'b1) begin
 				next_word_ctr = $size(word_ctr)'(word_ctr + 1'b1);
 				next_word_rdy = 1'b1;
-				next_state = AwaitCommand;  // TODO: transfer of more than one word
+				//next_state = AwaitCommand;  // stop after first word
 			end
 
 			if(in_enable == 1'b0)

@@ -70,8 +70,7 @@ clk_test (.in_clk(clk27), .in_rst(rst), .out_clk(slow_clk));
 logic [BITS - 1 : 0] serial_char_tx, next_serial_char_tx = 0;
 wire [BITS - 1 : 0] serial_char_cur;
 
-logic serial_enabled_tx;
-logic serial_ready_tx;
+logic serial_enabled_tx, serial_ready_tx;
 
 logic serial_word_finished_tx, last_serial_word_finished_tx = 1'b0;
 wire serial_bus_cycle_tx_next = serial_word_finished_tx && ~last_serial_word_finished_tx;
@@ -89,7 +88,7 @@ serial_tx_mod(
 	.in_clk(clk27), .in_rst(rst),
 	.in_enable(serial_enabled_tx), .out_ready(serial_ready_tx),
 	.in_parallel(serial_char_cur), .out_serial(serial_tx),
-	//.out_next_word(serial_word_finished_tx)
+	.out_next_word(),
 	.out_word_finished(serial_word_finished_tx)
 );
 // ----------------------------------------------------------------------------
@@ -107,6 +106,10 @@ logic flash_word_rdy, last_flash_word_rdy = 1'b0;
 wire flash_bus_cycle = ~flash_word_rdy && last_flash_word_rdy;
 wire flash_bus_cycle_next = flash_word_rdy && ~last_flash_word_rdy;
 
+logic flash_next_word, last_flash_next_word = 1'b0;
+wire flash_bus_cycle_req = ~flash_next_word && last_flash_next_word;
+wire flash_bus_cycle_req_next = flash_next_word && ~last_flash_next_word;
+
 
 // instantiate flash module
 flash_serial #(
@@ -114,20 +117,22 @@ flash_serial #(
 	.MAIN_CLK(MAIN_CLK), .SERIAL_CLK(FLASH_CLK)
 )
 flash_mod(
-	.in_clk(clk27),                  // main clock
-	.in_rst(rst),                    // reset
-	.in_enable(flash_enabled),       // command enable
-	.in_read(flash_read),            // read or write mode
-	.in_addr(flash_addr),            // address to read from
-	.in_data(flash_tx),              // input data
-	.out_data(flash_rx),             // output data
-	.out_word_ctr(flash_word_ctr),   // currently read word index
-	.out_word_ready(flash_word_rdy), // finished reading or writing a word
+	.in_clk(clk27),                     // main clock
+	.in_rst(rst),                       // reset
+	.in_enable(flash_enabled),          // command enable
+	.in_read(flash_read),               // read or write mode
+	.in_addr(flash_addr),               // address to read from
+	.in_data(flash_tx),                 // input data
+	.out_data(flash_rx),                // output data
+	.out_word_ctr(flash_word_ctr),      // currently read word index
+	.out_word_finished(flash_word_rdy), // finished reading or writing a word
+	.out_next_word(flash_next_word),    // almost finished reading or writing a word
 
 	// interface with flash memory pins
 	.out_flash_rst(), .out_flash_clk(flash_clk),
 	.out_flash_select(flash_sel),
 	.out_flash_data(flash_out),
+    .out_flash_wp(),
 	.in_flash_data(flash_in)
 );
 // ----------------------------------------------------------------------------
@@ -138,7 +143,8 @@ flash_mod(
 // ----------------------------------------------------------------------------
 typedef enum
 {
-	Start, WriteFlashData,
+	Start,
+	WriteFlashData, WriteFlashDataEnd,
 	WaitBeforeRead, ReadFlashData,
 	TransmitSerialAddressByte1, TransmitSerialAddress1Separator,
 	TransmitSerialAddressByte2, TransmitSerialAddress2Separator,
@@ -162,6 +168,7 @@ always_ff@(posedge clk27, posedge rst) begin
 
 		flash_addr <= 1'b0;
 		last_flash_word_rdy <= 1'b0;
+		last_flash_next_word <= 1'b0;
 
 		wait_ctr <= 1'b0;
 	end
@@ -176,6 +183,7 @@ always_ff@(posedge clk27, posedge rst) begin
 
 		flash_addr <= next_flash_addr;
 		last_flash_word_rdy <= flash_word_rdy;
+		last_flash_next_word <= flash_next_word;
 
 		if(state == WaitBeforeRead || state == Start && wait_ctr != WAIT_DELAY)
 			wait_ctr <= $size(wait_ctr)'(wait_ctr + 1'b1);
@@ -200,7 +208,8 @@ always_comb begin
 
 	case(state)
 		Start: begin
-			next_flash_addr = 1'b0;
+			// write at address 0x10
+			next_flash_addr = $size(next_flash_addr)'(8'h10);
 			if(wait_ctr == WAIT_DELAY)
 				next_state = /*WaitBeforeRead;*/ WriteFlashData;
 		end
@@ -208,10 +217,21 @@ always_comb begin
 		WriteFlashData: begin
 			flash_enabled = 1'b1;
 			flash_read = 1'b0;
-			flash_tx = BITS'("Y");
+			flash_tx = BITS'("Z");  // write a 'Z'
 
-			if(flash_bus_cycle_next == 1'b1) begin
+			if(flash_bus_cycle_req_next == 1'b1) begin
+				flash_enabled = 1'b0;
+				next_state = WriteFlashDataEnd;
+			end
+		end
+
+		WriteFlashDataEnd: begin
+			flash_enabled = 1'b0;
+
+			if(flash_bus_cycle/*_next*/ == 1'b1) begin
 				next_state = WaitBeforeRead;
+				// start reading from address 0x00
+				next_flash_addr = 1'b0;
 			end
 		end
 

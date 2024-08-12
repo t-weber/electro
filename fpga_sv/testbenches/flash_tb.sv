@@ -48,15 +48,15 @@ module flash_tb;
 		.MAIN_CLK(MAIN_CLK), .SERIAL_CLK(SERIAL_CLK)
 	)
 	flash_mod(
-		.in_clk(clk),              // main clock
-		.in_rst(rst),              // reset
-		.in_enable(enable),        // command enable
-		.in_read(read_mode),       // read or write mode
-		.in_addr(addr),            // address to read from
-		.in_data(transmitted),     // input data
-		.out_data(received),       // output data
-		.out_word_ctr(word_ctr),   // currently read word index
-		.out_word_ready(word_rdy), // finished reading or writing a word
+		.in_clk(clk),                 // main clock
+		.in_rst(rst),                 // reset
+		.in_enable(enable),           // command enable
+		.in_read(read_mode),          // read or write mode
+		.in_addr(addr),               // address to read from
+		.in_data(transmitted),        // input data
+		.out_data(received),          // output data
+		.out_word_ctr(word_ctr),      // currently read word index
+		.out_word_finished(word_rdy), // finished reading or writing a word
 
 		// interface with flash memory pins
 		.out_flash_rst(flash_rst), .out_flash_clk(flash_clk),

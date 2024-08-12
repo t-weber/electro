@@ -30,7 +30,6 @@ src_files="main.sv \
 	../../sync/debounce_switch.sv \
 	../../clock/clkgen.sv \
 	../../comm/serial_async_tx.sv \
-	../../comm/serial_async_rx.sv \
 	../../comm/serial.sv \
 	../../mem/flash_serial.sv"
 
