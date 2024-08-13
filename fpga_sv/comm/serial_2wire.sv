@@ -1,6 +1,6 @@
 /**
  * serial controller for 2-wire interface
- * @author Tobias Weber
+ * @author Tobias Weber <tobias.weber@tum.de>
  * @date 1-may-2024
  * @license see 'LICENSE' file
  */

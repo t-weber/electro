@@ -13,16 +13,21 @@ use work.conv.all;
 entity serial is
 	generic(
 		-- clocks
-		constant MAIN_HZ : natural := 50_000_000;
+		constant MAIN_HZ   : natural := 50_000_000;
 		constant SERIAL_HZ : natural := 10_000;
 
 		-- inactive signals
-		constant SERIAL_CLK_INACTIVE : std_logic := '1';
+		constant SERIAL_CLK_INACTIVE  : std_logic := '1';
 		constant SERIAL_DATA_INACTIVE : std_logic := '1';
 
 		-- word length
-		constant BITS : natural := 8;
+		constant BITS         : natural   := 8;
 		constant LOWBIT_FIRST : std_logic := '1';
+
+		-- signal triggers
+		constant FROM_FPGA_FALLING_EDGE : std_logic := '1';
+		constant TO_FPGA_FALLING_EDGE   : std_logic := '1';
+
 
 		constant SERIAL_CLK_SHIFT : std_logic := '0'
 	);
@@ -34,7 +39,7 @@ entity serial is
 		-- serial clock
 		out_clk, out_ready : out std_logic;
 
-		-- request next word
+		-- request next word (one cycle before current word is finished)
 		out_next_word : out std_logic;
 
 		-- enable transmission
@@ -83,9 +88,9 @@ architecture serial_impl of serial is
 		: std_logic_vector(BITS-1 downto 0) := (others => '0');
 
 begin
-	--
+	-----------------------------------------------------------------------
 	-- generate serial clocks
-	--
+	-----------------------------------------------------------------------
 	serial_clkgen : entity work.clkgen
 		generic map(MAIN_HZ => MAIN_HZ, CLK_HZ => SERIAL_HZ,
 			CLK_INIT => '1')
@@ -120,53 +125,42 @@ begin
 		-- inactive '0' and trigger on falling edge
 		out_clk <= not serial_clk when serial_state = Transmit else '0';
 	end generate;
+	-----------------------------------------------------------------------
 
 
-	--
-	-- state and data flip-flops for serial clock
-	--
-	serial_ff : process(serial_clk_data, in_reset) begin
-		-- reset
-		if in_reset = '1' then
-			-- state register
-			serial_state <= Ready;
-
-			-- counter register
-			bit_ctr <= 0;
-
-			-- parallel data register
-			parallel_fromfpga <= (others => '0');
-			parallel_tofpga <= (others => '0');
-
-		-- clock
-		elsif falling_edge(serial_clk_data) then
-		--elsif rising_edge(serial_clk_data) then
-			-- state register
-			serial_state <= next_serial_state;
-
-			-- counter register
-			bit_ctr <= next_bit_ctr;
-
-			-- parallel data register
-			parallel_fromfpga <= next_parallel_fromfpga;
-			parallel_tofpga <= next_parallel_tofpga;
-		end if;
-	end process;
-
-
-	--
+	-----------------------------------------------------------------------
 	-- get bit counter with correct ordering
-	--
+	-----------------------------------------------------------------------
 	gen_ctr_1 : if LOWBIT_FIRST = '1' generate
 		actual_bit_ctr <= bit_ctr;
 	else generate
 		actual_bit_ctr <= BITS - bit_ctr - 1;
 	end generate;
+	-----------------------------------------------------------------------
 
 
-	--
+	-----------------------------------------------------------------------
 	-- register input parallel data (FPGA -> IC)
-	--
+	-----------------------------------------------------------------------
+	gen_from_fpga_ff : if FROM_FPGA_FALLING_EDGE = '1' generate
+		fpga_to_ic_ff : process(serial_clk_data, in_reset) begin
+			if in_reset = '1' then
+				parallel_fromfpga <= (others => '0');
+			elsif falling_edge(serial_clk_data) then
+				parallel_fromfpga <= next_parallel_fromfpga;
+			end if;
+		end process;
+	else generate
+		fpga_to_ic_ff : process(serial_clk_data, in_reset) begin
+			if in_reset = '1' then
+				parallel_fromfpga <= (others => '0');
+			elsif rising_edge(serial_clk_data) then
+				parallel_fromfpga <= next_parallel_fromfpga;
+			end if;
+		end process;
+	end generate;
+
+
 	proc_input : process(in_enable,
 		in_parallel, parallel_fromfpga)
 	begin
@@ -190,11 +184,31 @@ begin
 	out_serial <= serial_fromfpga
 		when serial_state = Transmit
 		else SERIAL_DATA_INACTIVE;
+	-----------------------------------------------------------------------
 
 
-	--
+	-----------------------------------------------------------------------
 	-- buffer serial input (IC -> FPGA)
-	--
+	-----------------------------------------------------------------------
+	gen_to_fpga_ff : if TO_FPGA_FALLING_EDGE = '1' generate
+		ic_to_fpga_ff : process(serial_clk_data, in_reset) begin
+			if in_reset = '1' then
+				parallel_tofpga <= (others => '0');
+			elsif falling_edge(serial_clk_data) then
+				parallel_tofpga <= next_parallel_tofpga;
+			end if;
+		end process;
+	else generate
+		ic_to_fpga_ff : process(serial_clk_data, in_reset) begin
+			if in_reset = '1' then
+				parallel_tofpga <= (others => '0');
+			elsif rising_edge(serial_clk_data) then
+				parallel_tofpga <= next_parallel_tofpga;
+			end if;
+		end process;
+	end generate;
+
+
 	proc_in : process(in_serial, parallel_tofpga,
 		serial_state, actual_bit_ctr)
 	begin
@@ -211,6 +225,34 @@ begin
 	-- output read parallel data (IC -> FPGA)
 	--
 	out_parallel <= parallel_tofpga;
+	-----------------------------------------------------------------------
+
+
+	-----------------------------------------------------------------------
+	-- state machine
+	-----------------------------------------------------------------------
+	--
+	-- state and data flip-flops for serial clock
+	--
+	serial_ff : process(serial_clk_data, in_reset) begin
+		-- reset
+		if in_reset = '1' then
+			-- state register
+			serial_state <= Ready;
+
+			-- counter register
+			bit_ctr <= 0;
+
+		-- clock
+		elsif falling_edge(serial_clk_data) then
+		--elsif rising_edge(serial_clk_data) then
+			-- state register
+			serial_state <= next_serial_state;
+
+			-- counter register
+			bit_ctr <= next_bit_ctr;
+		end if;
+	end process;
 
 
 	--
@@ -256,5 +298,6 @@ begin
 				next_serial_state <= Ready;
 		end case;
 	end process;
+	-----------------------------------------------------------------------
 
 end architecture;

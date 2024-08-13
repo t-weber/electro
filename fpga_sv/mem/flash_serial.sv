@@ -1,6 +1,6 @@
 /**
  * flash memory with serial interface
- * @author Tobias Weber
+ * @author Tobias Weber <tobias.weber@tum.de>
  * @date 10-aug-2024
  * @license see 'LICENSE' file
  *
@@ -65,7 +65,7 @@ localparam [WORD_BITS - 1 : 0] CMD_WRITE_ENABLE  = WORD_BITS'(8'h06);
 	localparam WAIT_RESET       = 1;
 	localparam WAIT_AFTER_RESET = 1;
 `else
-	localparam WAIT_RESET       = MAIN_CLK/1000/1000;      // 1 us
+	localparam WAIT_RESET       = MAIN_CLK/1000/1000 * 1;  // 1 us
 	localparam WAIT_AFTER_RESET = MAIN_CLK/1000/1000 * 29; // 29 us
 `endif
 
@@ -108,12 +108,13 @@ wire bus_cycle = word_finished && ~last_word_finished;
 logic word_requested, last_word_requested = 1'b0;
 wire bus_cycle_req = word_requested && ~last_word_requested;
 
+// read from flash on rising edge, write to flash on falling edge
 serial #(
 	.BITS(WORD_BITS), .LOWBIT_FIRST(1'b0),
 	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SERIAL_CLK),
 	.SERIAL_CLK_INACTIVE(1'b1), .SERIAL_DATA_INACTIVE(1'b0),
 	.KEEP_SERIAL_CLK_RUNNING(1'b1),
-	.FROM_FPGA_FALLING_EDGE(1'b1), .TO_FPGA_FALLING_EDGE(1'b1)
+	.FROM_FPGA_FALLING_EDGE(1'b1), .TO_FPGA_FALLING_EDGE(1'b0)
 )
 serial_mod(
 	.in_clk(in_clk), .in_rst(in_rst),
@@ -325,6 +326,7 @@ always_comb begin
 		// write command word with one data byte
 		WriteCommandOneByte: begin
 			serial_enable = 1'b1;
+			flash_write_protect = 1'b0;
 			data_tx = cmd;
 
 			if(bus_cycle_req == 1'b1)

@@ -1,6 +1,6 @@
 /**
  * serial controller for asynchronous interface (reception)
- * @author Tobias Weber
+ * @author Tobias Weber <tobias.weber@tum.de>
  * @date 9-june-2024
  * @license see 'LICENSE' file
  *

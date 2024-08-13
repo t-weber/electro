@@ -9,9 +9,9 @@
 
 module bcd
 #(
-	parameter IN_BITS = 8,
-	parameter OUT_BITS = 3*4,
-	parameter NUM_BCD_DIGITS = OUT_BITS/4
+	parameter IN_BITS        = 8,
+	parameter OUT_BITS       = 3 * 4,
+	parameter NUM_BCD_DIGITS = OUT_BITS / 4
 )
 (
 	// clock and reset
@@ -50,14 +50,16 @@ assign out_finished = (state==Idle ? 1'b1 : 1'b0);
 
 // clock process
 always_ff@(posedge in_clk, posedge in_rst) begin
-	if(in_rst == 1) begin
+	// reset
+	if(in_rst == 1'b1) begin
 		state <= Shift;
 		bcdnum <= 0;
 		bitidx <= IN_BITS[IN_BITS-1 : 0] - 1'b1;
 		bcdidx <= NUM_BCD_DIGITS[NUM_BCD_DIGITS-1 : 0] - 1'b1;
 	end
 
-	else if(in_clk == 1) begin
+	// clock
+	else begin
 		state <= state_next;
 		bcdnum <= bcdnum_next;
 		bitidx <= bitidx_next;
@@ -67,7 +69,6 @@ end
 
 
 // conversion process
-//always@(state, bitidx, bcdidx, bcdnum, in_start, in_num) begin
 always_comb begin
 	// save registers
 	state_next = state;
@@ -86,15 +87,15 @@ always_comb begin
 		Reset:
 			begin
 				bcdnum_next = 0;
-				bitidx_next = IN_BITS[IN_BITS-1 : 0] - 1'b1;
-				bcdidx_next = NUM_BCD_DIGITS[NUM_BCD_DIGITS-1 : 0] - 1'b1;
+				bitidx_next = IN_BITS[IN_BITS - 1 : 0] - 1'b1;
+				bcdidx_next = NUM_BCD_DIGITS[NUM_BCD_DIGITS - 1 : 0] - 1'b1;
 				state_next = Shift;
 			end
 
 		// shift left
 		Shift:
 			begin
-				bcdnum_next[OUT_BITS-1 : 1] = bcdnum[OUT_BITS-2 : 0];
+				bcdnum_next[OUT_BITS-1 : 1] = bcdnum[OUT_BITS - 2 : 0];
 				bcdnum_next[0] = in_num[bitidx];
 
 				// no addition for last index
@@ -108,13 +109,13 @@ always_comb begin
 		Add:
 			begin
 				// check if the bcd digit is >= 5, if so, add 3
-				if(bcdnum[bcdidx*4+3 -: 4] >= 5)
+				if(bcdnum[bcdidx*4 + 3 -: 4] >= 5)
 					bcdnum_next = bcdnum + (2'd3 << (bcdidx*3'd4));
 
 				if(bcdidx != 0)
 					bcdidx_next = bcdidx - 1'b1;
 				else begin
-					bcdidx_next = NUM_BCD_DIGITS[NUM_BCD_DIGITS-1 : 0] - 1'b1;
+					bcdidx_next = NUM_BCD_DIGITS[NUM_BCD_DIGITS - 1 : 0] - 1'b1;
 					state_next = NextIndex;
 				end
 			end
