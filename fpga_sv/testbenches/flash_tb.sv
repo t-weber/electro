@@ -25,7 +25,13 @@ module flash_tb;
 	localparam SERIAL_CLK = 250_000;
 
 
-	typedef enum bit [1 : 0] { Reset, WriteData, ReadData } t_state;
+	typedef enum bit [2 : 0]
+	{
+		Reset,
+		WriteData, WriteDataEnd,
+		ReadData,
+		Done
+	} t_state;
 	t_state state = Reset, next_state = Reset;
 
 
@@ -39,7 +45,12 @@ module flash_tb;
 	logic flash_data_out, flash_data_in = 1'b1;
 
 	logic word_rdy, last_word_rdy = 1'b0;
+	wire bus_cycle = ~word_rdy && last_word_rdy;
 	wire bus_cycle_next = word_rdy && ~last_word_rdy;
+
+	logic word_req, last_word_req = 1'b0;
+	wire bus_cycle_req = ~word_req && last_word_req;
+	wire bus_cycle_req_next = word_req && ~last_word_req;
 
 
 	// instantiate flash module
@@ -57,6 +68,7 @@ module flash_tb;
 		.out_data(received),          // output data
 		.out_word_ctr(word_ctr),      // currently read word index
 		.out_word_finished(word_rdy), // finished reading or writing a word
+		.out_next_word(word_req),     // one cycle before word finished
 
 		// interface with flash memory pins
 		.out_flash_rst(flash_rst), .out_flash_clk(flash_clk),
@@ -70,6 +82,7 @@ module flash_tb;
 	always_ff@(posedge clk) begin
 		state <= next_state;
 		last_word_rdy <= word_rdy;
+		last_word_req <= word_req;
 	end
 
 
@@ -96,13 +109,27 @@ module flash_tb;
 				transmitted = 8'h71;
 				addr = 16'h1281;
 
-				//if(bus_cycle_next == 1'b1)
-				//	next_state = ReadData;
+				if(bus_cycle_req_next == 1'b1) begin
+					enable = 1'b0;
+					next_state = WriteDataEnd;
+				end
+			end
+
+			WriteDataEnd: begin
+				if(bus_cycle/*_next*/ == 1'b1)
+					next_state = ReadData;
 			end
 
 			ReadData: begin
 				enable = 1'b1;
 				addr = 16'h1281;
+
+				if(bus_cycle_next == 1'b1) begin
+					next_state = Done;
+				end
+			end
+
+			Done: begin
 			end
 		endcase
 	end
