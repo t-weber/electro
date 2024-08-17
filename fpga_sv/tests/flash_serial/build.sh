@@ -31,7 +31,7 @@ src_files="main.sv \
 	../../sync/debounce_switch.sv \
 	../../clock/clkgen.sv \
 	../../comm/serial_async_tx.sv \
-	../../comm/serial.sv \
+	../../comm/serial_duplex.sv \
 	../../mem/flash_serial.sv"
 
 # 9k board

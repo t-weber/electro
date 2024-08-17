@@ -28,9 +28,6 @@ module flash_serial_mod
 	output wire [5:0] led
 );
 
-// read only or also write test data
-localparam READ_ONLY  = 1'b1;
-
 // clocks
 localparam MAIN_CLK   = 27_000_000;
 localparam SERIAL_CLK = 115_200;
@@ -49,13 +46,13 @@ logic [$clog2(WAIT_DELAY) : 0] wait_ctr = 1'b0;
 // ----------------------------------------------------------------------------
 // keys
 // ----------------------------------------------------------------------------
-logic rst, toggled;
+logic rst, toggled_write;
 
 debounce_switch debounce_key0(.in_clk(clk27), .in_rst(1'b0),
 	.in_signal(~key[0]), .out_debounced(rst));
 
 debounce_button debounce_key1(.in_clk(clk27), .in_rst(rst),
-	.in_signal(~key[1]), .out_toggled(toggled), .out_debounced());
+	.in_signal(~key[1]), .out_toggled(toggled_write), .out_debounced());
 // ----------------------------------------------------------------------------
 
 
@@ -149,9 +146,9 @@ flash_mod(
 // ----------------------------------------------------------------------------
 typedef enum
 {
-	Start,
+	Start, Wait,
 	WriteFlashData, WriteFlashDataEnd,
-	WaitBeforeRead, ReadFlashData,
+	ReadFlashData,
 	TransmitSerialAddressWord, TransmitSerialSepAfterAddress,
 	TransmitSerialAddressSeparator,
 	TransmitSerialData, TransmitSerialBit,
@@ -196,7 +193,7 @@ always_ff@(posedge clk27, posedge rst) begin
 		last_flash_word_rdy <= flash_word_rdy;
 		last_flash_next_word <= flash_next_word;
 
-		if(state == WaitBeforeRead || state == Start && wait_ctr != WAIT_DELAY)
+		if((state == Start || state == Wait) && wait_ctr != WAIT_DELAY)
 			wait_ctr <= $size(wait_ctr)'(wait_ctr + 1'b1);
 		else
 			wait_ctr <= $size(wait_ctr)'(1'b0);
@@ -222,21 +219,17 @@ always_comb begin
 	case(state)
 		Start: begin
 			if(wait_ctr == WAIT_DELAY) begin
-				if(READ_ONLY == 1'b1) begin
-					next_flash_addr = 1'b0;
-					next_state = WaitBeforeRead;
-				end else begin
-					// write at address 0x10
-					next_flash_addr = $size(next_flash_addr)'(8'h10);
+				if(toggled_write == 1'b1)
 					next_state = WriteFlashData;
-				end
+				else
+					next_state = ReadFlashData;
 			end
 		end
 
 		WriteFlashData: begin
 			flash_enabled = 1'b1;
 			flash_read = 1'b0;
-			flash_tx = BITS'(".");  // write a '.'
+			flash_tx = BITS'("#");  // write a '#'
 
 			if(flash_bus_cycle_req_next == 1'b1) begin
 				flash_enabled = 1'b0;
@@ -245,22 +238,18 @@ always_comb begin
 		end
 
 		WriteFlashDataEnd: begin
-			flash_enabled = 1'b0;
-
-			if(flash_bus_cycle/*_next*/ == 1'b1) begin
-				next_state = WaitBeforeRead;
-				// start reading from address 0x00
-				next_flash_addr = 1'b0;
-			end
+			if(flash_bus_cycle_next == 1'b1)
+				next_state = Wait;
 		end
 
-		WaitBeforeRead: begin
+		Wait: begin
 			if(wait_ctr == WAIT_DELAY)
 				next_state = ReadFlashData;
 		end
 
 		ReadFlashData: begin
 			flash_enabled = 1'b1;
+
 			if(flash_bus_cycle_next == 1'b1) begin
 				next_serial_char_tx = flash_rx;
 				next_state = TransmitSerialAddressWord;
@@ -269,6 +258,7 @@ always_comb begin
 
 		TransmitSerialAddressWord: begin
 			serial_enabled_tx = 1'b1;
+
 			if(serial_bus_cycle_tx_next == 1'b1) begin
 				serial_enabled_tx = 1'b0;
 
@@ -296,6 +286,7 @@ always_comb begin
 
 		TransmitSerialAddressSeparator: begin
 			serial_enabled_tx = 1'b1;
+
 			if(serial_bus_cycle_tx_next == 1'b1) begin
 				serial_enabled_tx = 1'b0;
 				next_state = TransmitSerialAddressWord;
@@ -304,6 +295,7 @@ always_comb begin
 
 		TransmitSerialSepAfterAddress: begin
 			serial_enabled_tx = 1'b1;
+
 			if(serial_bus_cycle_tx_next == 1'b1) begin
 				serial_enabled_tx = 1'b0;
 
@@ -319,6 +311,7 @@ always_comb begin
 
 		TransmitSerialData: begin
 			serial_enabled_tx = 1'b1;
+
 			if(serial_bus_cycle_tx_next == 1'b1) begin
 				serial_enabled_tx = 1'b0;
 				next_state = TransmitSerialSepBeforeBin;
@@ -327,6 +320,7 @@ always_comb begin
 
 		TransmitSerialSepBeforeBin: begin
 			serial_enabled_tx = 1'b1;
+
 			if(serial_bus_cycle_tx_next == 1'b1) begin
 				serial_enabled_tx = 1'b0;
 				next_state = TransmitSerialBit;
@@ -335,6 +329,7 @@ always_comb begin
 
 		TransmitSerialBit: begin
 			serial_enabled_tx = 1'b1;
+
 			if(serial_bus_cycle_tx_next == 1'b1) begin
 				serial_enabled_tx = 1'b0;
 
@@ -350,6 +345,7 @@ always_comb begin
 
 		TransmitSerialSepBeforeHex: begin
 			serial_enabled_tx = 1'b1;
+
 			if(serial_bus_cycle_tx_next == 1'b1) begin
 				serial_enabled_tx = 1'b0;
 
@@ -365,6 +361,7 @@ always_comb begin
 
 		TransmitSerialHex: begin
 			serial_enabled_tx = 1'b1;
+
 			if(serial_bus_cycle_tx_next == 1'b1) begin
 				serial_enabled_tx = 1'b0;
 
@@ -380,6 +377,7 @@ always_comb begin
 
 		TransmitSerialCR: begin
 			serial_enabled_tx = 1'b1;
+
 			if(serial_bus_cycle_tx_next == 1'b1) begin
 				serial_enabled_tx = 1'b0;
 				next_state = TransmitSerialNL;
@@ -388,6 +386,7 @@ always_comb begin
 
 		TransmitSerialNL: begin
 			serial_enabled_tx = 1'b1;
+
 			if(serial_bus_cycle_tx_next == 1'b1) begin
 				serial_enabled_tx = 1'b0;
 				next_state = NextFlashAddress;
@@ -396,7 +395,7 @@ always_comb begin
 
 		NextFlashAddress: begin
 			next_flash_addr <= $size(flash_addr)'(flash_addr + 1'b1);
-			next_state = WaitBeforeRead;
+			next_state = Start;
 		end
 	endcase
 end
@@ -436,7 +435,7 @@ assign serial_char_cur =
 // ----------------------------------------------------------------------------
 assign led[0] = ~slow_clk;
 assign led[1] = ~rst;
-assign led[2] = ~toggled;
+assign led[2] = ~toggled_write;
 assign led[5:3] = 3'b111;
 // ----------------------------------------------------------------------------
 

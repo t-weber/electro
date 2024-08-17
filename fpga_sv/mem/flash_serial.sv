@@ -51,6 +51,7 @@ module flash_serial
 // --------------------------------------------------------------------
 localparam [WORD_BITS - 1 : 0] CMD_NOP           = WORD_BITS'(8'h00);
 localparam [WORD_BITS - 1 : 0] CMD_WRITE_STATUS  = WORD_BITS'(8'h01);
+localparam [WORD_BITS - 1 : 0] CMD_READ_STATUS   = WORD_BITS'(8'h05);
 localparam [WORD_BITS - 1 : 0] CMD_WRITE         = WORD_BITS'(8'h02);
 localparam [WORD_BITS - 1 : 0] CMD_READ          = WORD_BITS'(8'h03);
 localparam [WORD_BITS - 1 : 0] CMD_WRITE_DISABLE = WORD_BITS'(8'h04);
@@ -59,17 +60,19 @@ localparam [WORD_BITS - 1 : 0] CMD_WRITE_ENABLE  = WORD_BITS'(8'h06);
 
 
 // --------------------------------------------------------------------
-// wait timer register, see [flash], pp. 76-77
+// wait timer register, see [flash], p. 13, pp. 76-77
 // --------------------------------------------------------------------
 `ifdef __IN_SIMULATION__
+	localparam WAIT_INIT        = 1;
 	localparam WAIT_RESET       = 1;
 	localparam WAIT_AFTER_RESET = 1;
 `else
-	localparam WAIT_RESET       = MAIN_CLK/1000/1000 * 1;  // 1 us
-	localparam WAIT_AFTER_RESET = MAIN_CLK/1000/1000 * 29; // 29 us
+	localparam WAIT_INIT        = MAIN_CLK/1000/1000 * 400; // 400 us
+	localparam WAIT_RESET       = MAIN_CLK/1000/1000 * 2;   // 2 us
+	localparam WAIT_AFTER_RESET = MAIN_CLK/1000/1000 * 50;  // 50 us
 `endif
 
-logic [$clog2(WAIT_AFTER_RESET /*largest value*/) : 0]
+logic [$clog2(WAIT_INIT /*largest value*/) : 0]
 	wait_ctr = 1'b0, wait_ctr_max = 1'b0;
 // --------------------------------------------------------------------
 
@@ -95,34 +98,45 @@ endgenerate
 // --------------------------------------------------------------------
 // serial interface
 // --------------------------------------------------------------------
-logic serial_enable, serial_ready, serial_clk;
+logic serial_enable_tx, serial_enable_rx;
+logic serial_clk, serial_clk_raw;
 logic serial_data_out;
 
 logic [WORD_BITS - 1 : 0] data_tx, data_rx;
 logic [WORD_BITS - 1 : 0] word_rx, next_word_rx;
 
-logic word_finished, last_word_finished = 1'b0;
-wire bus_cycle = word_finished && ~last_word_finished;
-//wire bus_cycle_next = ~word_finished && last_word_finished;
+logic word_finished_tx, last_word_finished_tx = 1'b0;
+logic word_finished_rx, last_word_finished_rx = 1'b0;
+wire bus_cycle_tx = word_finished_tx && ~last_word_finished_tx;
+wire bus_cycle_rx = word_finished_rx && ~last_word_finished_rx;
 
-logic word_requested, last_word_requested = 1'b0;
-wire bus_cycle_req = word_requested && ~last_word_requested;
+logic word_requested_rx, last_word_requested_rx = 1'b0;
+logic word_requested_tx, last_word_requested_tx = 1'b0;
+wire bus_cycle_req_rx = word_requested_rx && ~last_word_requested_rx;
+wire bus_cycle_req_tx = word_requested_tx && ~last_word_requested_tx;
 
 // read from flash on rising edge, write to flash on falling edge
-serial #(
+serial_duplex #(
 	.BITS(WORD_BITS), .LOWBIT_FIRST(1'b0),
 	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SERIAL_CLK),
 	.SERIAL_CLK_INACTIVE(1'b1), .SERIAL_DATA_INACTIVE(1'b0),
 	.KEEP_SERIAL_CLK_RUNNING(1'b1),
-	.FROM_FPGA_FALLING_EDGE(1'b1), .TO_FPGA_FALLING_EDGE(1'b0)
+	.TO_FPGA_FALLING_EDGE(1'b0) /* rx */,
+	.FROM_FPGA_FALLING_EDGE(1'b1) /* tx */
 )
 serial_mod(
 	.in_clk(in_clk), .in_rst(in_rst),
-	.in_parallel(data_tx), .in_enable(serial_enable),
-	.in_serial(in_flash_data), .out_serial(serial_data_out),
-	.out_word_finished(word_finished), .out_next_word(word_requested),
-	.out_ready(serial_ready), .out_clk(serial_clk),
-	.out_parallel(data_rx)
+	.in_enable_fromfpga(serial_enable_tx),
+	.in_enable_tofpga(serial_enable_rx),
+	.in_serial(in_flash_data), .in_parallel(data_tx),
+	.out_serial(serial_data_out), .out_parallel(data_rx),
+	.out_clk(serial_clk), .out_clk_raw(serial_clk_raw),
+	.out_word_finished_fromfpga(word_finished_tx),
+	.out_next_word_fromfpga(word_requested_tx),
+	.out_ready_fromfpga(),
+	.out_word_finished_tofpga(word_finished_rx),
+	.out_next_word_tofpga(word_requested_rx),
+	.out_ready_tofpga()
 );
 // --------------------------------------------------------------------
 
@@ -132,11 +146,10 @@ serial_mod(
 // --------------------------------------------------------------------
 logic flash_rst, flash_write_protect;
 logic word_rdy, next_word_rdy;
-logic word_fin, next_word_fin;
 
 assign out_flash_clk = serial_clk;
 assign out_flash_rst = ~flash_rst;          // active low
-assign out_flash_select = ~serial_enable;   // active low
+assign out_flash_select = ~(serial_enable_tx | serial_enable_rx); // active low
 assign out_flash_wp = ~flash_write_protect; // active low
 assign out_flash_data = serial_data_out;
 
@@ -151,60 +164,47 @@ assign out_next_word = next_word_rdy;
 // states
 // --------------------------------------------------------------------
 typedef enum {
-	Reset, AfterReset,
+	Init, Reset, AfterReset,
 	AwaitCommand,
 	WriteCommandOnly,
-	WriteCommandOneByte, WriteByte,
+	WriteCommandWriteOneWord, WriteWord,
+	WriteCommandReadOneWord, ReadWord,
 	WriteCommand, WriteAddress,
 	ReadData, WriteData
 } t_state;
 
-t_state state = Reset, next_state = Reset;
+t_state state = Init, next_state = Init;
 t_state data_state = ReadData, next_data_state = ReadData;
 
 logic [WORD_BITS - 1 : 0] cmd = CMD_NOP, next_cmd = CMD_NOP;
 logic [WORD_BITS - 1 : 0] data = 1'b0, next_data = 1'b0;
-logic [0 : 0] cmd_phase = 1'b0, next_cmd_phase = 1'b0;
+logic [1 : 0] cmd_phase = 1'b0, next_cmd_phase = 1'b0;
 
 logic is_write_protected = 1'b1, next_is_write_protected = 1'b1;
 
 
-// state flip-flops
-always_ff@(posedge serial_clk, posedge in_rst) begin
+always_ff@(posedge serial_clk_raw, posedge in_rst) begin
 	// reset
 	if(in_rst == 1'b1) begin
-		state <= Reset;
+		state <= /*Reset*/ Init;
 		data_state <= ReadData;
-		is_write_protected <= 1'b1;
 
-		data <= 1'b0;
-		cmd <= CMD_NOP;
 		cmd_phase <= 1'b0;
 
-		word_rx <= 1'b0;
 		word_ctr <= 1'b0;
-		word_fin <= 1'b0;
 		word_rdy <= 1'b0;
 
 		wait_ctr <= 1'b0;
-
-		last_word_finished <= 1'b0;
-		last_word_requested <= 1'b0;
 	end
 
 	// clock
 	else begin
 		state <= next_state;
 		data_state <= next_data_state;
-		is_write_protected <= next_is_write_protected;
 
-		data <= next_data;
-		cmd <= next_cmd;
 		cmd_phase <= next_cmd_phase;
 
-		word_rx <= next_word_rx;
 		word_ctr <= next_word_ctr;
-		word_fin <= next_word_fin;
 		word_rdy <= next_word_rdy;
 
 		// timer register
@@ -215,9 +215,48 @@ always_ff@(posedge serial_clk, posedge in_rst) begin
 			// next timer counter
 			wait_ctr <= $size(wait_ctr)'(wait_ctr + 1'b1);
 		end
+	end
+end
 
-		last_word_finished <= word_finished;
-		last_word_requested <= word_requested;
+
+always_ff@(posedge serial_clk_raw, posedge in_rst) begin
+	// reset
+	if(in_rst == 1'b1) begin
+		word_rx <= 1'b0;
+
+		last_word_finished_rx <= 1'b0;
+		last_word_requested_rx <= 1'b0;
+	end
+
+	// clock
+	else begin
+		word_rx <= next_word_rx;
+
+		last_word_finished_rx <= word_finished_rx;
+		last_word_requested_rx <= word_requested_rx;
+	end
+end
+
+
+always_ff@(negedge serial_clk_raw, posedge in_rst) begin
+	// reset
+	if(in_rst == 1'b1) begin
+		is_write_protected <= 1'b1;
+		data <= 1'b0;
+		cmd <= CMD_NOP;
+
+		last_word_finished_tx <= 1'b0;
+		last_word_requested_tx <= 1'b0;
+	end
+
+	// clock
+	else begin
+		is_write_protected <= next_is_write_protected;
+		data <= next_data;
+		cmd <= next_cmd;
+
+		last_word_finished_tx <= word_finished_tx;
+		last_word_requested_tx <= word_requested_tx;
 	end
 end
 
@@ -235,11 +274,11 @@ always_comb begin
 
 	next_word_ctr = word_ctr;
 	next_word_rx = word_rx;
-	next_word_fin = word_fin;
 	next_word_rdy = 1'b0;
 
 	wait_ctr_max = WAIT_RESET;
-	serial_enable = 1'b0;
+	serial_enable_tx = 1'b0;
+	serial_enable_rx = 1'b0;
 	data_tx = 0;
 
 	flash_rst = 1'b0;
@@ -247,6 +286,13 @@ always_comb begin
 
 	case(state)
 		// ----------------------------------------------------
+		// Init
+		Init: begin
+			wait_ctr_max = WAIT_INIT;
+			if(wait_ctr == wait_ctr_max)
+				next_state = Reset;
+		end
+
 		// send reset
 		Reset: begin
 			flash_rst = 1'b1;
@@ -271,30 +317,40 @@ always_comb begin
 			if(in_enable == 1'b1) begin
 				next_word_ctr = 1'b0;
 
+				// read operation: [flash], p. 35
 				if(in_read == 1'b1) begin
-					// read operation: [flash], p. 35
 					next_state = WriteCommand;
 					next_data_state = ReadData;
 					next_cmd = CMD_READ;
-				end else if(is_write_protected == 1'b1) begin
-					// remove write protection on first write attempt
-					if(cmd_phase == 1'd0) begin
+				end
+
+				// remove write protection on first write attempt
+				else if(is_write_protected == 1'b1) begin
+					if(cmd_phase == 2'd0) begin
 						// write enable: [flash], p. 26
 						next_state = WriteCommandOnly;
 						next_data_state = AwaitCommand;
 						next_cmd = CMD_WRITE_ENABLE;
-						next_cmd_phase = 1'd1;
+						next_cmd_phase = 2'd1;
+					end else if(cmd_phase == 2'd1) begin
+						// read status register: [flash], pp. 28-29
+						next_state = WriteCommandReadOneWord;
+						next_data_state = AwaitCommand;
+						next_cmd = CMD_READ_STATUS;
+						next_cmd_phase = 2'd2;
 					end else begin
 						// unlock: [flash], pp. 33-34
-						next_state = WriteCommandOneByte;
+						next_state = WriteCommandWriteOneWord;
 						next_data_state = AwaitCommand;
 						next_cmd = CMD_WRITE_STATUS;
-						next_data = 8'b0000_0010;
-						next_cmd_phase = 1'd0;
+						next_data = { word_rx[7], 5'b0, word_rx[1:0] };
+						next_cmd_phase = 2'd0;
 						next_is_write_protected = 1'b0;
 					end
-				end else begin
-					// write sequence: [flash], pp. 56-57
+				end
+
+				// write operation: [flash], pp. 56-57
+				else begin
 					if(cmd_phase == 1'd0) begin
 						// write enable: [flash], p. 26
 						next_state = WriteCommandOnly;
@@ -316,38 +372,58 @@ always_comb begin
 		// ----------------------------------------------------
 		// write command word with no address
 		WriteCommandOnly: begin
-			serial_enable = 1'b1;
+			serial_enable_tx = 1'b1;
 			data_tx = cmd;
 
-			if(bus_cycle_req == 1'b1)
+			if(bus_cycle_req_tx == 1'b1)
 				next_state = data_state;
 		end
 
-		// write command word with one data byte
-		WriteCommandOneByte: begin
-			serial_enable = 1'b1;
+		// write command word and one data word
+		WriteCommandWriteOneWord: begin
+			serial_enable_tx = 1'b1;
 			flash_write_protect = 1'b0;
 			data_tx = cmd;
 
-			if(bus_cycle_req == 1'b1)
-				next_state = WriteByte;
+			if(bus_cycle_req_tx == 1'b1)
+				next_state = WriteWord;
 		end
 
-		// write one data byte
-		WriteByte: begin
-			serial_enable = 1'b1;
+		// write command word and read one data word
+		WriteCommandReadOneWord: begin
+			serial_enable_tx = 1'b1;
+			data_tx = cmd;
+
+			if(bus_cycle_req_tx == 1'b1)
+				next_state = ReadWord;
+		end
+
+		// write one data word
+		WriteWord: begin
+			serial_enable_tx = 1'b1;
+			flash_write_protect = 1'b0;
 			data_tx = data;
 
-			if(bus_cycle_req == 1'b1)
+			if(bus_cycle_req_tx == 1'b1)
 				next_state = data_state;
+		end
+
+		// read one data word
+		ReadWord: begin
+			serial_enable_rx = 1'b1;
+
+			if(bus_cycle_req_rx == 1'b1) begin
+				next_word_rx = data_rx;
+				next_state = data_state;
+			end
 		end
 
 		// write command word followed by an address
 		WriteCommand: begin
-			serial_enable = 1'b1;
+			serial_enable_tx = 1'b1;
 			data_tx = cmd;
 
-			if(bus_cycle_req == 1'b1) begin
+			if(bus_cycle_req_tx == 1'b1) begin
 				next_state = WriteAddress;
 				next_word_ctr = 1'b0;
 			end
@@ -355,11 +431,11 @@ always_comb begin
 
 		// write address words
 		WriteAddress: begin
-			serial_enable = 1'b1;
+			serial_enable_tx = 1'b1;
 			data_tx = cur_addr_word;
 
 			// advance word counter one flash clock cycle before transmission ends
-			if(bus_cycle_req == 1'b1) begin
+			if(bus_cycle_req_tx == 1'b1) begin
 				if(word_ctr != ADDRESS_WORDS - 1'b1) begin
 					next_word_ctr = $size(word_ctr)'(word_ctr + 1'b1);
 				end else begin
@@ -373,19 +449,12 @@ always_comb begin
 		// ----------------------------------------------------
 		// read data words
 		ReadData: begin
-			serial_enable = 1'b1;
+			serial_enable_rx = 1'b1;
 
-			if(bus_cycle == 1'b1) begin
-				// take the second bus_cycle signal (at word_fin == 1),
-				// because the first one still comes from WriteAddress
-				if(word_fin == 1'b1) begin
-					next_word_rx = data_rx;
-					next_word_ctr = $size(word_ctr)'(word_ctr + 1'b1);
-					next_word_rdy = 1'b1;
-					next_word_fin = 1'b0;
-				end else begin
-					next_word_fin = 1'b1;
-				end
+			if(bus_cycle_req_rx == 1'b1) begin
+				next_word_rx = data_rx;
+				next_word_ctr = $size(word_ctr)'(word_ctr + 1'b1);
+				next_word_rdy = 1'b1;
 			end
 
 			if(in_enable == 1'b0)
@@ -396,15 +465,14 @@ always_comb begin
 		// ----------------------------------------------------
 		// write data words
 		WriteData: begin
-			serial_enable = 1'b1;
+			serial_enable_tx = 1'b1;
 			flash_write_protect = 1'b0;
 			data_tx = in_data;
 
 			// advance word counter one flash clock cycle before transmission ends
-			if(bus_cycle_req == 1'b1) begin
+			if(bus_cycle_req_tx == 1'b1) begin
 				next_word_ctr = $size(word_ctr)'(word_ctr + 1'b1);
 				next_word_rdy = 1'b1;
-				//next_state = AwaitCommand;  // stop after first word
 			end
 
 			if(in_enable == 1'b0)
@@ -414,10 +482,10 @@ always_comb begin
 	endcase
 
 `ifdef __IN_SIMULATION__
-	$display("*** flash_serial: %s, rst=%b, ena=%b, ",
-		state.name(), flash_rst, serial_enable,
-		"rdy=%b, tx=%x, rx=%x, addr=%x, word=%d, cycle=%b. ***",
-		serial_ready, data_tx, data_rx, cur_addr_word, word_ctr, bus_cycle);
+	$display("*** flash_serial: %s, rst=%b, ",
+		state.name(), flash_rst,
+		"tx=%x, rx=%x, addr=%x, word=%d. ***",
+		data_tx, data_rx, cur_addr_word, word_ctr);
 `endif
 end
 // --------------------------------------------------------------------

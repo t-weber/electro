@@ -31,6 +31,7 @@ module serial
 
 	// serial clock
 	output wire out_clk,
+	output wire out_clk_raw,
 
 	// not currently transmitting
 	output wire out_ready,
@@ -65,13 +66,15 @@ typedef enum bit [0 : 0] { Ready, Transmit } t_serial_state;
 
 t_serial_state serial_state      = Ready;
 t_serial_state next_serial_state = Ready;
+
+assign out_ready = serial_state == Ready;
 // ----------------------------------------------------------------------------
 
 
 // ----------------------------------------------------------------------------
 // bit counter
 // ----------------------------------------------------------------------------
-reg [$clog2(BITS) : 0] bit_ctr = 1'b0, next_bit_ctr = 1'b0;
+logic [$clog2(BITS) : 0] bit_ctr = 1'b0, next_bit_ctr = 1'b0;
 
 // bit counter with correct ordering
 wire [$clog2(BITS) : 0] actual_bit_ctr;
@@ -89,7 +92,7 @@ endgenerate
 // ----------------------------------------------------------------------------
 // generate serial clock
 // ----------------------------------------------------------------------------
-reg serial_clk;
+logic serial_clk;
 
 clkgen #(
 		.MAIN_CLK_HZ(MAIN_CLK_HZ), .CLK_HZ(SERIAL_CLK_HZ),
@@ -100,6 +103,9 @@ clkgen #(
 		.in_clk(in_clk), .in_rst(in_rst),
 		.out_clk(serial_clk)
 	);
+
+
+assign out_clk_raw = serial_clk;
 
 
 // generate serial clock output
@@ -131,7 +137,7 @@ endgenerate
 // ----------------------------------------------------------------------------
 // output parallel data to register (FPGA -> IC)
 // ----------------------------------------------------------------------------
-reg [BITS-1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
+logic [BITS-1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
 
 // serial output (FPGA -> IC)
 assign out_serial = serial_state == Transmit
@@ -139,16 +145,9 @@ assign out_serial = serial_state == Transmit
 	: SERIAL_DATA_INACTIVE;
 
 
-// parallel output buffer (IC -> FPGA)
-reg [BITS-1 : 0] parallel_tofpga = 0, next_parallel_tofpga = 0;
-assign out_parallel = parallel_tofpga;
-
-
-reg request_word = 1'b0, next_request_word = 1'b0;
+logic request_word = 1'b0, next_request_word = 1'b0;
 assign out_word_finished = request_word;
 assign out_next_word = next_request_word;
-
-assign out_ready = serial_state == Ready;
 
 
 generate
@@ -182,21 +181,26 @@ end
 // ----------------------------------------------------------------------------
 // buffer serial input (IC -> FPGA)
 // ----------------------------------------------------------------------------
+// parallel output buffer (IC -> FPGA)
+logic [BITS-1 : 0] parallel_tofpga = 0, next_parallel_tofpga = 0;
+assign out_parallel = parallel_tofpga;
+
+
 generate
 if(TO_FPGA_FALLING_EDGE == 1'b1) begin
-    always_ff@(negedge serial_clk, posedge in_rst) begin
-        if(in_rst == 1'b1)
-            parallel_tofpga <= 1'b0;
-        else
-            parallel_tofpga <= next_parallel_tofpga;
-    end
+	always_ff@(negedge serial_clk, posedge in_rst) begin
+		if(in_rst == 1'b1)
+			parallel_tofpga <= 1'b0;
+		else
+			parallel_tofpga <= next_parallel_tofpga;
+	end
 end else begin
-    always_ff@(posedge serial_clk, posedge in_rst) begin
-        if(in_rst == 1'b1)
-            parallel_tofpga <= 1'b0;
-        else
-            parallel_tofpga <= next_parallel_tofpga;
-    end
+	always_ff@(posedge serial_clk, posedge in_rst) begin
+		if(in_rst == 1'b1)
+			parallel_tofpga <= 1'b0;
+		else
+			parallel_tofpga <= next_parallel_tofpga;
+	end
 end
 endgenerate
 
