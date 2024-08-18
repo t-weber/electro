@@ -4,7 +4,7 @@
  * @date 10-aug-2024
  * @license see 'LICENSE' file
  *
- * iverilog -g2012 -D__IN_SIMULATION__ -o flash_tb flash_tb.sv ../mem/flash_serial.sv ../comm/serial.sv ../clock/clkgen.sv
+ * iverilog -g2012 -D__IN_SIMULATION__ -o flash_tb flash_tb.sv ../mem/flash_serial.sv ../comm/serial_duplex.sv ../clock/clkgen.sv
  * ./flash_tb
  * gtkwave flash_tb.vcd --rcvar "do_initial_zoom_fit yes"
  */

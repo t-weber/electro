@@ -34,10 +34,6 @@ module serial_duplex
 	output wire out_clk,
 	output wire out_clk_raw,
 
-	// not currently receiving or transmitting
-	output wire out_ready_tofpga,
-	output wire out_ready_fromfpga,
-
 	// enable reception of transmission
 	input wire in_enable_tofpga,
 	input wire in_enable_fromfpga,
@@ -65,13 +61,11 @@ module serial_duplex
 
 
 // ----------------------------------------------------------------------------
-// serial states and next-state logic
+// serial states for transmission and next-state logic
 // ----------------------------------------------------------------------------
 typedef enum bit [0 : 0] { ReadyTx, Transmit } t_serial_fromfpga_state;
-typedef enum bit [0 : 0] { ReadyRx, Receive } t_serial_tofpga_state;
 
 t_serial_fromfpga_state serial_fromfpga_state = ReadyTx, next_serial_fromfpga_state = ReadyTx;
-t_serial_tofpga_state serial_tofpga_state = ReadyRx, next_serial_tofpga_state = ReadyRx;
 // ----------------------------------------------------------------------------
 
 
@@ -120,8 +114,6 @@ assign out_clk_raw = serial_clk;
 // generate serial clock output
 generate
 if(KEEP_SERIAL_CLK_RUNNING == 1'b1) begin
-	// keep serial clock running when not transmitting:
-	// have to use the out_ready signal manually
 	if(SERIAL_CLK_INACTIVE == 1'b1) begin
 		// inactive '1' and trigger on rising edge
 		assign out_clk = serial_clk;
@@ -130,17 +122,17 @@ if(KEEP_SERIAL_CLK_RUNNING == 1'b1) begin
 		assign out_clk = ~serial_clk;
 	end
 end else begin
-	// stop serial clock when not transmitting
+	// stop serial clock when not transmitting or receiving
 	if(SERIAL_CLK_INACTIVE == 1'b1) begin
 		// inactive '1' and trigger on rising edge
 		assign out_clk =
-			serial_fromfpga_state == Transmit || serial_tofpga_state == Receive
+			serial_fromfpga_state == Transmit || in_enable_tofpga == 1'b1
 			? serial_clk
 			: 1'b1;
 	end else begin
 		// inactive '0' and trigger on falling edge
 		assign out_clk =
-			serial_fromfpga_state == Transmit || serial_tofpga_state == Receive
+			serial_fromfpga_state == Transmit || in_enable_tofpga == 1'b1
 			? ~serial_clk
 			: 1'b0;
 	end
@@ -152,7 +144,7 @@ endgenerate
 // ----------------------------------------------------------------------------
 // output parallel data to register (FPGA -> IC)
 // ----------------------------------------------------------------------------
-logic [BITS - 1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
+logic [BITS - 1 : 0] parallel_fromfpga = 1'b0, next_parallel_fromfpga = 1'b0;
 
 // serial output (FPGA -> IC)
 assign out_serial = serial_fromfpga_state == Transmit
@@ -162,8 +154,6 @@ assign out_serial = serial_fromfpga_state == Transmit
 logic request_word_fromfpga = 1'b0, next_request_word_fromfpga = 1'b0;
 assign out_word_finished_fromfpga = request_word_fromfpga;
 assign out_next_word_fromfpga = next_request_word_fromfpga;
-
-assign out_ready_fromfpga = serial_fromfpga_state == ReadyTx;
 
 
 generate
@@ -230,11 +220,11 @@ always_comb begin
 		next_parallel_fromfpga = in_parallel;
 
 `ifdef __IN_SIMULATION__
-	$display("** serial: %d, bit %d, ", serial_fromfpga_state/*.name()*/, actual_bit_ctr_fromfpga,
-		"from_fpga: %x. **", parallel_fromfpga);
+	$display("** serial_fromfpga: %d, bit %d, ",
+		serial_fromfpga_state/*.name()*/, actual_bit_ctr_fromfpga,
+		"%x. **", parallel_fromfpga);
 `endif
 
-	// state machine
 	case(serial_fromfpga_state)
 		// wait for enable signal
 		ReadyTx: begin
@@ -271,23 +261,18 @@ end
 // buffer serial input (IC -> FPGA)
 // ----------------------------------------------------------------------------
 // parallel output buffer (IC -> FPGA)
-logic [BITS - 1 : 0] parallel_tofpga = 0, next_parallel_tofpga = 0;
+logic [BITS - 1 : 0] parallel_tofpga = 1'b0, next_parallel_tofpga = 1'b0;
 assign out_parallel = parallel_tofpga;
 
 logic request_word_tofpga = 1'b0, next_request_word_tofpga = 1'b0;
 assign out_word_finished_tofpga = request_word_tofpga;
 assign out_next_word_tofpga = next_request_word_tofpga;
 
-assign out_ready_tofpga = serial_tofpga_state == ReadyRx;
-
 
 generate
 if(TO_FPGA_FALLING_EDGE == 1'b1) begin
 	always_ff@(negedge serial_clk, posedge in_rst) begin
 		if(in_rst == 1'b1) begin
-			// state register
-			serial_tofpga_state <= ReadyRx;
-
 			// data
 			parallel_tofpga <= 1'b0;
 
@@ -295,9 +280,6 @@ if(TO_FPGA_FALLING_EDGE == 1'b1) begin
 			bit_ctr_tofpga <= 1'b0;
 			request_word_tofpga <= 1'b0;
 		end else begin
-			// state register
-			serial_tofpga_state <= next_serial_tofpga_state;
-
 			// data
 			parallel_tofpga <= next_parallel_tofpga;
 
@@ -309,9 +291,6 @@ if(TO_FPGA_FALLING_EDGE == 1'b1) begin
 end else begin
 	always_ff@(posedge serial_clk, posedge in_rst) begin
 		if(in_rst == 1'b1) begin
-			// state register
-			serial_tofpga_state <= ReadyRx;
-
 			// data
 			parallel_tofpga <= 1'b0;
 
@@ -319,9 +298,6 @@ end else begin
 			bit_ctr_tofpga <= 1'b0;
 			request_word_tofpga <= 1'b0;
 		end else begin
-			// state register
-			serial_tofpga_state <= next_serial_tofpga_state;
-
 			// data
 			parallel_tofpga <= next_parallel_tofpga;
 
@@ -336,47 +312,29 @@ endgenerate
 
 always_comb begin
 	// defaults
-	next_serial_tofpga_state = serial_tofpga_state;
 	next_parallel_tofpga = parallel_tofpga;
 	next_bit_ctr_tofpga = bit_ctr_tofpga;
 	next_request_word_tofpga = 1'b0;
 
 `ifdef __IN_SIMULATION__
-	$display("** serial: %d, bit %d, ", serial_tofpga_state/*.name()*/, actual_bit_ctr_tofpga,
-		"to_fpga: %x. **", parallel_tofpga);
+	$display("** serial_tofpga: bit %d, ", actual_bit_ctr_tofpga,
+		"%x. **", parallel_tofpga);
 `endif
 
-	// state machine
-	case(serial_tofpga_state)
-		// wait for enable signal
-		ReadyRx: begin
+	if(in_enable_tofpga == 1'b1) begin
+		next_parallel_tofpga[actual_bit_ctr_tofpga] = in_serial;
+
+		// end of word?
+		if(bit_ctr_tofpga == BITS - 1'b1) begin
+			next_request_word_tofpga = 1'b1;
 			next_bit_ctr_tofpga = 1'b0;
-			if(in_enable_tofpga == 1'b1)
-				next_serial_tofpga_state = Receive;
+		end else begin
+			next_bit_ctr_tofpga =
+				$size(bit_ctr_tofpga)'(bit_ctr_tofpga + 1'b1);
 		end
-
-		// receive serial data
-		Receive: begin
-			next_parallel_tofpga[actual_bit_ctr_tofpga] = in_serial;
-
-			// end of word?
-			if(bit_ctr_tofpga == BITS - 1'b1) begin
-				next_request_word_tofpga = 1'b1;
-				next_bit_ctr_tofpga = 1'b0;
-			end else begin
-				next_bit_ctr_tofpga =
-					$size(bit_ctr_tofpga)'(bit_ctr_tofpga + 1'b1);
-			end
-
-			// enable signal not active any more?
-			if(in_enable_tofpga == 1'b0)
-				next_serial_tofpga_state = ReadyRx;
-		end
-
-		default: begin
-			next_serial_tofpga_state = ReadyRx;
-		end
-	endcase
+	end else begin
+		next_bit_ctr_tofpga = 1'b0;
+	end
 end
 // ----------------------------------------------------------------------------
 

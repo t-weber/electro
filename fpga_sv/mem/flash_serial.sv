@@ -112,7 +112,7 @@ wire bus_cycle_rx = word_finished_rx && ~last_word_finished_rx;
 
 logic word_requested_rx, last_word_requested_rx = 1'b0;
 logic word_requested_tx, last_word_requested_tx = 1'b0;
-wire bus_cycle_req_rx = word_requested_rx && ~last_word_requested_rx;
+//wire bus_cycle_req_rx = word_requested_rx && ~last_word_requested_rx;
 wire bus_cycle_req_tx = word_requested_tx && ~last_word_requested_tx;
 
 // read from flash on rising edge, write to flash on falling edge
@@ -133,10 +133,8 @@ serial_mod(
 	.out_clk(serial_clk), .out_clk_raw(serial_clk_raw),
 	.out_word_finished_fromfpga(word_finished_tx),
 	.out_next_word_fromfpga(word_requested_tx),
-	.out_ready_fromfpga(),
 	.out_word_finished_tofpga(word_finished_rx),
-	.out_next_word_tofpga(word_requested_rx),
-	.out_ready_tofpga()
+	.out_next_word_tofpga(word_requested_rx)
 );
 // --------------------------------------------------------------------
 
@@ -208,13 +206,10 @@ always_ff@(posedge serial_clk_raw, posedge in_rst) begin
 		word_rdy <= next_word_rdy;
 
 		// timer register
-		if(wait_ctr == wait_ctr_max) begin
-			// reset timer counter
+		if(wait_ctr == wait_ctr_max)
 			wait_ctr <= $size(wait_ctr)'(1'b0);
-		end else begin
-			// next timer counter
+		else
 			wait_ctr <= $size(wait_ctr)'(wait_ctr + 1'b1);
-		end
 	end
 end
 
@@ -279,7 +274,7 @@ always_comb begin
 	wait_ctr_max = WAIT_RESET;
 	serial_enable_tx = 1'b0;
 	serial_enable_rx = 1'b0;
-	data_tx = 0;
+	data_tx = 1'b0;
 
 	flash_rst = 1'b0;
 	flash_write_protect = 1'b1;
@@ -331,7 +326,8 @@ always_comb begin
 						next_state = WriteCommandOnly;
 						next_data_state = AwaitCommand;
 						next_cmd = CMD_WRITE_ENABLE;
-						next_cmd_phase = 2'd1;
+						//next_cmd_phase = 2'd1;
+						next_cmd_phase = 2'd2;
 					end else if(cmd_phase == 2'd1) begin
 						// read status register: [flash], pp. 28-29
 						next_state = WriteCommandReadOneWord;
@@ -343,13 +339,15 @@ always_comb begin
 						next_state = WriteCommandWriteOneWord;
 						next_data_state = AwaitCommand;
 						next_cmd = CMD_WRITE_STATUS;
-						next_data = { word_rx[7], 5'b0, word_rx[1:0] };
+						//next_data = { word_rx[7], 5'b0, word_rx[1:0] };
+						next_data = 8'b00000010;
 						next_cmd_phase = 2'd0;
 						next_is_write_protected = 1'b0;
 					end
 				end
 
 				// write operation: [flash], pp. 56-57
+				// TODO: erase byte to 0xff before writing a new value
 				else begin
 					if(cmd_phase == 1'd0) begin
 						// write enable: [flash], p. 26
@@ -412,7 +410,7 @@ always_comb begin
 		ReadWord: begin
 			serial_enable_rx = 1'b1;
 
-			if(bus_cycle_req_rx == 1'b1) begin
+			if(bus_cycle_rx == 1'b1) begin
 				next_word_rx = data_rx;
 				next_state = data_state;
 			end
@@ -451,7 +449,7 @@ always_comb begin
 		ReadData: begin
 			serial_enable_rx = 1'b1;
 
-			if(bus_cycle_req_rx == 1'b1) begin
+			if(bus_cycle_rx == 1'b1) begin
 				next_word_rx = data_rx;
 				next_word_ctr = $size(word_ctr)'(word_ctr + 1'b1);
 				next_word_rdy = 1'b1;

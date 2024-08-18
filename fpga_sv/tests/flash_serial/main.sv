@@ -238,6 +238,8 @@ always_comb begin
 		end
 
 		WriteFlashDataEnd: begin
+			flash_tx = BITS'("#");  // write a '#'
+
 			if(flash_bus_cycle_next == 1'b1)
 				next_state = Wait;
 		end
@@ -250,7 +252,7 @@ always_comb begin
 		ReadFlashData: begin
 			flash_enabled = 1'b1;
 
-			if(flash_bus_cycle_next == 1'b1) begin
+			if(flash_bus_cycle == 1'b1) begin
 				next_serial_char_tx = flash_rx;
 				next_state = TransmitSerialAddressWord;
 			end
@@ -394,7 +396,7 @@ always_comb begin
 		end
 
 		NextFlashAddress: begin
-			next_flash_addr <= $size(flash_addr)'(flash_addr + 1'b1);
+			next_flash_addr <= $size(flash_addr)'(flash_addr + 1'd1);
 			next_state = Start;
 		end
 	endcase
