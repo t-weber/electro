@@ -37,7 +37,7 @@ module flash_tb;
 
 	logic clk = 1'b0, rst = 1'b0;
 
-	logic enable = 1'b0, read_mode = 1'b1;
+	logic enable = 1'b0, write_mode = 1'b0;
 	logic [BITS - 1 : 0] received, transmitted;
 	logic [BITS*ADDR_WORDS - 1 : 0] addr, word_ctr;
 
@@ -62,7 +62,8 @@ module flash_tb;
 		.in_clk(clk),                 // main clock
 		.in_rst(rst),                 // reset
 		.in_enable(enable),           // command enable
-		.in_read(read_mode),          // read or write mode
+		.in_write(write_mode),        // read or write mode
+		.in_erase(1'b0),
 		.in_addr(addr),               // address to read from
 		.in_data(transmitted),        // input data
 		.out_data(received),          // output data
@@ -92,7 +93,7 @@ module flash_tb;
 		next_state = state;
 
 		enable = 1'b0;
-		read_mode = 1'b1;
+		write_mode = 1'b0;
 		rst = 1'b0;
 		transmitted = 1'b0;
 
@@ -105,7 +106,7 @@ module flash_tb;
 
 			WriteData: begin
 				enable = 1'b1;
-				read_mode = 1'b0;
+				write_mode = 1'b1;
 				transmitted = 8'h71;
 				addr = 16'h1281;
 

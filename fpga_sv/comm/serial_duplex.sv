@@ -1,6 +1,6 @@
 /**
  * serial controller for 3-wire interface with
- * independent transmission and reception
+ *   independent transmission and reception
  * @author Tobias Weber <tobias.weber@tum.de>
  * @date 17-aug-2024
  * @license see 'LICENSE' file

@@ -22,7 +22,7 @@ module flash_serial
 	input wire in_clk, in_rst,
 
 	// memory access
-	input wire in_enable, in_read,
+	input wire in_enable, in_write, in_erase,
 	// (start) address to read from or to write to
 	input wire [WORD_BITS * ADDRESS_WORDS - 1 : 0] in_addr,
 	// input data
@@ -56,6 +56,7 @@ localparam [WORD_BITS - 1 : 0] CMD_WRITE         = WORD_BITS'(8'h02);
 localparam [WORD_BITS - 1 : 0] CMD_READ          = WORD_BITS'(8'h03);
 localparam [WORD_BITS - 1 : 0] CMD_WRITE_DISABLE = WORD_BITS'(8'h04);
 localparam [WORD_BITS - 1 : 0] CMD_WRITE_ENABLE  = WORD_BITS'(8'h06);
+localparam [WORD_BITS - 1 : 0] CMD_ERASE         = WORD_BITS'(8'h81);
 // --------------------------------------------------------------------
 
 
@@ -107,7 +108,7 @@ logic [WORD_BITS - 1 : 0] word_rx, next_word_rx;
 
 logic word_finished_tx, last_word_finished_tx = 1'b0;
 logic word_finished_rx, last_word_finished_rx = 1'b0;
-wire bus_cycle_tx = word_finished_tx && ~last_word_finished_tx;
+//wire bus_cycle_tx = word_finished_tx && ~last_word_finished_tx;
 wire bus_cycle_rx = word_finished_rx && ~last_word_finished_rx;
 
 logic word_requested_rx, last_word_requested_rx = 1'b0;
@@ -165,10 +166,10 @@ typedef enum {
 	Init, Reset, AfterReset,
 	AwaitCommand,
 	WriteCommandOnly,
+	WriteCommandWithAddress, WriteAddress,
 	WriteCommandWriteOneWord, WriteWord,
 	WriteCommandReadOneWord, ReadWord,
-	WriteCommand, WriteAddress,
-	ReadData, WriteData
+	ReadData, WriteData, ErasedData
 } t_state;
 
 t_state state = Init, next_state = Init;
@@ -313,8 +314,8 @@ always_comb begin
 				next_word_ctr = 1'b0;
 
 				// read operation: [flash], p. 35
-				if(in_read == 1'b1) begin
-					next_state = WriteCommand;
+				if(in_write == 1'b0) begin
+					next_state = WriteCommandWithAddress;
 					next_data_state = ReadData;
 					next_cmd = CMD_READ;
 				end
@@ -326,8 +327,7 @@ always_comb begin
 						next_state = WriteCommandOnly;
 						next_data_state = AwaitCommand;
 						next_cmd = CMD_WRITE_ENABLE;
-						//next_cmd_phase = 2'd1;
-						next_cmd_phase = 2'd2;
+						next_cmd_phase = 2'd1;
 					end else if(cmd_phase == 2'd1) begin
 						// read status register: [flash], pp. 28-29
 						next_state = WriteCommandReadOneWord;
@@ -346,9 +346,7 @@ always_comb begin
 					end
 				end
 
-				// write operation: [flash], pp. 56-57
-				// TODO: erase byte to 0xff before writing a new value
-				else begin
+				else if(in_erase == 1'b1) begin
 					if(cmd_phase == 1'd0) begin
 						// write enable: [flash], p. 26
 						next_state = WriteCommandOnly;
@@ -356,8 +354,26 @@ always_comb begin
 						next_cmd = CMD_WRITE_ENABLE;
 						next_cmd_phase = 1'd1;
 					end else begin
-						// write operation: [flash], pp. 56-57
-						next_state = WriteCommand;
+						// write 1 bits: [flash], p. 51
+						next_state = WriteCommandWithAddress;
+						next_data_state = ErasedData;
+						next_cmd = CMD_ERASE;
+						next_cmd_phase = 1'd0;
+					end
+				end
+
+				// write operation: [flash], pp. 56-57
+				// (erase byte to 0xff before writing a new value)
+				else if(in_write == 1'b1) begin
+					if(cmd_phase == 1'd0) begin
+						// write enable: [flash], p. 26
+						next_state = WriteCommandOnly;
+						next_data_state = AwaitCommand;
+						next_cmd = CMD_WRITE_ENABLE;
+						next_cmd_phase = 1'd1;
+					end else begin
+						// write 0 bits: [flash], pp. 56-57
+						next_state = WriteCommandWithAddress;
 						next_data_state = WriteData;
 						next_cmd = CMD_WRITE;
 						next_cmd_phase = 1'd0;
@@ -387,15 +403,6 @@ always_comb begin
 				next_state = WriteWord;
 		end
 
-		// write command word and read one data word
-		WriteCommandReadOneWord: begin
-			serial_enable_tx = 1'b1;
-			data_tx = cmd;
-
-			if(bus_cycle_req_tx == 1'b1)
-				next_state = ReadWord;
-		end
-
 		// write one data word
 		WriteWord: begin
 			serial_enable_tx = 1'b1;
@@ -404,6 +411,15 @@ always_comb begin
 
 			if(bus_cycle_req_tx == 1'b1)
 				next_state = data_state;
+		end
+
+		// write command word and read one data word
+		WriteCommandReadOneWord: begin
+			serial_enable_tx = 1'b1;
+			data_tx = cmd;
+
+			if(bus_cycle_req_tx == 1'b1)
+				next_state = ReadWord;
 		end
 
 		// read one data word
@@ -417,7 +433,7 @@ always_comb begin
 		end
 
 		// write command word followed by an address
-		WriteCommand: begin
+		WriteCommandWithAddress: begin
 			serial_enable_tx = 1'b1;
 			data_tx = cmd;
 
@@ -458,9 +474,7 @@ always_comb begin
 			if(in_enable == 1'b0)
 				next_state = AwaitCommand;
 		end
-		// ----------------------------------------------------
 
-		// ----------------------------------------------------
 		// write data words
 		WriteData: begin
 			serial_enable_tx = 1'b1;
@@ -472,6 +486,14 @@ always_comb begin
 				next_word_ctr = $size(word_ctr)'(word_ctr + 1'b1);
 				next_word_rdy = 1'b1;
 			end
+
+			if(in_enable == 1'b0)
+				next_state = AwaitCommand;
+		end
+
+		// erased data
+		ErasedData: begin
+			next_word_rdy = 1'b1;
 
 			if(in_enable == 1'b0)
 				next_state = AwaitCommand;

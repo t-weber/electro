@@ -137,7 +137,7 @@ endgenerate
 // ----------------------------------------------------------------------------
 // output parallel data to register (FPGA -> IC)
 // ----------------------------------------------------------------------------
-logic [BITS-1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
+logic [BITS-1 : 0] parallel_fromfpga = 1'b0, next_parallel_fromfpga = 1'b0;
 
 // serial output (FPGA -> IC)
 assign out_serial = serial_state == Transmit
@@ -182,7 +182,7 @@ end
 // buffer serial input (IC -> FPGA)
 // ----------------------------------------------------------------------------
 // parallel output buffer (IC -> FPGA)
-logic [BITS-1 : 0] parallel_tofpga = 0, next_parallel_tofpga = 0;
+logic [BITS-1 : 0] parallel_tofpga = 1'b0, next_parallel_tofpga = 1'b0;
 assign out_parallel = parallel_tofpga;
 
 
