@@ -65,7 +65,8 @@ module serial_duplex
 // ----------------------------------------------------------------------------
 typedef enum bit [0 : 0] { ReadyTx, Transmit } t_serial_fromfpga_state;
 
-t_serial_fromfpga_state serial_fromfpga_state = ReadyTx, next_serial_fromfpga_state = ReadyTx;
+t_serial_fromfpga_state serial_fromfpga_state = ReadyTx;
+t_serial_fromfpga_state next_serial_fromfpga_state = ReadyTx;
 // ----------------------------------------------------------------------------
 
 
