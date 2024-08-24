@@ -40,8 +40,6 @@ localparam ADDR_WORDS = 3;
 
 // delays
 localparam WAIT_DELAY_START       = MAIN_CLK/1000*200; // 200 ms
-localparam WAIT_DELAY_AFTER_WRITE = MAIN_CLK/1000*50;  // 50 ms
-localparam WAIT_DELAY_AFTER_ERASE = MAIN_CLK/1000*50;  // 50 ms
 logic [$clog2(WAIT_DELAY_START) : 0] wait_ctr = 1'b0;
 
 
@@ -107,6 +105,7 @@ logic flash_enabled = 1'b0, flash_write = 1'b0, flash_erase = 1'b0;
 logic [BITS - 1 : 0] flash_rx, flash_tx = BITS'(1'b0);
 logic [BITS*ADDR_WORDS - 1 : 0] flash_addr, next_flash_addr;
 logic flash_already_erased = 1'b0, next_flash_already_erased = 1'b0;
+logic flash_ready;
 
 logic flash_word_rdy, last_flash_word_rdy = 1'b0;
 wire flash_bus_cycle = ~flash_word_rdy && last_flash_word_rdy;
@@ -134,6 +133,7 @@ flash_mod(
 	.out_word_ctr(),                    // currently read word index
 	.out_word_finished(flash_word_rdy), // finished reading or writing a word
 	.out_next_word(flash_next_word),    // almost finished reading or writing a word
+	.out_ready(flash_ready),            // awaiting new command
 
 	// interface with flash memory pins
 	.out_flash_rst(), .out_flash_clk(flash_clk),
@@ -200,9 +200,7 @@ always_ff@(posedge clk27, posedge rst) begin
 		last_flash_next_word <= flash_next_word;
 		flash_already_erased <= next_flash_already_erased;
 
-		if((state == Start && wait_ctr != WAIT_DELAY_START) ||
-			(state == WaitAfterFlashWrite && wait_ctr != WAIT_DELAY_AFTER_WRITE) ||
-			(state == WaitAfterFlashErase && wait_ctr != WAIT_DELAY_AFTER_ERASE))
+		if(state == Start && wait_ctr != WAIT_DELAY_START)
 			wait_ctr <= $size(wait_ctr)'(wait_ctr + 1'b1);
 		else
 			wait_ctr <= $size(wait_ctr)'(1'b0);
@@ -245,8 +243,8 @@ always_comb begin
 
 				if(flash_bus_cycle_req_next == 1'b1) begin
 					flash_enabled = 1'b0;
-					next_state = WaitAfterFlashErase;
 					next_flash_already_erased = 1'b1;
+					next_state = WaitAfterFlashErase;
 				end
 			end else begin
 				next_state = WriteFlashData;
@@ -254,10 +252,10 @@ always_comb begin
 		end
 
 		WaitAfterFlashErase: begin
-			flash_write = 1'b1;
-			flash_erase = 1'b1;
+			//flash_write = 1'b1;
+			//flash_erase = 1'b1;
 
-			if(wait_ctr == WAIT_DELAY_AFTER_ERASE)
+			if(flash_ready == 1'b1)
 				next_state = WriteFlashData;
 		end
 
@@ -273,10 +271,10 @@ always_comb begin
 		end
 
 		WaitAfterFlashWrite: begin
-			flash_write = 1'b1;
-			flash_tx = BITS'("#");  // write a '#'
+			//flash_write = 1'b1;
+			//flash_tx = BITS'("#");  // write a '#'
 
-			if(wait_ctr == WAIT_DELAY_AFTER_WRITE)
+			if(flash_ready == 1'b1)
 				next_state = ReadFlashData;
 		end
 
@@ -446,7 +444,7 @@ assign serial_char_cur =
 	(state == TransmitSerialSepAfterAddress && serial_idx_ctr == 2'd0) ? ":" :
 	(state == TransmitSerialSepAfterAddress && serial_idx_ctr == 2'd1) ? " " :
 	state == TransmitSerialAddressSeparator ? "_" :
-	state == TransmitSerialCR ? "\r" :
+	state == TransmitSerialCR ? 8'h0d : //"\r" :
 	state == TransmitSerialNL ? "\n" :
 	state == TransmitSerialData ? serial_char_tx :
 	state == TransmitSerialSepBeforeBin ? " " :

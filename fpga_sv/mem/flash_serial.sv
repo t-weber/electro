@@ -35,6 +35,8 @@ module flash_serial
 	output wire out_word_finished,
 	// indicates that a new word is requested to write (one cycle before out_word_finished)
 	output wire out_next_word,
+	// awaiting command
+	output wire out_ready,
 
 	// serial interface to flash controller
 	output wire out_flash_rst,     // reset
@@ -61,7 +63,7 @@ localparam [WORD_BITS - 1 : 0] CMD_ERASE         = WORD_BITS'(8'h81);
 
 
 // --------------------------------------------------------------------
-// wait timer register, see [flash], p. 13, pp. 76-77
+// wait timer register, see [flash], p.11, p. 13, pp. 76-77
 // --------------------------------------------------------------------
 `ifdef __IN_SIMULATION__
 	localparam WAIT_INIT        = 1;
@@ -71,9 +73,11 @@ localparam [WORD_BITS - 1 : 0] CMD_ERASE         = WORD_BITS'(8'h81);
 	localparam WAIT_INIT        = MAIN_CLK/1000/1000 * 400; // 400 us
 	localparam WAIT_RESET       = MAIN_CLK/1000/1000 * 2;   // 2 us
 	localparam WAIT_AFTER_RESET = MAIN_CLK/1000/1000 * 50;  // 50 us
+	localparam WAIT_AFTER_WRITE = MAIN_CLK/1000 * 3;        // 3 ms
+	localparam WAIT_AFTER_ERASE = MAIN_CLK/1000 * 20;       // 20 ms
 `endif
 
-logic [$clog2(WAIT_INIT /*largest value*/) : 0]
+logic [$clog2(WAIT_AFTER_ERASE /*largest value*/) : 0]
 	wait_ctr = 1'b0, wait_ctr_max = 1'b0;
 // --------------------------------------------------------------------
 
@@ -145,6 +149,7 @@ serial_mod(
 // --------------------------------------------------------------------
 logic flash_rst, flash_write_protect;
 logic word_rdy, next_word_rdy;
+logic ready;
 
 assign out_flash_clk = serial_clk;
 assign out_flash_rst = ~flash_rst;          // active low
@@ -156,6 +161,7 @@ assign out_data = word_rx;
 assign out_word_ctr = word_ctr;
 assign out_word_finished = word_rdy;
 assign out_next_word = next_word_rdy;
+assign out_ready = ready;
 // --------------------------------------------------------------------
 
 
@@ -169,7 +175,8 @@ typedef enum {
 	WriteCommandWithAddress, WriteAddress,
 	WriteCommandWriteOneWord, WriteWord,
 	WriteCommandReadOneWord, ReadWord,
-	ReadData, WriteData, ErasedData
+	ReadData, WriteData,
+	WrittenData, ErasedData
 } t_state;
 
 t_state state = Init, next_state = Init;
@@ -272,10 +279,11 @@ always_comb begin
 	next_word_rx = word_rx;
 	next_word_rdy = 1'b0;
 
-	wait_ctr_max = WAIT_RESET;
+	wait_ctr_max = 1'b0;
 	serial_enable_tx = 1'b0;
 	serial_enable_rx = 1'b0;
 	data_tx = 1'b0;
+	ready = 1'b0;
 
 	flash_rst = 1'b0;
 	flash_write_protect = 1'b1;
@@ -339,8 +347,8 @@ always_comb begin
 						next_state = WriteCommandWriteOneWord;
 						next_data_state = AwaitCommand;
 						next_cmd = CMD_WRITE_STATUS;
-						//next_data = { word_rx[7], 5'b0, word_rx[1:0] };
-						next_data = 8'b00000010;
+						next_data = { word_rx[7], 5'b0, word_rx[1:0] };
+						//next_data = 8'b00000010;
 						next_cmd_phase = 2'd0;
 						next_is_write_protected = 1'b0;
 					end
@@ -354,7 +362,7 @@ always_comb begin
 						next_cmd = CMD_WRITE_ENABLE;
 						next_cmd_phase = 1'd1;
 					end else begin
-						// write 1 bits: [flash], p. 51
+						// write '1' bits: [flash], p. 51
 						next_state = WriteCommandWithAddress;
 						next_data_state = ErasedData;
 						next_cmd = CMD_ERASE;
@@ -372,13 +380,15 @@ always_comb begin
 						next_cmd = CMD_WRITE_ENABLE;
 						next_cmd_phase = 1'd1;
 					end else begin
-						// write 0 bits: [flash], pp. 56-57
+						// write '0' bits: [flash], pp. 56-57
 						next_state = WriteCommandWithAddress;
 						next_data_state = WriteData;
 						next_cmd = CMD_WRITE;
 						next_cmd_phase = 1'd0;
 					end
 				end
+			end else begin
+				ready = 1'b1;
 			end
 		end
 		// ----------------------------------------------------
@@ -488,14 +498,22 @@ always_comb begin
 			end
 
 			if(in_enable == 1'b0)
+				next_state = WrittenData;
+		end
+
+		// wait after having written data
+		WrittenData: begin
+			wait_ctr_max = WAIT_AFTER_WRITE;
+			if(wait_ctr == wait_ctr_max)
 				next_state = AwaitCommand;
 		end
 
-		// erased data
+		// wait after having erased data
 		ErasedData: begin
 			next_word_rdy = 1'b1;
 
-			if(in_enable == 1'b0)
+			wait_ctr_max = WAIT_AFTER_ERASE;
+			if(wait_ctr == wait_ctr_max)
 				next_state = AwaitCommand;
 		end
 		// ----------------------------------------------------

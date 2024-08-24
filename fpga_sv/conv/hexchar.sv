@@ -51,7 +51,7 @@ module hexchars
 genvar char_idx;
 generate
 for(char_idx = 0; char_idx < NUM_CHARS; ++char_idx)
-begin
+begin : gen_chars
 	hexchar #(
 		.CHAR_SIZE(CHAR_SIZE),
 		.DIGIT_SIZE(DIGIT_SIZE)
