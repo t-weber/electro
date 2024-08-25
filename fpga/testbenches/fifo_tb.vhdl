@@ -1,22 +1,22 @@
 --
--- test for stack module
+-- test for fifo module
 -- @author Tobias Weber <tobias.weber@tum.de>
 -- @date 25-aug-2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../conv/conv.vhdl ../mem/stack.vhdl stack_tb.vhdl  &&  ghdl -e --std=08 stack_tb stack_tb_impl
--- ghdl -r --std=08 stack_tb stack_tb_impl --vcd=stack_tb.vcd --stop-time=100ns
--- gtkwave stack_tb.vcd --rcvar "do_initial_zoom_fit yes"
+-- ghdl -a --std=08 ../conv/conv.vhdl ../mem/fifo.vhdl fifo_tb.vhdl  &&  ghdl -e --std=08 fifo_tb fifo_tb_impl
+-- ghdl -r --std=08 fifo_tb fifo_tb_impl --vcd=fifo_tb.vcd --stop-time=100ns
+-- gtkwave fifo_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --
 
 library ieee;
 use ieee.std_logic_1164.all;
 
 
-entity stack_tb is end entity;
+entity fifo_tb is end entity;
 
 
-architecture stack_tb_impl of stack_tb is
+architecture fifo_tb_impl of fifo_tb is
 	-- main clock
 	constant CLKDELAY : time := 2.5 ns;
 
@@ -29,17 +29,19 @@ architecture stack_tb_impl of stack_tb is
 
 	-- states
 	type t_state is (
-		Start, WaitReady,
-		PushTest1, PushTest2,
-		PopTest,
+		Start,
+		WaitReadyIns, WaitReadyRem,
+		InsTest1, InsTest2,
+		RemTest1, RemTest2, RemTest3,
 		Finished
 	);
 	signal state, state_next : t_state := Start;
 	signal state_after_ready, state_after_ready_next : t_state := Start;
 
-	signal cmd : std_logic_vector(1 downto 0);
-	signal data, data_next, top : std_logic_vector(DATA_WIDTH - 1 downto 0);
-	signal ready : std_logic;
+	signal insert, remove : std_logic;
+	signal empty : std_logic;
+	signal data, data_next, back : std_logic_vector(DATA_WIDTH - 1 downto 0);
+	signal ready_ins, ready_rem : std_logic;
 begin
 
 	---------------------------------------------------------------------------
@@ -74,34 +76,50 @@ begin
 		data_next <= data;
 
 		reset <= '0';
-		cmd <= "00";
+		insert <= '0';
+		remove <= '0';
 
 		case state is
 			when Start =>
 				reset <= '1';
-				state_after_ready_next <= PushTest1;
-				state_next <= WaitReady;
+				state_after_ready_next <= InsTest1;
+				state_next <= WaitReadyIns;
 
-			when WaitReady =>
-				if ready = '1' then
+			when WaitReadyIns =>
+				if ready_ins = '1' then
 					state_next <= state_after_ready;
 				end if;
 
-			when PushTest1 =>
-				cmd <= "01";
+			when WaitReadyRem =>
+				if ready_rem = '1' then
+					state_next <= state_after_ready;
+				end if;
+
+			when InsTest1 =>
+				insert <= '1';
 				data_next <= x"12";
-				state_next <= WaitReady;
-				state_after_ready_next <= PushTest2;
+				state_next <= WaitReadyIns;
+				state_after_ready_next <= InsTest2;
 
-			when PushTest2 =>
-				cmd <= "01";
+			when InsTest2 =>
+				insert <= '1';
 				data_next <= x"98";
-				state_next <= WaitReady;
-				state_after_ready_next <= PopTest;
+				state_next <= WaitReadyRem;
+				state_after_ready_next <= RemTest1;
 
-			when PopTest =>
-				cmd <= "10";
-				state_next <= WaitReady;
+			when RemTest1 =>
+				remove <= '1';
+				state_next <= WaitReadyRem;
+				state_after_ready_next <= RemTest2;
+
+			when RemTest2 =>
+				remove <= '1';
+				state_next <= WaitReadyRem;
+				state_after_ready_next <= RemTest3;
+
+			when RemTest3 =>
+				remove <= '1';
+				state_next <= WaitReadyRem;
 				state_after_ready_next <= Finished;
 
 			when Finished =>
@@ -117,11 +135,12 @@ begin
 	report_proc : process(theclk)
 	begin
 		if rising_edge(theclk) then
-			report  --lf &
+			report  lf &
 				"clk = " & std_logic'image(theclk) &
 				", state = " & t_state'image(state) &
 				", data = 0x" & to_hstring(data) & " = 0b" & to_string(data) &
-				", stack_top = 0x" & to_hstring(top);
+				", fifo_back = 0x" & to_hstring(back) &
+				", empty = " & std_logic'image(empty);
 		end if;
 	end process;
 	---------------------------------------------------------------------------
@@ -130,12 +149,15 @@ begin
 	---------------------------------------------------------------------------
 	-- stack module
 	---------------------------------------------------------------------------
-	mod_stack : entity work.stack
+	mod_fifo : entity work.fifo
 		generic map(ADDR_BITS => ADDR_WIDTH, WORD_BITS => DATA_WIDTH)
 		port map(
 			in_clk => theclk, in_rst => reset,
-			in_cmd => cmd, in_data => data,
-			out_top => top, out_ready => ready
+			in_data => data, out_back => back,
+			in_insert => insert, in_remove => remove,
+			out_ready_to_insert => ready_ins,
+			out_ready_to_remove => ready_rem,
+			out_empty => empty
 		);
 	---------------------------------------------------------------------------
 end architecture;

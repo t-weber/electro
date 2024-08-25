@@ -1,5 +1,5 @@
 --
--- stack
+-- stack (lifo buffer)
 -- @author Tobias Weber <tobias.weber@tum.de>
 -- @date 25-aug-2024
 -- @license see 'LICENSE' file
@@ -14,8 +14,7 @@ use work.conv.all;
 entity stack is
 	generic(
 		constant ADDR_BITS : natural := 3;
-		constant WORD_BITS : natural := 8;
-		constant NUM_WORDS : natural := 2**ADDR_BITS
+		constant WORD_BITS : natural := 8
 	);
 
 	port(
@@ -41,6 +40,8 @@ end entity;
 
 
 architecture stack_impl of stack is
+	constant NUM_WORDS : natural := 2**ADDR_BITS;
+
 	subtype t_word is std_logic_vector(WORD_BITS - 1 downto 0);
 	type t_words is array(0 to NUM_WORDS - 1) of t_word;
 
@@ -54,11 +55,11 @@ architecture stack_impl of stack is
 	signal sp, next_sp : std_logic_vector(ADDR_BITS - 1 downto 0) := (others => '0');
 
 	type t_state is (
-		Reset, WaitCommand,
+		WaitCommand,
 		Push, Push2,
 		Pop
 	);
-	signal state, next_state : t_state := Reset;
+	signal state, next_state : t_state := WaitCommand;
 
 begin
 
@@ -69,7 +70,7 @@ begin
 	process(in_clk) begin
 		if rising_edge(in_clk) then
 			if in_rst = '1' then
-				state <= Reset;
+				state <= WaitCommand;
 				sp <= (others => '0');
 				data <= (others => '0');
 			else
@@ -95,19 +96,15 @@ begin
 
 
 		case state is
-			when Reset =>
-				--words <= (others => (others => '0'));
-				next_sp <= (others => '0');
-				next_state <= WaitCommand;
-
 			when WaitCommand =>
-				if in_cmd = "01" then
-					next_state <= Push;
-				elsif in_cmd = "10" then
-					next_state <= Pop;
-				else
-					out_ready <= '1';
-				end if;
+				case in_cmd is
+					when "01" =>
+						next_state <= Push;
+					when "10" =>
+						next_state <= Pop;
+					when others =>
+						out_ready <= '1';
+				end case;
 
 			when Push =>
 				-- decrement stack pointer
