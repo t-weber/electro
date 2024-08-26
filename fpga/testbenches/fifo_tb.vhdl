@@ -147,12 +147,13 @@ begin
 
 
 	---------------------------------------------------------------------------
-	-- stack module
+	-- fifo buffer module
 	---------------------------------------------------------------------------
-	mod_fifo : entity work.fifo
+	mod_fifo : entity work.fifo(fifo_impl)
 		generic map(ADDR_BITS => ADDR_WIDTH, WORD_BITS => DATA_WIDTH)
 		port map(
-			in_clk => theclk, in_rst => reset,
+			in_rst => reset,
+			in_clk_insert => theclk, in_clk_remove => theclk,
 			in_data => data, out_back => back,
 			in_insert => insert, in_remove => remove,
 			out_ready_to_insert => ready_ins,

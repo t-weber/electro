@@ -4,7 +4,7 @@
 -- @date 17-mar-2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../conv/conv.vhdl  &&  ghdl -a --std=08 ../clock/clkgen.vhdl  &&  ghdl -a --std=08 ../clock/clksync.vhdl  &&  ghdl -a --std=08 clocks_tb.vhdl  &&  ghdl -e --std=08 clocks_tb clocks_tb_arch
+-- ghdl -a --std=08 ../conv/conv.vhdl ../mem/fifo.vhdl ../clock/clkgen.vhdl ../clock/clksync.vhdl clocks_tb.vhdl  &&  ghdl -e --std=08 clocks_tb clocks_tb_arch
 -- ghdl -r --std=08 clocks_tb clocks_tb_arch --vcd=clocks_tb.vcd --stop-time=500ns
 -- gtkwave clocks_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --
@@ -50,9 +50,11 @@ begin
 	--
 	-- data synchronisation
 	--
-	clk_sync : entity work.clksync
+	clk_sync : entity work.clksync(clksync_tofast)
 		generic map(BITS => BITS, FLIPFLOPS => 2)
-		port map(in_clk => main_clk, in_rst => rst,
+		port map(in_rst => rst,
+			in_clk_fast => main_clk,
+			in_clk_slow => '0',  -- not needed here
 			in_data => data, out_data => stable_data);
 
 

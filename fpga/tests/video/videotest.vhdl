@@ -261,9 +261,10 @@ begin
 	----------------------------------------------------------------------------
 
 	-- data synchronisation for writing in text memory
-	txt_clk_sync : entity work.clksync
+	txt_clk_sync : entity work.clksync(clksync_tofast)
 		generic map(BITS => 8, FLIPFLOPS => 2)
-		port map(in_clk => pixel_clk, in_rst => reset,
+		port map(in_rst => reset,
+			in_clk_fast => pixel_clk, in_clk_slow => '0',
 			in_data => char_to_write, out_data => char_to_write_stable);
 
 	-- char to write to memory
