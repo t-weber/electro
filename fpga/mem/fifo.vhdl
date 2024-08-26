@@ -72,7 +72,7 @@ architecture fifo_impl of fifo is
 	-- state of back pointer process
 	type t_state_bp is (
 		WaitBPCommand,
-		CheckRemove, Remove
+		Remove
 	);
 	signal state_bp, next_state_bp : t_state_bp := WaitBPCommand;
 
@@ -173,24 +173,19 @@ begin
 		case state_bp is
 			when WaitBPCommand =>
 				if in_remove = '1' then
-					next_state_bp <= CheckRemove;
+					next_state_bp <= Remove;
 				else
 					out_ready_to_remove <= '1';
 				end if;
 
-			when CheckRemove =>
-				-- only remove element if the buffer is not empty
-				if empty = '1' then
-					next_state_bp <= WaitBPCommand;
-				else
-					next_state_bp <= Remove;
-				end if;
-
-			-- remove an element at the back
 			when Remove =>
-				-- increment back pointer
-				next_bp <= inc_logvec(bp, 1);
 				next_state_bp <= WaitBPCommand;
+			
+				-- only remove element if the buffer is not empty
+				if empty = '0' then
+					-- remove an element at the back: increment back pointer
+					next_bp <= inc_logvec(bp, 1);
+				end if;
 		end case;
 	end process;
 	-----------------------------------------------------------------------
