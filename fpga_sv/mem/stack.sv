@@ -35,9 +35,6 @@ module stack
 localparam NUM_WORDS = 2**ADDR_BITS;
 logic [WORD_BITS - 1 : 0] words [0 : NUM_WORDS - 1];
 
-// input buffer
-logic [WORD_BITS - 1 : 0] data = 1'b0, next_data = 1'b0;
-
 // stack pointer
 logic [ADDR_BITS - 1 : 0] sp = 1'b0, next_sp = 1'b0;
 
@@ -46,8 +43,7 @@ logic ready = 1'b0;
 typedef enum
 {
 	WaitCommand,
-	Push, Push2,
-	Pop
+	Push, Pop
 } t_state;
 
 t_state state = WaitCommand, next_state = WaitCommand;
@@ -61,11 +57,9 @@ assign out_ready = ready;
 always_ff@(posedge in_clk) begin
 	if(in_rst == 1'b1) begin
 		state <= WaitCommand;
-		data <= 1'b0;
 		sp <= 1'b0;
 	end else begin
 		state <= next_state;
-		data <= next_data;
 		sp <= next_sp;
 	end
 end
@@ -74,7 +68,6 @@ end
 always_comb begin
 	next_state = state;
 	next_sp = sp;
-	next_data = data;
 
 	ready = 1'b0;
 
@@ -90,16 +83,10 @@ always_comb begin
 		Push: begin
 			// decrement stack pointer
 			next_sp = $size(sp)'(sp - 1'b1);
-			next_state = Push2;
-
-			// buffer data
-			next_data = in_data;
-		end
-
-		Push2: begin
-			// write data to stack pointer
-			words[sp] = data;
 			next_state = WaitCommand;
+
+			// write data to stack pointer - 1
+			words[$size(sp)'(sp - 1'b1)] = in_data;
 		end
 
 		Pop: begin

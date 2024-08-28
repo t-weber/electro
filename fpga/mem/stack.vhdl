@@ -48,16 +48,12 @@ architecture stack_impl of stack is
 	-- stack memory
 	signal words : t_words := (others => (others => '0'));
 
-	-- input buffer
-	signal data, next_data : t_word := (others => '0');
-
 	-- stack pointer
 	signal sp, next_sp : std_logic_vector(ADDR_BITS - 1 downto 0) := (others => '0');
 
 	type t_state is (
 		WaitCommand,
-		Push, Push2,
-		Pop
+		Push, Pop
 	);
 	signal state, next_state : t_state := WaitCommand;
 
@@ -72,20 +68,17 @@ begin
 			if in_rst = '1' then
 				state <= WaitCommand;
 				sp <= (others => '0');
-				data <= (others => '0');
 			else
 				state <= next_state;
 				sp <= next_sp;
-				data <= next_data;
 			end if;
 		end if;
 	end process;
 
 
-	process(state, sp, data, in_cmd, in_data) begin
+	process(state, sp, in_cmd, in_data) begin
 		next_state <= state;
 		next_sp <= sp;
-		next_data <= data;
 
 		out_ready <= '0';
 
@@ -93,7 +86,6 @@ begin
 		--	& ", sp = 0x" & to_hstring(sp)
 		--	& ", cmd = 0b" & to_string(in_cmd)
 		--	& ", data = 0x" & to_hstring(data);
-
 
 		case state is
 			when WaitCommand =>
@@ -109,15 +101,10 @@ begin
 			when Push =>
 				-- decrement stack pointer
 				next_sp <= dec_logvec(sp, 1);
-				next_state <= Push2;
-
-				-- buffer data
-				next_data <= in_data;
-
-			when Push2 =>
-				-- write data to stack pointer
-				words(to_int(sp)) <= data;
 				next_state <= WaitCommand;
+
+				-- write data to stack pointer - 1
+				words(to_int(dec_logvec(sp, 1))) <= in_data;
 
 			when Pop =>
 				-- increment stack pointer
