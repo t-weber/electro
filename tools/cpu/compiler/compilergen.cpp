@@ -6,8 +6,9 @@
  */
 
 #include "lalr1/collection.h"
-#include "lalr1/tablegen.h"
 #include "lalr1/parsergen.h"
+#include "lalr1/tablegen.h"
+#include "lalr1/tableexport.h"
 #include "lalr1/timer.h"
 #include "lalr1/options.h"
 
@@ -112,13 +113,13 @@ static bool lr1_create_parser(
 		if(create_tables)
 		{
 			bool tables_ok = false;
-			TableGen exporter{collsLALR};
-			exporter.SetAcceptingRule(0);
+			TableGen tabgen{collsLALR};
+			tabgen.SetAcceptingRule(0);
 
-			if(exporter.CreateParseTables())
+			if(tabgen.CreateParseTables())
 			{
 				const char* lalr_tables = "compiler.tab";
-				tables_ok = exporter.SaveParseTablesCXX(lalr_tables);
+				tables_ok = TableExport::SaveParseTables(tabgen, lalr_tables);
 				std::cout << "Created LALR(1) tables \""
 					<< lalr_tables << "\"." << std::endl;
 			}
