@@ -4,6 +4,20 @@
 -- @date 27-jan-2024
 -- @license see 'LICENSE' file
 --
+-- pins:
+--              ○○
+--              ○○
+--              ○○
+--              ○○
+--              ○○
+-- vss (blue)   ●● vdd 3.3V (red)
+--              ○○
+--              ...
+--              ○● fpga sda_in  <- lcd sda_out (violet)
+-- scl (green)  ●● fpga sda_out -> lcd sda_in (yellow)
+-- rst (orange) ●○
+--              ○○ gpio_0
+--
 
 library ieee;
 use ieee.std_logic_1164.all;
