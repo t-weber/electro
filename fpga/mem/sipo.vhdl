@@ -34,7 +34,8 @@ end entity;
 
 
 architecture sipo_impl of sipo is
-	signal shiftreg, shiftreg_next : std_logic_vector(BITS - 1 downto 0) := (others => '0');
+	signal shiftreg, shiftreg_next : std_logic_vector(BITS - 1 downto 0)
+		:= (others => '0');
 begin
 	-- output the parallel signal
 	out_parallel <= shiftreg;
@@ -52,9 +53,9 @@ begin
 	end process;
 
 
+	-- combinatorics
 	shiftdir: if SHIFT_RIGHT = '1' generate
 
-		-- combinatorics
 		-- write serial signal in first shift register bit
 		shiftreg_next(BITS - 1) <= in_serial;
 
@@ -79,7 +80,6 @@ begin
 
 	else generate
 
-		-- combinatorics
 		-- write serial signal in first shift register bit
 		shiftreg_next(0) <= in_serial;
 

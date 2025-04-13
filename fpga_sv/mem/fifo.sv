@@ -24,7 +24,7 @@ module fifo
 	// data to inserts
 	input wire [WORD_BITS - 1 : 0] in_data,
 
-	//  data at the back pointer
+	// data at the back pointer
 	output wire [WORD_BITS - 1 : 0] out_back,
 
 	// buffer empty?
