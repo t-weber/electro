@@ -28,7 +28,7 @@ entity piso is
 		in_capture : in std_logic;
 		in_rotate : in std_logic;
 
-		-- serial out
+		-- serial output
 		out_serial : out std_logic
 	);
 end entity;
