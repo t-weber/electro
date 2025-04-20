@@ -1,5 +1,5 @@
 --
--- LC display using serial 3/4-wire bus protocol and a fixed init sequence
+-- lc display using serial 3/4-wire bus protocol and a fixed init sequence
 -- @author Tobias Weber <tobias.weber@tum.de>
 -- @date dec-2020, dec-2023
 -- @license see 'LICENSE' file
@@ -16,21 +16,22 @@ use ieee.std_logic_1164.all;
 use work.conv.all;
 
 
+
 entity lcd_3wire is
 	generic(
-		-- clock
-		constant MAIN_CLK : natural := 50_000_000;
+		-- clock frequency
+		constant MAIN_CLK         : natural := 50_000_000;
 
 		-- word length and address of the LCD
 		constant BUS_NUM_DATABITS : natural := 8;
 
 		-- number of characters on the LCD
-		constant LCD_SIZE : natural := 4*20;
+		constant LCD_SIZE         : natural := 4*20;
 		constant LCD_NUM_ADDRBITS : natural := 7;
 		constant LCD_NUM_DATABITS : natural := BUS_NUM_DATABITS;
 
 		-- use the lcd busy flag for waiting instead of the timers
-		constant READ_BUSY_FLAG : std_logic := '1'
+		constant READ_BUSY_FLAG   : std_logic := '1'
 	);
 
 	port(
@@ -38,23 +39,23 @@ entity lcd_3wire is
 		in_clk, in_reset : in std_logic;
 
 		-- reset for LCD
-		out_lcd_reset : out std_logic;
+		out_lcd_reset    : out std_logic;
 
 		-- update the display
-		in_update : in std_logic;
+		in_update        : in std_logic;
 
 		-- serial bus interface
 		in_bus_ready, in_bus_next : in std_logic;
-		out_bus_enable : out std_logic;
-		out_bus_data : out std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
-		in_bus_data : in std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+		out_bus_enable   : out std_logic;
+		out_bus_data     : out std_logic_vector(BUS_NUM_DATABITS - 1 downto 0);
+		in_bus_data      : in std_logic_vector(BUS_NUM_DATABITS - 1 downto 0);
 
 		-- output current busy flag for debugging
-		out_busy_flag : out std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+		out_busy_flag    : out std_logic_vector(BUS_NUM_DATABITS - 1 downto 0);
 
 		-- display buffer
-		in_mem_word : in std_logic_vector(LCD_NUM_DATABITS-1 downto 0);
-		out_mem_addr : out std_logic_vector(LCD_NUM_ADDRBITS-1 downto 0)
+		in_mem_word      : in std_logic_vector(LCD_NUM_DATABITS - 1 downto 0);
+		out_mem_addr     : out std_logic_vector(LCD_NUM_ADDRBITS - 1 downto 0)
 	);
 end entity;
 
@@ -73,31 +74,34 @@ architecture lcd_3wire_impl of lcd_3wire is
 		UpdateDisplay_Setup5,
 		UpdateDisplay);
 
-	signal lcd_state, next_lcd_state : t_lcd_state := Wait_reset;
-	signal cmd_after_busy_check, next_cmd_after_busy_check : t_lcd_state := Wait_reset;
+	signal lcd_state, next_lcd_state : t_lcd_state := Wait_Reset;
+	signal cmd_after_busy_check, next_cmd_after_busy_check : t_lcd_state := Wait_Reset;
+
 
 	signal byte_cycle_last, next_byte_cycle : std_logic := '0';
 
 	signal busy_flag, next_busy_flag : std_logic_vector(
-		BUS_NUM_DATABITS-1 downto 0) := (others => '0');
+		BUS_NUM_DATABITS - 1 downto 0) := (others => '0');
+
 
 	-- delays
-	constant const_wait_prereset : natural := MAIN_CLK/1000*50;    -- 50 ms
-	constant const_wait_reset : natural := MAIN_CLK/1000_000*500;  -- 500 us
-	constant const_wait_resetted : natural := MAIN_CLK/1000*1;     -- 1 ms
-	constant const_wait_init : natural := MAIN_CLK/1000_000*100;   -- 100 us
-	constant const_wait_update : natural := MAIN_CLK/1000*100;     -- 100 ms
+	constant const_wait_prereset : natural := MAIN_CLK/1000*50;      -- 50 ms
+	constant const_wait_reset    : natural := MAIN_CLK/1000_000*500; -- 500 us
+	constant const_wait_resetted : natural := MAIN_CLK/1000*1;       -- 1 ms
+	constant const_wait_init     : natural := MAIN_CLK/1000_000*100; -- 100 us
+	constant const_wait_update   : natural := MAIN_CLK/1000*100;     -- 100 ms
 
 	-- the maximum of the above delays
-	constant const_wait_max : natural := const_wait_update;
+	constant const_wait_max      : natural := const_wait_update;
 
 	-- busy wait counters
 	signal wait_counter, wait_counter_max : natural range 0 to const_wait_max := 0;
 
+
 	-- control bytes
 	constant ctrl_command : std_logic_vector(BUS_NUM_DATABITS/2 - 1 downto 0) := "0001";
-	constant ctrl_data : std_logic_vector(BUS_NUM_DATABITS/2 - 1 downto 0) := "0101";
-	constant ctrl_read : std_logic_vector(BUS_NUM_DATABITS/2 - 1 downto 0) := "0011";
+	constant ctrl_data    : std_logic_vector(BUS_NUM_DATABITS/2 - 1 downto 0) := "0101";
+	constant ctrl_read    : std_logic_vector(BUS_NUM_DATABITS/2 - 1 downto 0) := "0011";
 
 	-- lcd init commands
 	-- see p. 5 in https://www.lcd-module.de/fileadmin/pdf/doma/dogm204.pdf
@@ -146,10 +150,11 @@ architecture lcd_3wire_impl of lcd_3wire is
 		--ctrl_data, "0011", "0011"    -- test data -> 0x33 = '3'
 	);
 
+
 	-- cycle counters
-	signal init_cycle, next_init_cycle : natural range 0 to init_num_commands := 0;
+	signal init_cycle, next_init_cycle         : natural range 0 to init_num_commands := 0;
 	signal cmd_byte_cycle, next_cmd_byte_cycle : natural range 0 to 4 := 0;
-	signal write_cycle, next_write_cycle : integer range 0 to LCD_SIZE := 0;
+	signal write_cycle, next_write_cycle       : integer range 0 to LCD_SIZE := 0;
 
 begin
 
@@ -161,7 +166,7 @@ begin
 
 
 	--
-	-- flip-flops
+	-- state flip-flops
 	--
 	proc_ff : process(in_clk, in_reset) begin
 		-- reset
