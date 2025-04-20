@@ -85,7 +85,7 @@ always_comb begin
 
 	b_shifted = (in_b <<< bitidx);
 
-	case(state)
+	unique case(state)
 		Reset:
 			begin
 				prod_next = 0;

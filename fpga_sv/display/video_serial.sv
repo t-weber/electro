@@ -264,7 +264,7 @@ always_comb begin
 	vid_cmd = 1'b0;
 	data = 0;
 
-	case(state)
+	unique case(state)
 		// ----------------------------------------------------
 		// reset
 		Reset: begin

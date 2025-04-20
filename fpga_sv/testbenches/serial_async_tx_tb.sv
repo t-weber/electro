@@ -83,7 +83,7 @@ module serial_async_tx_tb;
 		mod_rst = 0;
 		data = 0;
 
-		case(state)
+		unique case(state)
 			Reset: begin
 				mod_rst = 1;
 				next_state = WriteData;

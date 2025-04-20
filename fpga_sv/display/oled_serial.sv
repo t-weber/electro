@@ -237,7 +237,7 @@ always_comb begin
 	bus_enable = 1'b0;
 	bus_data = 0;
 
-	case(state)
+	unique case(state)
 		Reset: begin
 			wait_ctr_max = WAIT_RESET;
 			if(wait_ctr == wait_ctr_max)

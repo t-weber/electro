@@ -94,7 +94,7 @@ module serial_tb2;
 		mod_rst = 0;
 		data_tx = 0;
 
-		case(state)
+		unique case(state)
 			Reset: begin
 				mod_rst = 1;
 				next_state = WriteData;

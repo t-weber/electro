@@ -63,7 +63,7 @@ always_comb begin
 	out_direct = 1'b0;
 
 	// state machine
-	case(state)
+	unique case(state)
 		Start: begin
 			ctr = 1'b0;
 			next_state = One;
@@ -107,7 +107,7 @@ always_ff@(posedge clk, posedge rst) begin
 		// default
 		viareg <= 1'b0;
 
-		case(next_state)
+		unique case(next_state)
 			One: begin
 				viareg <= 1'b1;
 			end

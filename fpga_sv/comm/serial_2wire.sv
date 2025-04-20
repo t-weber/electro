@@ -213,7 +213,7 @@ assign inout_serial = (serial_out == 1'b0 ? 1'b0 : 1'bz);
 
 // output serial data (FPGA -> IC)
 always_comb begin
-	case(serial_state)
+	unique case(serial_state)
 		// ------------------------------------------------------------
 		// write target address
 		// ------------------------------------------------------------
@@ -312,7 +312,7 @@ always_comb begin
 	$display("serial_2wire: %s", serial_state.name());
 `endif
 
-	case(serial_state)
+	unique case(serial_state)
 		// wait for enable signal
 		Ready: begin
 			next_bit_ctr = 0;

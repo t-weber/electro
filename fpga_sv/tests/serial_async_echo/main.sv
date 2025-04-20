@@ -146,7 +146,7 @@ always_comb begin
 	enabled_rx = 1'b0;
 	enabled_tx = 1'b0;
 
-	case(state)
+	unique case(state)
 		ReceiveData: begin
 			enabled_rx = 1'b1;
 			if(bus_cycle_rx_next == 1'b1) begin

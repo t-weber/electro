@@ -64,7 +64,7 @@ always_comb begin
 	reset = 1'b0;
 	cmd = 2'b00;
 
-	case(state)
+	unique case(state)
 		Start: begin
 			reset = 1'b1;
 			state_after_ready_next = PushTest1;

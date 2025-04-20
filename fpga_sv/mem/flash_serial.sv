@@ -288,7 +288,7 @@ always_comb begin
 	flash_rst = 1'b0;
 	flash_write_protect = 1'b1;
 
-	case(state)
+	unique case(state)
 		// ----------------------------------------------------
 		// Init
 		Init: begin

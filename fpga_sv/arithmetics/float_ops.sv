@@ -116,7 +116,7 @@ always_comb begin
 	mant_next = mant;
 	sign_next = sign;
 
-	case(state)
+	unique case(state)
 		Ready:      // start new multiplication
 			begin
 				// wait for start signal

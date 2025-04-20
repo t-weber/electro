@@ -115,7 +115,7 @@ always_comb begin
 	enabled = 1'b0;
 	cur_char = 0;
 
-	case(state)
+	unique case(state)
 		Reset: begin
 			next_state = WriteData;
 		end

@@ -81,7 +81,7 @@ always_comb begin
 	quotient_next = quotient;
 	remainder_next = remainder;
 
-	case(state)
+	unique case(state)
 		// set remainder := dividend
 		Reset:
 			begin

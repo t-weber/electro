@@ -256,7 +256,7 @@ always_comb begin
 `endif
 
 	// state machine
-	case(serial_state)
+	unique case(serial_state)
 		// wait for enable signal
 		Ready: begin
 			next_bit_ctr = 0;

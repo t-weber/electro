@@ -55,7 +55,7 @@ module piso_tb;
 		rst = 1'b0;
 		capture = 1'b0;
 
-		case(state)
+		unique case(state)
 			Reset: begin
 				$display("==== START ====");
 				rst = 1'b1;

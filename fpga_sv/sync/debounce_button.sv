@@ -66,7 +66,7 @@ always_comb begin
 	toggled_next = toggled;
 	stable_counter_next = stable_counter;
 
-	case(btnstate)
+	unique case(btnstate)
 		NotPressed:
 			begin
 				// button being pressed?

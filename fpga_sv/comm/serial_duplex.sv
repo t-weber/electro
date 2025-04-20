@@ -226,7 +226,7 @@ always_comb begin
 		"%x. **", parallel_fromfpga);
 `endif
 
-	case(serial_fromfpga_state)
+	unique case(serial_fromfpga_state)
 		// wait for enable signal
 		ReadyTx: begin
 			next_bit_ctr_fromfpga = 1'b0;

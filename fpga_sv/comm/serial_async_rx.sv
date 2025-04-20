@@ -250,7 +250,7 @@ always_comb begin
 `endif
 
 	// state machine
-	case(rx_state)
+	unique case(rx_state)
 		// wait for enable signal
 		Ready: begin
 			next_bit_ctr = 0;
@@ -424,7 +424,7 @@ always_comb begin
 	next_parity = parity;
 	next_calc_parity = calc_parity;
 
-	case(rx_state)
+	unique case(rx_state)
 		Ready, ReceiveStartCont, ReceiveStart, ReceiveStop: begin
 			next_parity = EVEN_PARITY == 1'b1 ? 1'b0 : 1'b1;
 		end

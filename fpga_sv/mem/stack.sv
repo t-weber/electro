@@ -71,9 +71,9 @@ always_comb begin
 
 	ready = 1'b0;
 
-	case(state)
+	unique case(state)
 		WaitCommand: begin
-			case(in_cmd)
+			unique case(in_cmd)
 				2'b01: next_state = Push;
 				2'b10: next_state = Pop;
 				default: ready = 1'b1;

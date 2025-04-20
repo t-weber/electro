@@ -76,7 +76,7 @@ always_comb begin
 	bitidx_next = bitidx;
 	bcdidx_next = bcdidx;
 
-	case(state)
+	unique case(state)
 		// wait for the start signal
 		Idle:
 			if(in_start == 1) begin

@@ -236,7 +236,7 @@ always_comb begin
 `endif
 
 	// state machine
-	case(tx_state)
+	unique case(tx_state)
 		// wait for enable signal
 		Ready: begin
 			next_bit_ctr = 0;
@@ -299,7 +299,7 @@ end
 always_comb begin
 	next_parity = parity;
 
-	case(tx_state)
+	unique case(tx_state)
 		Ready, TransmitStart, TransmitStop: begin
 			next_parity = EVEN_PARITY == 1'b1 ? 1'b0 : 1'b1;
 		end

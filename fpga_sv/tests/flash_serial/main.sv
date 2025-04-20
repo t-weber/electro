@@ -225,7 +225,7 @@ always_comb begin
 	flash_erase = 1'b0;
 	flash_tx = BITS'(1'b0);
 
-	case(state)
+	unique case(state)
 		Start: begin
 			if(wait_ctr == WAIT_DELAY_START) begin
 				if(toggled_write == 1'b1)

@@ -55,7 +55,7 @@ module sipo_tb;
 		rst = 1'b0;
 		serial_data = 1'b0;
 
-		case(state)
+		unique case(state)
 			Reset: begin
 				$display("==== START ====");
 				rst = 1'b1;

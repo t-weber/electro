@@ -188,7 +188,7 @@ module serial_async_rx_tb;
 		enable_rx = 1'b1;
 		rst_rx = 1'b0;
 
-		case(state_rx)
+		unique case(state_rx)
 			ResetRx: begin
 				rst_rx = 1'b1;
 				next_state_rx = WaitData;

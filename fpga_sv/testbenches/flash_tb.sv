@@ -97,7 +97,7 @@ module flash_tb;
 		rst = 1'b0;
 		transmitted = 1'b0;
 
-		case(state)
+		unique case(state)
 			Reset: begin
 				rst = 1'b1;
 				next_state = WriteData;
