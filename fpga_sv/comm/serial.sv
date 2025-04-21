@@ -5,6 +5,7 @@
  * @license see 'LICENSE' file
  */
 
+
 module serial
 #(
 	// clock frequencies

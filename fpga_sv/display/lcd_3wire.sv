@@ -1,5 +1,5 @@
 /**
- * lc display using serial 3/4-wire bus protocol and a fixed init sequence
+ * text lc display using serial 3/4-wire bus protocol and a fixed init sequence
  * @author Tobias Weber <tobias.weber@tum.de>
  * @date 20-april-2025
  * @license see 'LICENSE' file
@@ -7,44 +7,44 @@
 
 
 module lcd_3wire
-	#(
-		// clock frequency
-		parameter MAIN_CLK         = 50000000,
+#(
+    // clock frequency
+    parameter MAIN_CLK         = 50_000_000,
 
-		// word length and address of the LCD
-		parameter BUS_NUM_DATABITS = 8,
+    // word length and address of the LCD
+    parameter BUS_NUM_DATABITS = 8,
 
-		// number of characters on the LCD
-		parameter LCD_SIZE         = 4*20,
-		parameter LCD_NUM_ADDRBITS = 7,
-		parameter LCD_NUM_DATABITS = BUS_NUM_DATABITS,
+    // number of characters on the LCD
+    parameter LCD_SIZE         = 4*20,
+    parameter LCD_NUM_ADDRBITS = 7,
+    parameter LCD_NUM_DATABITS = BUS_NUM_DATABITS,
 
-		// use the lcd busy flag for waiting instead of the timers
-		parameter READ_BUSY_FLAG   = 1
-	)
-	(
-		// clock and reset
-		input wire in_clk, in_rst,
+    // use the lcd busy flag for waiting instead of the timers
+    parameter READ_BUSY_FLAG   = 1
+)
+(
+    // clock and reset
+    input wire in_clk, in_rst,
 
-		// reset for LCD
-		output wire out_lcd_reset,
+    // reset for LCD
+    output wire out_lcd_reset,
 
-		// update the display
-		input wire in_update,
+    // update the display
+    input wire in_update,
 
-		// serial bus interface
-		input wire in_bus_ready, in_bus_next,
-		output wire out_bus_enable,
-		output wire [BUS_NUM_DATABITS - 1 : 0] out_bus_data,
-		input wire [BUS_NUM_DATABITS - 1 : 0] in_bus_data,
+    // serial bus interface
+    input wire in_bus_ready, in_bus_next,
+    output wire out_bus_enable,
+    output wire [BUS_NUM_DATABITS - 1 : 0] out_bus_data,
+    input wire [BUS_NUM_DATABITS - 1 : 0] in_bus_data,
 
-		// output current busy flag for debugging
-		output wire [BUS_NUM_DATABITS - 1 : 0] out_busy_flag,
+    // output current busy flag for debugging
+    output wire [BUS_NUM_DATABITS - 1 : 0] out_busy_flag,
 
-		// display buffer
-		input wire [LCD_NUM_DATABITS - 1 : 0] in_mem_word,
-		output wire [LCD_NUM_ADDRBITS - 1 : 0] out_mem_addr
-	);
+    // display buffer
+    input wire [LCD_NUM_DATABITS - 1 : 0] in_mem_word,
+    output wire [LCD_NUM_ADDRBITS - 1 : 0] out_mem_addr
+);
 
 
 
@@ -65,11 +65,11 @@ t_lcd_state cmd_after_busy_check = Wait_Reset, next_cmd_after_busy_check = Wait_
 
 
 // delays
-localparam const_wait_prereset = MAIN_CLK/1000*50;      // 50 ms
-localparam const_wait_reset    = MAIN_CLK/1000000*500;  // 500 us
-localparam const_wait_resetted = MAIN_CLK/1000*1;       // 1 ms
-localparam const_wait_init     = MAIN_CLK/1000000*100;  // 100 us
-localparam const_wait_update   = MAIN_CLK/1000*100;     // 100 ms
+localparam const_wait_prereset = MAIN_CLK/1000*50;        // 50 ms
+localparam const_wait_reset    = MAIN_CLK/1_000_000*500;  // 500 us
+localparam const_wait_resetted = MAIN_CLK/1000*1;         // 1 ms
+localparam const_wait_init     = MAIN_CLK/1_000_000*100;  // 100 us
+localparam const_wait_update   = MAIN_CLK/1000*100;       // 100 ms
 
 // the maximum of the above delays
 localparam const_wait_max      = const_wait_update;
@@ -166,7 +166,7 @@ always_ff@(posedge in_clk) begin
 
 		byte_cycle_last <= 1'b0;
 
-		busy_flag <= 1'b0;
+		busy_flag <= {BUS_NUM_DATABITS{1'b0}};
 	end
 
 	// clock
@@ -178,7 +178,7 @@ always_ff@(posedge in_clk) begin
 		// timer register
 		if(wait_counter == wait_counter_max) begin
 			// reset timer counter
-			wait_counter <= 0;
+			wait_counter <= 1'b0;
 		end else begin
 			// next timer counter
 			wait_counter <= wait_counter + 1'b1;
@@ -232,6 +232,7 @@ always_comb begin
 
 		Reset: begin
 			lcd_reset = 1'b0;
+			next_busy_flag = {BUS_NUM_DATABITS{1'b1}};
 
 			wait_counter_max = const_wait_reset;
 			if(wait_counter == wait_counter_max)
@@ -388,7 +389,7 @@ always_comb begin
 
 		UpdateDisplay_Setup3: begin
 			// return: set display address to 0 (nibble 2)
-			bus_data = 8'b00000010;
+			bus_data = 8'b00000000;
 			bus_enable = 1'b1;
 
 			if(next_byte_cycle == 1'b1)
@@ -451,6 +452,10 @@ always_comb begin
 					bus_enable = 1'b1;
 				end
 			end
+		end
+
+		default: begin
+			next_lcd_state = Wait_Reset;
 		end
 		// --------------------------------------------------------------------
 

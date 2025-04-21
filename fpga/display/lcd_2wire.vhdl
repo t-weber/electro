@@ -1,5 +1,5 @@
 --
--- LC display using serial 2-wire bus protocol and a fixed init sequence
+-- text lc display using serial 2-wire bus protocol and a fixed init sequence
 -- @author Tobias Weber <tobias.weber@tum.de>
 -- @date dec-2020, nov-2023
 -- @license see 'LICENSE' file
