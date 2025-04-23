@@ -78,7 +78,7 @@ assign out_ready = serial_state == Ready;
 logic [$clog2(BITS) : 0] bit_ctr = 1'b0, next_bit_ctr = 1'b0;
 
 // bit counter with correct ordering
-wire [$clog2(BITS) : 0] actual_bit_ctr;
+wire [$size(bit_ctr) : 0] actual_bit_ctr;
 
 generate
 	if(LOWBIT_FIRST == 1'b1) begin
@@ -257,24 +257,30 @@ always_comb begin
 `endif
 
 	// state machine
-	unique case(serial_state)
+	unique case({ serial_state, bit_ctr }) inside
 		// wait for enable signal
-		Ready: begin
-			next_bit_ctr = 0;
+		{ Ready, {$size(bit_ctr){1'b?}} }: begin
+			next_bit_ctr = 1'b0;
 			if(in_enable == 1'b1) begin
 				next_serial_state = Transmit;
 			end
 		end
 
-		// serialise parallel data
-		Transmit: begin
-			// end of word?
-			if(bit_ctr == BITS - 1) begin
-				next_request_word = 1'b1;
-				next_bit_ctr = 0;
-			end else begin
-				next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1'b1);
+		// serialise parallel data up to before last bit
+		[ { Transmit, $size(bit_ctr)'(0) } : { Transmit, $size(bit_ctr)'(BITS - 2) } ] : begin
+			next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1'b1);
+
+			// enable signal not active any more?
+			if(in_enable == 1'b0) begin
+				next_serial_state = Ready;
 			end
+		end
+
+		// serialise parallel data, last bit
+		{ Transmit, $size(bit_ctr)'(BITS - 1) } : begin
+			// end of word?
+			next_request_word = 1'b1;
+			next_bit_ctr = 1'b0;
 
 			// enable signal not active any more?
 			if(in_enable == 1'b0) begin

@@ -166,7 +166,7 @@ always_ff@(posedge in_clk) begin
 
 		byte_cycle_last <= 1'b0;
 
-		busy_flag <= {BUS_NUM_DATABITS{1'b0}};
+		busy_flag <= {BUS_NUM_DATABITS{1'b1}};
 	end
 
 	// clock
@@ -220,17 +220,17 @@ always_comb begin
 	bus_data = 1'b0;
 
 
-	unique case(lcd_state)
+	unique case({ lcd_state, cmd_byte_cycle }) inside
 		// --------------------------------------------------------------------
 		// reset
 		// --------------------------------------------------------------------
-		Wait_Reset: begin
+		{ Wait_Reset, {$size(cmd_byte_cycle){1'b?}} }: begin
 			wait_counter_max = const_wait_prereset;
 			if(wait_counter == wait_counter_max)
 				next_lcd_state = Reset;
 		end
 
-		Reset: begin
+		{ Reset, {$size(cmd_byte_cycle){1'b?}} }: begin
 			lcd_reset = 1'b0;
 			next_busy_flag = {BUS_NUM_DATABITS{1'b1}};
 
@@ -239,7 +239,7 @@ always_comb begin
 				next_lcd_state = Resetted;
 		end
 
-		Resetted: begin
+		{ Resetted, {$size(cmd_byte_cycle){1'b?}} }: begin
 			wait_counter_max = const_wait_resetted;
 			if(wait_counter == wait_counter_max)
 				next_lcd_state = ReadInitSeq;
@@ -250,50 +250,51 @@ always_comb begin
 		// --------------------------------------------------------------------
 		// write init sequence
 		// --------------------------------------------------------------------
-		ReadInitSeq: begin
+		{ ReadInitSeq, $size(cmd_byte_cycle)'(0) }: begin
 			// next command byte
 			if(next_byte_cycle == 1'b1)
 				next_cmd_byte_cycle = cmd_byte_cycle + 1'b1;
 
-			// end of current command?
-			if(cmd_byte_cycle == 2'd3) begin
-				next_lcd_state = Wait_Init;
-				next_init_cycle = init_cycle + 1'b1;
-				next_cmd_byte_cycle = 0;
-			end
-
-			// transmit commands
-			else begin
-				// end of all commands?
-				if(init_cycle == init_num_commands) begin
-					// sequence finished
-					if(in_bus_ready == 1'b1) begin
-						next_lcd_state = Wait_PreUpdateDisplay;
-						next_init_cycle = 1'b0;
-					end
-				end else begin
-					// put command on bus
-					if(cmd_byte_cycle == 1'b0) begin
-						// command
-						bus_data =
-						{
-							init_arr[init_cycle*3 + cmd_byte_cycle],
-							4'b1111
-						};
-					end else begin
-						// data
-						bus_data =
-						{
-							4'b0000,
-							init_arr[init_cycle*3 + cmd_byte_cycle]
-						};
-					end
-					bus_enable = 1'b1;
+			// end of all commands?
+			if(init_cycle == init_num_commands) begin
+				// sequence finished
+				if(in_bus_ready == 1'b1) begin
+					next_lcd_state = Wait_PreUpdateDisplay;
+					next_init_cycle = 1'b0;
 				end
+			end else begin
+				// transmit command
+				bus_data =
+				{
+					init_arr[init_cycle*3 + cmd_byte_cycle],
+					4'b1111
+				};
+				bus_enable = 1'b1;
 			end
 		end
 
-		Wait_Init: begin
+		[ { ReadInitSeq, $size(cmd_byte_cycle)'(1) } : { ReadInitSeq, $size(cmd_byte_cycle)'(2) } ]: begin
+			// next command byte
+			if(next_byte_cycle == 1'b1)
+				next_cmd_byte_cycle = cmd_byte_cycle + 1'b1;
+
+			// arguments for the command
+			bus_data =
+			{
+				4'b0000,
+				init_arr[init_cycle*3 + cmd_byte_cycle]
+			};
+			bus_enable = 1'b1;
+		end
+
+		{ ReadInitSeq, $size(cmd_byte_cycle)'(3) }: begin
+			// end of current command
+			next_lcd_state = Wait_Init;
+			next_init_cycle = init_cycle + 1'b1;
+			next_cmd_byte_cycle = 1'b0;
+		end
+
+		{ Wait_Init, {$size(cmd_byte_cycle){1'b?}} }: begin
 			if(READ_BUSY_FLAG == 1'b1) begin
 				// wait until the busy flag is clear
 				next_lcd_state = ReadBusyFlag_Cmd;
@@ -313,7 +314,7 @@ always_comb begin
 		// --------------------------------------------------------------------
 		// read busy flag
 		// --------------------------------------------------------------------
-		ReadBusyFlag_Cmd: begin
+		{ ReadBusyFlag_Cmd, {$size(cmd_byte_cycle){1'b?}} }: begin
 			bus_data = { ctrl_read, 4'b1111 };
 			bus_enable = 1'b1;
 
@@ -321,7 +322,7 @@ always_comb begin
 				next_lcd_state = ReadBusyFlag;
 		end
 
-		ReadBusyFlag: begin
+		{ ReadBusyFlag, {$size(cmd_byte_cycle){1'b?}} }: begin
 			bus_data = 1'b0;
 			bus_enable = 1'b1;
 
@@ -329,14 +330,14 @@ always_comb begin
 				next_lcd_state = ReadBusyFlag2;
 		end
 
-		ReadBusyFlag2: begin
+		{ ReadBusyFlag2, {$size(cmd_byte_cycle){1'b?}} }: begin
 			if(in_bus_ready == 1'b1) begin
 				next_busy_flag = in_bus_data;
 				next_lcd_state = CheckBusyFlag;
 			end
 		end
 
-		CheckBusyFlag: begin
+		{ CheckBusyFlag, {$size(cmd_byte_cycle){1'b?}} }: begin
 			if(busy_flag[7] == 1'b0) begin
 				// continue with next command
 				next_lcd_state = cmd_after_busy_check;
@@ -351,13 +352,13 @@ always_comb begin
 		// --------------------------------------------------------------------
 		// update display
 		// --------------------------------------------------------------------
-		Wait_PreUpdateDisplay: begin
+		{ Wait_PreUpdateDisplay, {$size(cmd_byte_cycle){1'b?}} }: begin
 			wait_counter_max = const_wait_update;
 			if(wait_counter == wait_counter_max)
 				next_lcd_state = Pre_UpdateDisplay;
 		end
 
-		Pre_UpdateDisplay: begin
+		{ Pre_UpdateDisplay, {$size(cmd_byte_cycle){1'b?}} }: begin
 			if(in_update == 1'b1) begin
 				if(READ_BUSY_FLAG == 1'b1) begin
 					// wait until the busy flag is clear
@@ -369,7 +370,7 @@ always_comb begin
 			end
 		end
 
-		UpdateDisplay_Setup1: begin
+		{ UpdateDisplay_Setup1, {$size(cmd_byte_cycle){1'b?}} }: begin
 			// control byte for return
 			bus_data = { ctrl_command, 4'b1111 };
 			bus_enable = 1'b1;
@@ -378,7 +379,7 @@ always_comb begin
 				next_lcd_state = UpdateDisplay_Setup2;
 		end
 
-		UpdateDisplay_Setup2: begin
+		{ UpdateDisplay_Setup2, {$size(cmd_byte_cycle){1'b?}} }: begin
 			// return: set display address to 0 (nibble 1)
 			bus_data = 8'b00000010;
 			bus_enable = 1'b1;
@@ -387,7 +388,7 @@ always_comb begin
 				next_lcd_state = UpdateDisplay_Setup3;
 		end
 
-		UpdateDisplay_Setup3: begin
+		{ UpdateDisplay_Setup3, {$size(cmd_byte_cycle){1'b?}} }: begin
 			// return: set display address to 0 (nibble 2)
 			bus_data = 8'b00000000;
 			bus_enable = 1'b1;
@@ -396,7 +397,7 @@ always_comb begin
 				next_lcd_state = UpdateDisplay_Setup4;
 		end
 
-		UpdateDisplay_Setup4: begin
+		{ UpdateDisplay_Setup4, {$size(cmd_byte_cycle){1'b?}} }: begin
 			// wait for command
 			wait_counter_max = const_wait_init;
 			if(wait_counter == wait_counter_max) begin
@@ -405,7 +406,7 @@ always_comb begin
 			end
 		end
 
-		UpdateDisplay_Setup5: begin
+		{ UpdateDisplay_Setup5, {$size(cmd_byte_cycle){1'b?}} }: begin
 			// control byte for data
 			bus_data = { ctrl_data, 4'b1111 };
 			bus_enable = 1'b1;
@@ -417,41 +418,38 @@ always_comb begin
 			end
 		end
 
-		UpdateDisplay: begin
+		[ { UpdateDisplay, $size(cmd_byte_cycle)'(0) } : { UpdateDisplay, $size(cmd_byte_cycle)'(1) } ]: begin
 			// next data nibble
 			if(next_byte_cycle == 1'b1)
 				next_cmd_byte_cycle = cmd_byte_cycle + 1'b1;
 
-			// end of current data byte?
-			if(cmd_byte_cycle == 2'd2) begin
-				// next character
-				next_write_cycle = write_cycle + 1'b1;
-				next_cmd_byte_cycle = 1'b0;
-			end
-
 			// write characters
-			else begin
-				// end of character data?
-				if(write_cycle == LCD_SIZE) begin
-					// sequence finished
-					if(in_bus_ready == 1'b1) begin
-						next_lcd_state = Wait_PreUpdateDisplay;
-						next_write_cycle = 1'b0;
-						next_cmd_byte_cycle = 1'b0;
-					end
-				end else begin
-					mem_addr = LCD_NUM_ADDRBITS'(write_cycle);
-					bus_data =
-					{
-						4'b0000,
-						in_mem_word[cmd_byte_cycle*4 + 3],
-						in_mem_word[cmd_byte_cycle*4 + 2],
-						in_mem_word[cmd_byte_cycle*4 + 1],
-						in_mem_word[cmd_byte_cycle*4 + 0]
-					};
-					bus_enable = 1'b1;
+			// end of character data?
+			if(write_cycle == LCD_SIZE) begin
+				// sequence finished
+				if(in_bus_ready == 1'b1) begin
+					next_lcd_state = Wait_PreUpdateDisplay;
+					next_write_cycle = 1'b0;
+					next_cmd_byte_cycle = 1'b0;
 				end
+			end else begin
+				mem_addr = LCD_NUM_ADDRBITS'(write_cycle);
+				bus_data =
+				{
+					4'b0000,
+					in_mem_word[cmd_byte_cycle*4 + 3],
+					in_mem_word[cmd_byte_cycle*4 + 2],
+					in_mem_word[cmd_byte_cycle*4 + 1],
+					in_mem_word[cmd_byte_cycle*4 + 0]
+				};
+				bus_enable = 1'b1;
 			end
+		end
+
+		{ UpdateDisplay, $size(cmd_byte_cycle)'(2) }: begin
+			// end of current data byte
+			next_write_cycle = write_cycle + 1'b1;
+			next_cmd_byte_cycle = 1'b0;
 		end
 
 		default: begin

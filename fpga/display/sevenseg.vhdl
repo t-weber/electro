@@ -19,7 +19,8 @@ entity sevenseg is
 	generic
 	(
 		ZERO_IS_ON : in std_logic := '0';
-		INVERSE_NUMBERING : in std_logic := '0'
+		INVERSE_NUMBERING : in std_logic := '0';
+		ROTATED : in std_logic := '0'
 	);
 
 	port
@@ -36,44 +37,67 @@ end entity;
 --
 architecture sevenseg_impl of sevenseg is
 
-	type t_ledvec is array(0 to 1, 0 to 15) of std_logic_vector(7 downto 0);
+	type t_ledvec is array(0 to 1, 0 to 1, 0 to 15) of std_logic_vector(7 downto 0);
 
-	-- INVERSE_NUMBERING as integer
+	-- INVERSE_NUMBERING and ROTATED as integer
 	constant inv_numb : integer := log_to_int(INVERSE_NUMBERING);
+	constant rot_numb : integer := log_to_int(ROTATED);
 
 	-- constants, see: https://en.wikipedia.org/wiki/Seven-segment_display
 	constant ledvec : t_ledvec :=
 	(
-		-- non-inverted numbering
+		-- non-rotated numbering
 		(
-			x"7e", x"30", x"6d", x"79", -- 0-3
-			x"33", x"5b", x"5f", x"70", -- 4-7
-			x"7f", x"7b", x"77", x"1f", -- 8-b
-			x"4e", x"3d", x"4f", x"47"  -- c-f
+			-- non-inverted numbering
+			(
+				x"7e", x"30", x"6d", x"79", -- 0-3
+				x"33", x"5b", x"5f", x"70", -- 4-7
+				x"7f", x"7b", x"77", x"1f", -- 8-b
+				x"4e", x"3d", x"4f", x"47"  -- c-f
+			),
+
+			-- inverted numbering
+			(
+				x"3f", x"06", x"5b", x"4f", -- 0-3
+				x"66", x"6d", x"7d", x"07", -- 4-7
+				x"7f", x"6f", x"77", x"7c", -- 8-b
+				x"39", x"5e", x"79", x"71"  -- c-f
+			)
 		),
 
-		-- inverted numbering
+		-- rotated numbering
 		(
-			x"3f", x"06", x"5b", x"4f", -- 0-3
-			x"66", x"6d", x"7d", x"07", -- 4-7
-			x"7f", x"6f", x"77", x"7c", -- 8-b
-			x"39", x"5e", x"79", x"71"  -- c-f
+			-- non-inverted numbering
+			(
+				x"7e", x"06", x"6d", x"4f", -- 0-3
+				x"17", x"5b", x"7b", x"0e", -- 4-7
+				x"7f", x"5f", x"3f", x"73", -- 8-b
+				x"78", x"67", x"79", x"39"  -- c-f
+			),
+
+			-- inverted numbering
+			(
+				x"3f", x"30", x"5b", x"79", -- 0-3
+				x"74", x"6d", x"6f", x"38", -- 4-7
+				x"7f", x"7d", x"7e", x"67", -- 8-b
+				x"0f", x"73", x"4f", x"4e"  -- c-f
+			)
 		)
 	);
 
 	signal leds : std_logic_vector(6 downto 0);
 begin
-	leds <= ledvec(inv_numb,  to_int(in_digit))(6 downto 0);
+	leds <= ledvec(rot_numb, inv_numb, to_int(in_digit))(6 downto 0);
 
 	--with ZERO_IS_ON select out_leds <=
 	--	not leds(6 downto 0) when '1',
 	--	leds(6 downto 0) when others;
 
-	gen_leds_zero_on : if ZERO_IS_ON='1' generate
+	gen_leds_zero_on : if ZERO_IS_ON = '1' generate
 		out_leds <= not leds;
 	end generate;
 
-	gen_leds_zero_off : if ZERO_IS_ON='0' generate
+	gen_leds_zero_off : if ZERO_IS_ON = '0' generate
 		out_leds <= leds;
 	end generate;
 end architecture;

@@ -17,8 +17,10 @@
 //  333     333
 //
 
+#include <vector>
 #include <string>
 #include <iostream>
+#include <iomanip>
 #include <cstdint>
 
 
@@ -86,38 +88,95 @@ t_bits bitrot_inv(t_bits bits)
 
 
 template<class t_bits>
-void print_vals(t_bits val_inv)
+std::tuple<t_bits, t_bits, t_bits> calc_vals(t_bits val_inv)
 {
 	t_bits val_noninv = bitswap<t_bits>(val_inv, 7);
 	t_bits val_noninv_rot = bitrot_noninv<t_bits>(val_noninv);
 	t_bits val_inv_rot = bitrot_inv<t_bits>(val_inv);
 
-	std::cout << std::hex << "Non-inverted:          0x" << val_noninv << "." << std::endl;
-	std::cout << std::hex << "Inverted:              0x" << val_inv << "." << std::endl;
-	std::cout << std::hex << "Non-inverted, rotated: 0x" << val_noninv_rot << "." << std::endl;
-	std::cout << std::hex << "Inverted, rotated:     0x" << val_inv_rot << "." << std::endl;
+	//std::cout << std::hex << "Non-inverted:          0x" << val_noninv << "." << std::endl;
+	//std::cout << std::hex << "Inverted:              0x" << val_inv << "." << std::endl;
+	//std::cout << std::hex << "Non-inverted, rotated: 0x" << val_noninv_rot << "." << std::endl;
+	//std::cout << std::hex << "Inverted, rotated:     0x" << val_inv_rot << "." << std::endl;
+
+	return std::make_tuple(val_noninv, val_noninv_rot, val_inv_rot);
+}
+
+
+enum class Lang
+{
+	CPP,
+	VHDL,
+	SV,
+};
+
+
+template<class t_bits>
+void print_vals(const std::string& descr, const std::vector<t_bits>& vals, Lang lang = Lang::CPP)
+{
+	std::ostream& ostr = std::cout;
+
+	const char* prefix = "0x";
+	const char* suffix = "";
+	const char* comment = "// ";
+
+	if(lang == Lang::VHDL)
+	{
+		prefix = "7'h";
+		suffix = "";
+		comment = "-- ";
+	}
+	else if(lang == Lang::SV)
+	{
+		prefix = "x\"";
+		suffix = "\"";
+		comment = "// ";
+	}
+
+	ostr << comment << descr << std::endl;
+
+	for(std::size_t idx = 0; idx < vals.size(); ++idx)
+	{
+		t_bits val = vals[idx];
+
+		ostr << prefix
+			<< std::setw(2) << std::setfill('0')
+			<< std::hex << val
+			<< suffix;
+
+		if(idx < vals.size() - 1)
+			ostr << ", ";
+
+		if(((idx + 1) % 4) == 0)
+		{
+			if(idx == vals.size() - 1)
+				ostr << "  ";
+			ostr << " " << comment << (idx - 3) << " - " << idx;
+			ostr << '\n';
+		}
+	}
+
+	ostr << std::endl;
 }
 
 
 int main(int argc, char** argv)
 {
-	using t_bits = std::uint16_t;
-	t_bits val_inv = 0;
+	Lang lang = Lang::CPP;
 
-	/*std::cout << "Enter segment bits in inverted ordering: ";
-	for(t_bits num = 0; num < 7; ++num)
+	if(argc > 1)
 	{
-		t_bits bitval = 0;
-		std::cin >> bitval;
-		if(bitval)
-			val_inv |= (1 << num);
+		if(*argv[1] == 'c')
+			lang = Lang::CPP;
+		else if(*argv[1] == 'v')
+			lang = Lang::VHDL;
+		else if(*argv[1] == 's')
+			lang = Lang::SV;
 	}
 
-	print_vals<t_bits>(val_inv);
-	*/
+	using t_bits = std::uint16_t;
 
-
-	std::vector<t_bits> vals
+	std::vector<t_bits> vals_inv
 	{{
 		// non-inverted numbering, see: https://en.wikipedia.org/wiki/Seven-segment_display
 		0x3f, 0x06, 0x5b, 0x4f, // 0-3
@@ -126,11 +185,25 @@ int main(int argc, char** argv)
 		0x39, 0x5e, 0x79, 0x71  // c-f
 	}};
 
-	for(t_bits val : vals)
+	std::vector<t_bits> vals_noninv, vals_noninv_rot, vals_inv_rot;
+	vals_noninv.reserve(vals_inv.size());
+	vals_noninv_rot.reserve(vals_inv.size());
+	vals_inv_rot.reserve(vals_inv.size());
+
+	for(t_bits val : vals_inv)
 	{
-		print_vals<t_bits>(val);
-		std::cout << std::endl;
+		auto [val_noninv, val_noninv_rot, val_inv_rot]
+			= calc_vals<t_bits>(val);
+
+		vals_noninv.push_back(val_noninv);
+		vals_noninv_rot.push_back(val_noninv_rot);
+		vals_inv_rot.push_back(val_inv_rot);
 	}
+
+	print_vals("non-inverted numbering", vals_noninv, lang);
+	print_vals("inverted numbering", vals_inv, lang);
+	print_vals("non-inverted numbering, rotated", vals_noninv_rot, lang);
+	print_vals("inverted numbering, rotated", vals_inv_rot, lang);
 
 	return 0;
 }
