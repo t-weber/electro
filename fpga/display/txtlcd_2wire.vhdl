@@ -18,7 +18,7 @@ use ieee.std_logic_1164.all;
 use work.conv.all;
 
 
-entity lcd_2wire is
+entity txtlcd_2wire is
 	generic(
 		-- clock
 		constant main_clk : natural := 50_000_000;
@@ -61,7 +61,7 @@ end entity;
 
 
 
-architecture lcd_2wire_impl of lcd_2wire is
+architecture txtlcd_2wire_impl of txtlcd_2wire is
 	-- states
 	type t_lcd_state is (
 		Wait_Reset, Reset, Resetted,

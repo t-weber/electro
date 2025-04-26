@@ -100,7 +100,7 @@ wire [6 : 0] ram_addr;
 
 
 // instantiate lcd module
-lcd_3wire #(
+txtlcd_3wire #(
 	.MAIN_CLK(MAIN_CLK), .LCD_SIZE(LCD_SIZE)
 )
 lcd_mod(

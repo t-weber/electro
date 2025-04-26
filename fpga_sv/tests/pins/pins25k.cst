@@ -85,10 +85,10 @@ IO_PORT "sw[3]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 
 /*
 // text lcd on gpios
-IO_LOC "lcd_rst"    k2;   // pin 1 (orange)
-IO_LOC "lcd_scl"    k1;   // pin 2 (green)
-IO_LOC "lcd_sda_o"  l1;   // pin 3 (yellow)
-IO_LOC "lcd_sda_i"  l2;   // pin 4 (violet)
+IO_LOC "lcd_rst"    f6;   // pin 1 (orange)
+IO_LOC "lcd_scl"    f7;   // pin 2 (green)
+IO_LOC "lcd_sda_o"  j10;  // pin 3 (yellow)
+IO_LOC "lcd_sda_i"  j11;  // pin 4 (violet)
 
 IO_PORT "lcd_rst"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 IO_PORT "lcd_scl"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;

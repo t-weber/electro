@@ -66,7 +66,7 @@ begin
 		port map(in_addr(0) => ram_addr, out_data(0) => ram_read);
 
 	-- lcd
-	lcd : entity work.lcd_3wire
+	lcd : entity work.txtlcd_3wire
 		generic map(MAIN_CLK => MAIN_CLK, LCD_SIZE => LCD_SIZE)
 		port map(in_clk => clock_50_b7a, in_reset => reset,
 			in_update => refresh, in_bus_data => serial_data_in,

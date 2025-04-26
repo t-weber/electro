@@ -4,9 +4,9 @@
 -- @date 2-dec-2023
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../conv/conv.vhdl  &&  ghdl -a --std=08 ../clock/clkgen.vhdl  &&  ghdl -a --std=08 ../display/lcd_3wire.vhdl  &&  ghdl -a --std=08 ../comm/serial.vhdl  &&  ghdl -a --std=08 lcd_3wire_tb.vhdl  &&  ghdl -e --std=08 lcd_3wire_tb lcd_3wire_tb_arch
--- ghdl -r --std=08 lcd_3wire_tb lcd_3wire_tb_arch --vcd=lcd_3wire_tb.vcd --stop-time=5000ns
--- gtkwave lcd_3wire_tb.vcd
+-- ghdl -a --std=08 ../conv/conv.vhdl  &&  ghdl -a --std=08 ../clock/clkgen.vhdl  &&  ghdl -a --std=08 ../display/txtlcd_3wire.vhdl  &&  ghdl -a --std=08 ../comm/serial.vhdl  &&  ghdl -a --std=08 txtlcd_3wire_tb.vhdl  &&  ghdl -e --std=08 txtlcd_3wire_tb txtlcd_3wire_tb_arch
+-- ghdl -r --std=08 txtlcd_3wire_tb txtlcd_3wire_tb_arch --vcd=txtlcd_3wire_tb.vcd --stop-time=5000ns
+-- gtkwave txtlcd_3wire_tb.vcd
 --
 
 library ieee;
@@ -14,11 +14,11 @@ use ieee.std_logic_1164.all;
 use work.conv.all;
 
 
-entity lcd_3wire_tb is
+entity txtlcd_3wire_tb is
 end entity;
 
 
-architecture lcd_3wire_tb_arch of lcd_3wire_tb is
+architecture txtlcd_3wire_tb_arch of txtlcd_3wire_tb is
 	constant PRINT_CLK : std_logic := '0';
 	constant PRINT_SERIAL_CLK : std_logic := '1';
 
@@ -50,7 +50,7 @@ begin
 			out_clk => serial_clk, out_serial => serial_data,
 			out_next_word => nextbyte, out_ready => ready);
 
-	lcd_ent : entity work.lcd_3wire
+	lcd_ent : entity work.txtlcd_3wire
 		generic map(main_clk => MAIN_HZ, bus_num_databits => BITS)
 		port map(in_clk => clk, in_reset => rst, in_update => '1',
 			in_bus_next => nextbyte, in_bus_ready => ready,

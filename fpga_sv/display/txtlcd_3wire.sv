@@ -6,7 +6,7 @@
  */
 
 
-module lcd_3wire
+module txtlcd_3wire
 #(
     // clock frequency
     parameter MAIN_CLK         = 50_000_000,

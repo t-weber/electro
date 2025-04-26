@@ -17,7 +17,7 @@ use work.conv.all;
 
 
 
-entity lcd_3wire is
+entity txtlcd_3wire is
 	generic(
 		-- clock frequency
 		constant MAIN_CLK         : natural := 50_000_000;
@@ -61,7 +61,7 @@ end entity;
 
 
 
-architecture lcd_3wire_impl of lcd_3wire is
+architecture txtlcd_3wire_impl of txtlcd_3wire is
 	-- states
 	type t_lcd_state is (
 		Wait_Reset, Reset, Resetted,
