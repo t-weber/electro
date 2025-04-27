@@ -1,0 +1,62 @@
+*
+* astable flip-flop
+* @author Tobias Weber <tobias.weber@tum.de>
+* @date 27-april-2025
+* @license see 'LICENSE' file
+*
+* references:
+*   - https://de.wikipedia.org/wiki/Astabile_Kippstufe
+*   - https://en.wikipedia.org/wiki/Common_emitter
+*
+
+.title oscillator
+.temp 21
+
+
+V1 Vcc 0 dc 3.3V
+
+* -----------------------------------------------------------------------------
+* oscillator
+* -----------------------------------------------------------------------------
+.model transistorA npn ()
+
+.subckt osci_elem Vin Vgnd base coll base_next
+	* t = R2*C1*ln(2)
+	R1  Vin  coll      500
+	R2  Vin  base_next 10k
+	C1  coll base_next 100uF IC=0V
+	QT1 coll base Vgnd transistorA  $ C, B, E
+.ends osci_elem
+
+*Xelem1 Vcc 0     base1 coll1 base2 osci_elem
+*Xelem2 Vcc 0     base2 coll2 base1 osci_elem
+Xelem1 Vcc emit1 base1 coll1 base2 osci_elem
+Xelem2 Vcc emit2 base2 coll2 base1 osci_elem
+* -----------------------------------------------------------------------------
+
+* -----------------------------------------------------------------------------
+* voltage amplifier via common emitter
+* -----------------------------------------------------------------------------
+.subckt com_emit Vcc coll emit
+	QTout coll emit 0 transistorA  $ C, B, E
+	RLoad coll Vcc  1k
+.ends com_emit
+
+Xemit1 Vcc coll1_out emit1 com_emit
+Xemit2 Vcc coll2_out emit2 com_emit
+* -----------------------------------------------------------------------------
+
+
+.control
+	tran 5ms 10s
+
+	*set filetype=ascii
+	*write oscillator.dat V(Vcc, coll1), V(Vcc, coll2), V(Vcc, coll1_out), V(Vcc, coll2_out)
+
+	plot V(Vcc, coll1), V(Vcc, coll1_out)
+	plot V(Vcc, coll2), V(Vcc, coll2_out)
+
+	*quit
+.endc
+
+.end

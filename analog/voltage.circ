@@ -1,0 +1,41 @@
+*
+* simple voltage converter simulation
+* @author Tobias Weber <tobias.weber@tum.de>
+* @date 27-april-2025
+* @license see 'LICENSE' file
+*
+
+.title 5V -> 3.3V converter
+.temp 21
+
+
+V1 Vcc 0 dc 5.05V
+
+* -----------------------------------------------------------------------------
+* voltage divider for Opamp's Vp
+* -----------------------------------------------------------------------------
+.model diodeA D(n=4.2)
+
+R1 Vcc          before_diode 500
+D1 before_diode after_diode  diodeA
+R2 after_diode  Vp           1.3k
+R3 Vp           0            4k
+* -----------------------------------------------------------------------------
+
+* -----------------------------------------------------------------------------
+* non-inverting amplifier
+* see: https://en.wikipedia.org/wiki/Operational_amplifier#Non-inverting_amplifier
+* -----------------------------------------------------------------------------
+EOpAmp Vout 0 Vp Vm 100k
+R4 0   Vm   10k
+R5 Vm  Vout 10k
+* -----------------------------------------------------------------------------
+
+
+.control
+	tran 10us 10ms
+	*plot V(Vp), V(Vout)
+	quit
+.endc
+
+.end
