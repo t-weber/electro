@@ -12,6 +12,8 @@
 #include <map>
 #include <memory>
 #include <regex>
+#include <limits>
+#include <optional>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -99,6 +101,51 @@ static t_real get_sample_rate(const std::string& str)
 
 
 /**
+ * smoothing of data points
+ * see: https://en.wikipedia.org/wiki/Laplacian_smoothing
+ */
+template<class t_cont>
+t_cont smooth_data(const t_cont& vec, std::size_t N = 1)
+requires requires(t_cont cont)
+{
+	typename t_cont::value_type;
+	cont.size();
+	cont[0] = cont[1];
+}
+{
+	if(N <= 0)
+		return vec;
+
+	using t_val = typename t_cont::value_type;
+
+	t_cont smoothed = vec;
+
+	for(std::size_t i = 0; i < vec.size(); ++i)
+	{
+		t_val elem{};
+		t_val num{};
+
+		for(std::ptrdiff_t j = -static_cast<std::ptrdiff_t>(N); j <= static_cast<std::ptrdiff_t>(N); ++j)
+		{
+			if(static_cast<std::ptrdiff_t>(i) + j < 0)
+				continue;
+
+			std::size_t idx = i + j;
+			if(idx >= vec.size())
+				continue;
+
+			elem += vec[i + j];
+			num += 1;
+		}
+
+		smoothed[i] = elem / num;
+	}
+
+	return smoothed;
+}
+
+
+/**
  * binary data
  */
 struct Data
@@ -117,12 +164,22 @@ static bool load_header(std::istream& istr, Data& data, int prec = 8)
 {
 	// get header length
 	t_offs json_len = 0;
-	istr.read(reinterpret_cast<char*>(&json_len), sizeof(json_len));
+	if(!istr.read(reinterpret_cast<char*>(&json_len), sizeof(json_len)))
+	{
+		std::cerr << "Error: Cannot read header size." << std::endl;
+		return false;
+	}
 
 	// read header
 	std::string json_str;
 	json_str.resize(json_len);
-	istr.read(json_str.data(), json_len);
+	if(!istr.read(json_str.data(), json_len))
+	{
+		std::cerr << "Error: Cannot read header." << std::endl;
+		return false;
+	}
+
+	//json_str = boost::to_lower_copy(json_str);
 
 	// parse header json
 	boost::system::error_code json_err;
@@ -140,12 +197,16 @@ static bool load_header(std::istream& istr, Data& data, int prec = 8)
 
 
 	// get general infos from header
+	std::optional<json::value> _json_chs;
 	if(const json::object* hdr_obj = json_hdr.if_object())
 	{
 		for(const auto& pair : (*hdr_obj))
 		{
-			if(json::get<0>(pair) == "channel")
+			if(boost::iequals(json::get<0>(pair), "channel"))
+			{
+				_json_chs = json::get<1>(pair);
 				continue;
+			}
 
 			std::ostringstream ostrKey, ostrVal;
 			ostrVal.precision(prec);
@@ -162,54 +223,66 @@ static bool load_header(std::istream& istr, Data& data, int prec = 8)
 		}
 	}
 
-	// get channel infos from header
-	if(const json::array *json_chs = json_hdr.at("channel").if_array())
+	if(!_json_chs)
 	{
-		// iterate channels
-		std::size_t ch_idx = 0;
-		for(const json::value& _json_ch : (*json_chs))
+		std::cerr << "Error: Could not find channel infos." << std::endl;
+		return false;
+	}
+
+	// get channel infos from header
+	//const json::array *json_chs = json_hdr.at("channel").if_array();
+	const json::array *json_chs = _json_chs->if_array();
+	if(!json_chs)
+	{
+		std::cerr << "Error: Unknown channel info format." << std::endl;
+		return false;
+	}
+
+	// iterate channels
+	std::size_t ch_idx = 0;
+	for(const json::value& _json_ch : (*json_chs))
+	{
+		const json::object* json_ch = _json_ch.if_object();
+		if(!json_ch)
+			continue;
+
+		t_real Vscale = 1., Vrate = 1., Hrate = 1.;
+		t_data zero = 0;
+
+		// iterate channel key-value pairs
+		for(const auto& pair : (*json_ch))
 		{
-			const json::object* json_ch = _json_ch.if_object();
-			if(!json_ch)
-				continue;
+			std::ostringstream ostrKey, ostrVal;
+			ostrVal.precision(prec);
 
-			t_real Vscale = 1., Vrate = 1., Hrate = 1.;
-			t_data zero = 0;
+			std::string strKeyRaw = json::get<0>(pair);
+			ostrKey << "ch" << ch_idx << "_" << strKeyRaw;
+			ostrVal << json::get<1>(pair);
+			std::string strVal = ostrVal.str();
 
-			for(const auto& pair : (*json_ch))
-			{
-				std::ostringstream ostrKeyRaw, ostrKey, ostrVal;
-				ostrVal.precision(prec);
+			// remove "" and ()
+			if(strVal.length() > 1 && strVal[0] == '\"' && strVal[strVal.length() - 1] == '\"')
+				strVal = strVal.substr(1, strVal.length() - 2);
+			if(strVal.length() > 1 && strVal[0] == '(' && strVal[strVal.length() - 1] == ')')
+				strVal = strVal.substr(1, strVal.length() - 2);
 
-				ostrKeyRaw << json::get<0>(pair);
-				ostrKey << "ch" << ch_idx << "_" << ostrKeyRaw.str();
-				ostrVal << json::get<1>(pair);
+			if(boost::iequals(strKeyRaw, "vscale"))
+				Vscale = get_voltage(strVal);
+			else if(boost::iequals(strKeyRaw, "voltage_rate"))
+				Vrate = get_voltage(strVal);
+			else if(boost::iequals(strKeyRaw, "sample_rate"))
+				Hrate = get_sample_rate(strVal);  // samples per second
+			else if(boost::iequals(strKeyRaw, "reference_zero"))
+				std::istringstream{strVal} >> zero;
 
-				// remove "" and ()
-				std::string strVal = ostrVal.str();
-				if(strVal.length() > 1 && strVal[0] == '\"' && strVal[strVal.length() - 1] == '\"')
-					strVal = strVal.substr(1, strVal.length() - 2);
-				if(strVal.length() > 1 && strVal[0] == '(' && strVal[strVal.length() - 1] == ')')
-					strVal = strVal.substr(1, strVal.length() - 2);
-
-				if(boost::to_lower_copy(ostrKeyRaw.str()) == "vscale")
-					Vscale = get_voltage(strVal);
-				else if(boost::to_lower_copy(ostrKeyRaw.str()) == "voltage_rate")
-					Vrate = get_voltage(strVal);
-				else if(boost::to_lower_copy(ostrKeyRaw.str()) == "sample_rate")
-					Hrate = get_sample_rate(strVal);  // samples per second
-				else if(boost::to_lower_copy(ostrKeyRaw.str()) == "reference_zero")
-					std::istringstream{strVal} >> zero;
-
-				data.header.emplace(std::make_pair(ostrKey.str(), strVal));
-			}
-
-			data.Vscales.push_back(Vscale);
-			data.Vrates.push_back(Vrate);
-			data.Hrates.push_back(Hrate);
-			data.zeroes.push_back(zero);
-			++ch_idx;
+			data.header.emplace(std::make_pair(ostrKey.str(), strVal));
 		}
+
+		data.Vscales.push_back(Vscale);
+		data.Vrates.push_back(Vrate);
+		data.Hrates.push_back(Hrate);
+		data.zeroes.push_back(zero);
+		++ch_idx;
 	}
 
 	return true;
@@ -219,7 +292,8 @@ static bool load_header(std::istream& istr, Data& data, int prec = 8)
 /**
  * load the actual data from the bin file
  */
-static bool load_channels(std::istream& istr, Data& data)
+static bool load_channels(std::istream& istr, Data& data,
+	int shift_data = 0, int prec = 8)
 {
 	while(true)
 	{
@@ -233,6 +307,10 @@ static bool load_channels(std::istream& istr, Data& data)
 		std::vector<t_real> channel;
 		channel.reserve(num_dat);
 
+		t_real min = std::numeric_limits<t_real>::max();
+		t_real max = -min;
+		t_real mean{};
+
 		for(std::size_t idx = 0; idx < num_dat; ++idx)
 		{
 			t_data dat_raw = 0;
@@ -245,12 +323,63 @@ static bool load_channels(std::istream& istr, Data& data)
 			t_real dat = static_cast<t_real>(dat_raw - data.zeroes[cur_channel]);
 			dat *= data.Vrates[cur_channel] / data.Vscales[cur_channel];
 
+			min = std::min(min, dat);
+			max = std::max(max, dat);
+			mean += dat;
+
 			channel_raw.push_back(dat_raw);
 			channel.push_back(dat);
 		}
 
-		if(num_dat)
+		if(num_dat > 0)
 		{
+			const std::size_t ch_idx = data.channels.size();
+			mean /= static_cast<t_real>(num_dat);
+
+			t_real stddev{};
+			for(t_real val : channel)
+				stddev += (val - mean)*(val - mean);
+			stddev /= static_cast<t_real>(num_dat);
+			stddev = std::sqrt(stddev);
+
+			if(shift_data == 1)       // shift to min
+			{
+				for(t_real& val : channel)
+					val -= min;
+			}
+			else if(shift_data == 2)  // shift to max
+			{
+				for(t_real& val : channel)
+					val -= max;
+			}
+			else if(shift_data == 3)  // shift to mean
+			{
+				for(t_real& val : channel)
+					val -= mean;
+			}
+
+			// insert header infos
+			std::ostringstream ostrMin, ostrMax, ostrMean, ostrStdDev, ostrRange;
+			for(std::ostringstream* ostr : {&ostrMin, &ostrMax, &ostrMean, &ostrStdDev, &ostrRange})
+				ostr->precision(prec);
+			ostrMin << min;
+			ostrMax << max;
+			ostrMean << mean;
+			ostrStdDev << stddev;
+			ostrRange << max - min;
+
+			data.header.emplace(std::make_pair(
+				(std::ostringstream{} << "ch" << ch_idx << "_min").str(), ostrMin.str()));
+			data.header.emplace(std::make_pair(
+				(std::ostringstream{} << "ch" << ch_idx << "_max").str(), ostrMax.str()));
+			data.header.emplace(std::make_pair(
+				(std::ostringstream{} << "ch" << ch_idx << "_mean").str(), ostrMean.str()));
+			data.header.emplace(std::make_pair(
+				(std::ostringstream{} << "ch" << ch_idx << "_stddev").str(), ostrStdDev.str()));
+			data.header.emplace(std::make_pair(
+				(std::ostringstream{} << "ch" << ch_idx << "_range").str(), ostrRange.str()));
+
+			// insert channel data vectors
 			data.channels_raw.emplace_back(std::move(channel_raw));
 			data.channels.emplace_back(std::move(channel));
 		}
@@ -337,6 +466,8 @@ int main(int argc, char** argv)
 	{
 		bool show_help = false;
 		bool print_raw = false;
+		int shift_data = 0;
+		std::size_t laplace_smooth = 0;
 		int prec = 8;
 		std::string in_file, out_file;
 
@@ -346,6 +477,8 @@ int main(int argc, char** argv)
 			("help", args::bool_switch(&show_help), "show help")
 			("raw,r", args::bool_switch(&print_raw), "print raw values")
 			("prec,p", args::value<decltype(prec)>(&prec), ("precision, default: " + std::to_string(prec)).c_str())
+			("shift,s", args::value<decltype(shift_data)>(&shift_data), ("shift data (0: off, 1: to min, 2: to max, 3: to mean), default: " + std::to_string(shift_data)).c_str())
+			("laplace,l", args::value<decltype(laplace_smooth)>(&laplace_smooth), ("laplacian smoothing, default: " + std::to_string(laplace_smooth)).c_str())
 			("input,i", args::value<decltype(in_file)>(&in_file), "input binary data")
 			("output,o", args::value<decltype(out_file)>(&out_file), "output text data");
 
@@ -395,10 +528,18 @@ int main(int argc, char** argv)
 			return -4;
 		}
 
-		if(!load_channels(ifstr, data))
+		if(!load_channels(ifstr, data, shift_data, prec))
 		{
 			std::cerr << "Error: Invalid data." << std::endl;
 			return -5;
+		}
+
+
+		// data reduction
+		if(laplace_smooth)
+		{
+			for(std::size_t ch_idx = 0; ch_idx < data.channels.size(); ++ch_idx)
+				data.channels[ch_idx] = smooth_data(data.channels[ch_idx], laplace_smooth);
 		}
 
 
