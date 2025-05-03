@@ -40,6 +40,9 @@ module serial
 	// enable transmission
 	input wire in_enable,
 
+	// transmission in progress
+	output wire out_transmitting,
+
 	// request next word (one cycle before current word is finished)
 	output wire out_next_word,
 
@@ -145,10 +148,10 @@ assign out_serial = serial_state == Transmit
 	? parallel_fromfpga[actual_bit_ctr]
 	: SERIAL_DATA_INACTIVE;
 
-
 logic request_word = 1'b0, next_request_word = 1'b0;
 assign out_word_finished = request_word;
 assign out_next_word = next_request_word;
+assign out_transmitting = serial_state == Transmit ? 1'b1 : 1'b0;;
 
 
 generate

@@ -1,0 +1,61 @@
+//
+// @author Tobias Weber
+// @date 11-May-2024
+// @license see 'LICENSE' file
+//
+// references:
+//   - https://github.com/sipeed/sipeed_wiki/blob/main/docs/hardware/en/tang/Tang-Nano-1K/Nano-1k.md
+//       -> Schematic
+//   - https://github.com/YosysHQ/apicula/tree/master/examples
+//   - https://github.com/YosysHQ/nextpnr/blob/master/gowin/arch.cc
+//   - https://github.com/YosysHQ/yosys/tree/main/examples/gowin
+//
+
+
+// internal connections
+IO_LOC "led[0]"      9;
+IO_LOC "led[1]"     10;
+IO_LOC "led[2]"     11;
+
+IO_LOC "key[0]"     13;
+IO_LOC "key[1]"     44;
+
+IO_LOC "clk27"      47;
+
+
+IO_PORT "led[0]"    PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "led[1]"    PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "led[2]"    PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+
+IO_PORT "key[0]"    PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "key[1]"    PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+
+IO_PORT "clk27"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+
+
+// lcd
+IO_LOC "lcd_cs"      35;
+IO_LOC "lcd_reset"   23;
+IO_LOC "lcd_regsel"  18;
+IO_LOC "lcd_scl"     17;
+IO_LOC "lcd_sda"     16;
+
+IO_PORT "lcd_cs"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "lcd_reset"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "lcd_regsel" PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "lcd_scl"    PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "lcd_sda"    PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+
+
+// red leds
+IO_LOC "ledr[0]"    40;
+IO_LOC "ledr[1]"    41;
+IO_LOC "ledr[2]"    38;
+IO_LOC "ledr[3]"    39;
+IO_LOC "ledr[4]"    42;
+
+IO_PORT "ledr[0]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledr[1]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledr[2]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledr[3]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledr[4]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
