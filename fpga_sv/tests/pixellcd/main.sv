@@ -24,10 +24,10 @@ module main
 
 
 localparam MAIN_CLK     = 27_000_000;
-localparam SERIAL_CLK   = 10_000;
+localparam SERIAL_CLK   = 100_000;
 
 localparam BITS      = 8;
-localparam LCD_COLS  = 128;
+localparam LCD_COLS  = 128*2;
 localparam LCD_PAGES = 8;
 
 
@@ -64,10 +64,10 @@ serial #(
 	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SERIAL_CLK)
 )
 serial_mod(
-	.in_clk(clk27), .in_rst(reset), .in_enable(serial_enable),
-	.out_ready(serial_ready),
+	.in_clk(clk27), .in_rst(reset),
+	.in_enable(serial_enable), .out_ready(serial_ready),
 	.out_clk(lcd_scl), .out_serial(lcd_sda),
-	.in_serial(none), .out_transmitting(transmitting),
+	.in_serial(1'b0), .out_transmitting(transmitting),
 	.in_parallel(serial_data), .out_parallel(serial_data_in),
 	.out_next_word(serial_next), .out_word_finished(),
 	.out_clk_raw(serial_clk_raw)
@@ -78,7 +78,16 @@ serial_mod(
 // --------------------------------------------------------------------
 // lcd module
 // --------------------------------------------------------------------
-wire [7 : 0] ram_read = 8'b1000_0001;
+// current column and page
+wire [$clog2(LCD_COLS) : 0] column;
+wire [$clog2(LCD_PAGES) : 0] page;
+
+
+wire [7 : 0] ram_read =
+	column == 0 || column == LCD_COLS/2 - 1 ? 8'b1111_1111 :
+	page == 0 ? 8'b0000_0001 :
+	page == LCD_PAGES - 1 ? 8'b1000_0000 :
+	8'b0000_0000;
 assign lcd_cs = ~transmitting;  //1'b0;
 
 
@@ -91,7 +100,7 @@ lcd_mod(
 	.in_update(update), .in_bus_data(serial_data_in),
 	.in_bus_next(serial_next), .in_bus_ready(serial_ready),
 	.out_bus_data(serial_data), .out_bus_enable(serial_enable),
-	.in_mem_word(ram_read),
+	.in_mem_word(ram_read), .out_column(column), .out_page(page),
 	.out_lcd_reset(lcd_reset), .out_lcd_regsel(lcd_regsel)
 );
 // --------------------------------------------------------------------
