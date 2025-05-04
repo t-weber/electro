@@ -3,6 +3,10 @@
  * @author Tobias Weber <tobias.weber@tum.de>
  * @date 20-april-2025
  * @license see 'LICENSE' file
+ *
+ * references:
+ *     - [lcd] https://www.lcd-module.de/fileadmin/pdf/doma/dogm204.pdf
+ *     - [ic]  https://www.lcd-module.de/fileadmin/eng/pdf/zubehoer/ssd1803a_2_0.pdf
  */
 
 
@@ -78,45 +82,87 @@ localparam const_wait_max      = const_wait_update;
 logic [$clog2(const_wait_max) : 0] wait_counter, wait_counter_max = 1'b0;
 
 
+/**
+ * lcd init commands
+ * see p. 5 in [lcd] and pp. 38-40 in [ic]
+ */
 // control bytes
 localparam [BUS_NUM_DATABITS/2 - 1 : 0] ctrl_command = 4'b0001;
 localparam [BUS_NUM_DATABITS/2 - 1 : 0] ctrl_data    = 4'b0101;
 localparam [BUS_NUM_DATABITS/2 - 1 : 0] ctrl_read    = 4'b0011;
 
+// options
+localparam [0 : 0] use_8bits     = 1'b1;
+localparam [0 : 0] use_4lines    = 1'b1;
+localparam [0 : 0] invert_h      = 1'b1;
+localparam [0 : 0] invert_v      = 1'b1;
+localparam [0 : 0] caret_on      = 1'b0;
+localparam [0 : 0] blink_on      = 1'b0;
+localparam [1 : 0] char_rom      = 2'b00;
 
-/**
- * lcd init commands
- * see p. 5 in https://www.lcd-module.de/fileadmin/pdf/doma/dogm204.pdf
- */
+localparam [0 : 0] booster_on    = 1'b1;
+localparam [0 : 0] divider_on    = 1'b1;
+localparam [2 : 0] divider_ratio = 3'b110;
+localparam [1 : 0] divider_bias  = 2'b11;
+localparam [5 : 0] contrast      = 6'b110000;
+localparam [2 : 0] oscillator    = 3'b011;
+localparam [2 : 0] temperature   = 3'b010;
+
+localparam [0 : 0] fontheight_on = 1'b0;
+localparam [1 : 0] double_height = 2'b00;
+localparam [0 : 0] use_longfont  = 1'b0;
+localparam [0 : 0] shift_on      = 1'b0;
+localparam [0 : 0] shift_disp_on = 1'b0;      // otherwise shift caret
+localparam [3 : 0] shift_lines   = 4'b0000;   // lines 3-0
+localparam [5 : 0] scroll        = 6'b000000; // scroll or shift
+localparam [0 : 0] caret_right   = 1'b1;
+localparam [0 : 0] invert_caret  = 1'b0;
+localparam [0 : 0] mirror_y      = 1'b1;
+localparam [0 : 0] mirror_x      = 1'b0;
+
 localparam init_num_commands = 22;
 logic [0 : init_num_commands*3 - 1][LCD_NUM_DATABITS/2 - 1 : 0] init_arr;
 assign init_arr =
 {
-	/*  1 */ ctrl_command, 4'b1011, 4'b0011,  // 8 bit, 4 lines, normal font size, re=1, is=1
+	// power, [ic, p. 38]
+	/*  1 */ ctrl_command, 4'b0011 | (use_4lines << 3) | (fontheight_on << 2), 4'b0010 | use_8bits,  // re=1, is=1
 	/*  2 */ ctrl_command, 4'b0010, 4'b0000,  // no sleep
-	/*  3 */ ctrl_command, 4'b0110, 4'b0000,  // shift direction (mirror view)
-	/*  4 */ ctrl_command, 4'b1001, 4'b0000,  // short font width, no caret inversion, 4 lines
-	/*  5 */ ctrl_command, 4'b0000, 4'b0001,  // scroll (or shift) off for lines 3-0
-	/*  6 */ ctrl_command, 4'b0000, 4'b1100,  // scroll amount
-	/*  7 */ ctrl_command, 4'b0010, 4'b0111,  // select rom
-	/*  8 */ ctrl_data,    4'b0000, 4'b0000,  // first rom
-	/*  9 */ ctrl_command, 4'b0110, 4'b0111,  // select temperature control
-	/* 10 */ ctrl_data,    4'b0010, 4'b0000,  // temperature
 
-	/* 11 */ ctrl_command, 4'b1010, 4'b0011,  // 8 bit, 4 lines, normal font size, re=1, is=0
-	/* 12 */ ctrl_command, 4'b0010, 4'b0001,  // 2 double-height bits, voltage divider bias bit 1, shift off (scroll on)
+	// scrolling or shifting, [ic, pp. 39-40]
+	/*  3 */ ctrl_command, 4'b0100 | (mirror_y << 1) | mirror_x, 4'b0000,
+	/*  4 */ ctrl_command, 4'b1000 | (use_longfont << 2) | (invert_caret << 1) | use_4lines, 4'b0000,
+	/*  5 */ ctrl_command, shift_lines, 4'b0001,
+	/*  6 */ ctrl_command, 4'(scroll & 4'b1111), 4'b1100 | 4'((scroll & 6'b110000) >> 4),
 
-	/* 13 */ ctrl_command, 4'b1001, 4'b0011,  // 8 bit, 4 lines, no blinking, no reversing, re=0, is=1
-	/* 14 */ ctrl_command, 4'b1011, 4'b0001,  // voltage divider bias bit 0, oscillator bits 2-0
-	/* 15 */ ctrl_command, 4'b0111, 4'b0101,  // no icon, voltage regulator, contrast bits 5 and 4
-	/* 16 */ ctrl_command, 4'b0000, 4'b0111,  // contrast bits 3-0
-	/* 17 */ ctrl_command, 4'b1110, 4'b0110,  // voltage divider, amplifier bits 2-0
+	// rom selection, [ic, p. 40]
+	/*  7 */ ctrl_command, 4'b0010, 4'b0111,
+	/*  8 */ ctrl_data,    (4'(char_rom) << 2), 4'b0000,
 
-	/* 18 */ ctrl_command, 4'b1000, 4'b0011,  // 8 bit, 4 lines, no blinking, no reversing, re=0, is=0
-	/* 19 */ ctrl_command, 4'b0110, 4'b0000,  // caret moving right, no display shifting
-	/* 20 */ ctrl_command, 4'b1100, 4'b0000,  // turn on display, no caret, no blinking
-	/* 21 */ ctrl_command, 4'b0001, 4'b0000,  // clear
-	/* 22 */ ctrl_command, 4'b0010, 4'b0000   // return
+	// select temperature, [ic, p. 40]
+	/*  9 */ ctrl_command, 4'b0110, 4'b0111,
+	/* 10 */ ctrl_data,    4'(temperature), 4'b0000,
+
+	// voltage divider, [ic, pp. 39-40]
+	/* 11 */ ctrl_command, 4'b0010 | (use_4lines << 3) | (fontheight_on << 2), 4'b0010 | use_8bits,  // re=1, is=0
+	/* 12 */ ctrl_command, (4'(double_height) << 2) | 4'(divider_bias & 2'b10) | shift_on, 4'b0001,
+
+	// voltage divider, [ic, pp. 39-40]
+	/* 13 */ ctrl_command, 4'b0001 | (use_4lines << 3) | (fontheight_on << 2), 4'b0010 | use_8bits,  // re=0, is=1
+	/* 14 */ ctrl_command, 4'((divider_bias & 2'b01) << 3) | 4'(oscillator), 4'b0001,
+	/* 15 */ ctrl_command, 4'(booster_on << 2) | 4'((contrast & 6'b110000) >> 4), 4'b0101,
+	/* 16 */ ctrl_command, 4'(contrast & 4'b1111), 4'b0111,
+	/* 17 */ ctrl_command, 4'(divider_on << 3) | 4'(divider_ratio), 4'b0110,
+
+	// scrolling or shifting [ic, p. 38]
+	/* 18 */ ctrl_command, 4'b0000 | (use_4lines << 3) | (fontheight_on << 2), 4'b0010 | use_8bits,  // re=0, is=0
+	/* 19 */ ctrl_command, 4'b0100 | (caret_right << 1) | shift_disp_on, 4'b0000,
+
+	// turn on display, [ic, p. 38]
+	/* 20 */ ctrl_command, 4'b1100 | (caret_on << 1) | blink_on, 4'b0000,
+
+	// clear and return, [ic, p. 38]
+	/* 21 */ ctrl_command, 4'b0001, 4'b0000,
+	/* 22 */ ctrl_command, 4'b0010, 4'b0000
 };
 
 
