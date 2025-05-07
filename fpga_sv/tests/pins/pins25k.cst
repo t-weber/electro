@@ -19,8 +19,8 @@ IO_LOC "key[0]"      h11;
 IO_LOC "key[1]"      h10;
 
 IO_PORT "clk50"      PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "key[0]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "key[1]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "key[0]"     PULL_MODE=DOWN  IO_TYPE=LVCMOS33;
+IO_PORT "key[1]"     PULL_MODE=DOWN  IO_TYPE=LVCMOS33;
 
 
 // module 1: seven segment display
