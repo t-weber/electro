@@ -342,7 +342,7 @@ begin
 			-------------------------------------------------------
 
 			-------------------------------------------------------
-			-- serialise parallel data and sent it to target
+			-- serialise parallel data and send it to target
 			-------------------------------------------------------
 			when Transmit =>
 				-- end of word?

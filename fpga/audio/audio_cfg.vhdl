@@ -1,0 +1,307 @@
+--
+-- audio output configuration via 2-wire serial bus
+-- @author Tobias Weber <tobias.weber@tum.de>
+-- @date 3-may-2025
+-- @license see 'LICENSE' file
+--
+-- references for audio chip:
+--   - [hw] https://www.analog.com/media/en/technical-documentation/data-sheets/ssm2603.pdf
+-- reference for serial bus usage:
+--   - [bus] https://www.digikey.com/eewiki/pages/viewpage.action?pageId=10125324
+--
+-- note: serial data and clock signal need to be declared 3-state (high-Z for idle state)
+--
+
+library ieee;
+use ieee.std_logic_1164.all;
+use work.conv.all;
+
+
+
+entity audio_cfg is
+	generic(
+		-- clock
+		constant MAIN_CLK : natural := 50_000_000;
+
+		-- word length and address of the serial bus
+		constant BUS_ADDRBITS : natural := 8;
+		constant BUS_DATABITS : natural := 8;
+
+		-- addresses, see: [hw, p. 17]
+		constant BUS_WRITEADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"34";
+		constant BUS_READADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"35"
+	);
+
+	port(
+		-- main clock and reset
+		in_clk, in_reset : in std_logic;
+
+		-- serial bus interface
+		in_bus_ready : in std_logic;
+		in_bus_data : in std_logic_vector(BUS_DATABITS - 1 downto 0);
+		in_bus_byte_finished : in std_logic;
+
+		-- serial bus interface
+		out_bus_enable : out std_logic;
+		out_bus_addr : out std_logic_vector(BUS_ADDRBITS - 1 downto 0);
+		out_bus_data : out std_logic_vector(BUS_DATABITS - 1 downto 0);
+
+		-- active status bit
+		out_active : out std_logic;
+		out_status : out std_logic_vector(BUS_DATABITS - 1 downto 0)
+	);
+end entity;
+
+
+
+architecture audio_cfg_impl of audio_cfg is
+	-- states
+	type t_state is ( Wait_Reset,
+		ReadStatus_SetAddr, ReadStatus_SetReg, ReadStatus_GetData,
+		PowerUp_SetAddr, PowerUp_SetData, PowerUp_Next,
+		Idle);
+
+	signal state, next_state : t_state := Wait_Reset;
+
+	signal last_bus_byte_finished, bus_cycle : std_logic := '0';
+
+	-- reset delay and counter for busy wait
+	constant const_wait_reset : natural := MAIN_CLK/1000*200;  -- 200 ms
+	signal wait_counter, wait_counter_max : natural range 0 to const_wait_reset := 0;
+
+	-- status register
+	signal status_reg, next_status_reg : std_logic_vector(BUS_DATABITS - 1 downto 0) := (others => '0');
+
+	-- all video outputs on?
+	signal is_powered, next_is_powered : std_logic := '0';
+
+	-- power up sequence options, see [hw, p. 19]
+	constant LINEIN_OFF       : std_logic := '1';
+	constant MIKE_OFF         : std_logic := '1';
+	constant ADC_OFF          : std_logic := '1';
+	constant DAC_OFF          : std_logic := '0';
+	constant OSCI_OFF         : std_logic := '0';
+	constant CLOCKOUT_OFF     : std_logic := '0';
+	constant ALL_OFF          : std_logic := '0';
+	constant ADC_HIGHPASS_OFF : std_logic := '0';
+	constant ADC_DC_OFFS      : std_logic := '0';
+	constant ADC_MUTE         : std_logic := '1';
+	constant DAC_MUTE         : std_logic := '0';
+	constant DAC_SELECT       : std_logic := '0';
+	constant LINEIN_SELECT    : std_logic := '0';
+	constant MIKE_SELECT      : std_logic := '0';
+	constant MIKE_MUTE        : std_logic := '1';
+	constant MIKE_BOOST       : std_logic := '0';
+	constant MIKE_GAIN_ENABLE : std_logic := '0';
+	constant ADC_VOLUME       : std_logic_vector(5 downto 0) := 6x"00";
+	constant DAC_VOLUME       : std_logic_vector(6 downto 0) := 7x"79";
+	constant DEEMPHASIS       : std_logic_vector(1 downto 0) := "00";
+	constant MIKE_GAIN        : std_logic_vector(1 downto 0) := "00";
+
+	-- power up sequence, see [hw, pp. 17, 19]
+	type t_powerup_arr is array(0 to 10 - 1) of std_logic_vector(2*BUS_DATABITS - 1 downto 0);
+	constant powerup_arr : t_powerup_arr := (
+		-- reg: 7 bits, val: 9 bits
+		7x"0f" & "000000000",  -- reset, [hw, p. 27]
+		7x"06" & '0' & ALL_OFF & CLOCKOUT_OFF & OSCI_OFF & '1' & DAC_OFF & ADC_OFF & MIKE_OFF & LINEIN_OFF,  -- power (active low), [hw, p. 23]
+
+		7x"00" & '0' & ADC_MUTE & '0' & ADC_VOLUME,  -- adc volumne (left), [hw, p. 20]
+		7x"01" & '0' & ADC_MUTE & '0' & ADC_VOLUME,  -- adc volumne (right), [hw, p. 21]
+		7x"02" & "00" & DAC_VOLUME,  -- dac volumne (left), [hw, p. 21]
+		7x"03" & "00" & DAC_VOLUME,  -- dac volumne (right), [hw, p. 22]
+
+		7x"04" & '0' & MIKE_GAIN & MIKE_GAIN_ENABLE & DAC_SELECT & LINEIN_SELECT & MIKE_SELECT & MIKE_MUTE & MIKE_BOOST,  -- [hw, p. 22]
+		7x"05" & "0000" & ADC_DC_OFFS & DAC_MUTE & DEEMPHASIS & ADC_HIGHPASS_OFF,  -- [hw, pp. 22, 23]
+
+		7x"09" & "000000001",  -- active, [hw, p. 27]
+		7x"06" & '0' & ALL_OFF & CLOCKOUT_OFF & OSCI_OFF & '0' & DAC_OFF & ADC_OFF & MIKE_OFF & LINEIN_OFF   -- power (active low), [hw, p. 23]
+	);
+
+	signal powerup_cycle, next_powerup_cycle : natural range 0 to powerup_arr'length := 0;
+
+begin
+
+	-- output status registers
+	out_active <= status_reg(0);
+	out_status <= status_reg;
+
+
+	-- rising edge of serial bus finished signal
+	bus_cycle <= in_bus_byte_finished and (not last_bus_byte_finished);
+	--bus_cycle <= (not in_bus_byte_finished) and last_bus_byte_finished;
+
+
+	--
+	-- state flip-flops
+	--
+	proc_ff : process(in_clk, in_reset) begin
+		-- reset
+		if in_reset = '1' then
+			-- state register
+			state <= Wait_Reset;
+
+			-- command counter
+			powerup_cycle <= 0;
+
+			-- status register
+			status_reg <= (others => '0');
+
+			-- all video outputs on?
+			is_powered <= '0';
+
+			-- timer register
+			wait_counter <= 0;
+
+			last_bus_byte_finished <= '0';
+
+		-- clock
+		elsif rising_edge(in_clk) then
+			-- state register
+			state <= next_state;
+
+			-- command counter
+			powerup_cycle <= next_powerup_cycle;
+
+			-- status register
+			status_reg <= next_status_reg;
+
+			-- all video outputs on?
+			is_powered <= next_is_powered;
+
+			-- timer register
+			if wait_counter = wait_counter_max then
+				-- reset timer counter
+				wait_counter <= 0;
+			else
+				-- next timer counter
+				wait_counter <= wait_counter + 1;
+			end if;
+
+			last_bus_byte_finished <= in_bus_byte_finished;
+		end if;
+	end process;
+
+
+	--
+	-- state combinatorics
+	--
+	proc_comb : process(
+		state,
+		wait_counter, wait_counter_max,
+		in_bus_ready, in_bus_data,
+		bus_cycle, powerup_cycle,
+		status_reg, is_powered)
+	begin
+		-- defaults
+		next_state <= state;
+		next_powerup_cycle <= powerup_cycle;
+		next_status_reg <= status_reg;
+		next_is_powered <= is_powered;
+		wait_counter_max <= 0;
+
+		out_bus_enable <= '0';
+		out_bus_addr <= BUS_READADDR;
+		out_bus_data <= (others => '0');
+
+
+		-- fsm
+		case state is
+
+			--
+			-- reset delay
+			--
+			when Wait_Reset =>
+				wait_counter_max <= const_wait_reset;
+				if wait_counter = wait_counter_max then
+					next_state <= PowerUp_SetAddr;
+				end if;
+
+
+			--
+			-- setup finished
+			--
+			when Idle =>
+				null;
+
+
+			----------------------------------------------------------------------
+			-- power up
+			----------------------------------------------------------------------
+			when PowerUp_SetAddr =>
+				out_bus_addr <= BUS_WRITEADDR;
+
+				-- write register address + 1 data bit
+				out_bus_data <= powerup_arr(powerup_cycle)(2*BUS_DATABITS - 1 downto BUS_DATABITS);
+				out_bus_enable <= '1';
+
+				if bus_cycle = '1' then
+					next_state <= PowerUp_SetData;
+				end if;
+
+			when PowerUp_SetData =>
+				out_bus_addr <= BUS_WRITEADDR;
+
+				-- write the rest of the value bits
+				out_bus_data <= powerup_arr(powerup_cycle)(BUS_DATABITS - 1 downto 0);
+				out_bus_enable <= '1';
+
+				if bus_cycle = '1' then
+					next_state <= PowerUp_Next;
+				end if;
+
+			when PowerUp_Next =>
+				out_bus_addr <= BUS_WRITEADDR;
+
+				if in_bus_ready = '1' then
+					if powerup_cycle + 1 = powerup_arr'length then
+						-- at end of command list
+							next_state <= ReadStatus_SetAddr;
+						next_is_powered <= '1';
+						next_powerup_cycle <= 0;
+					else
+						-- next command
+						next_powerup_cycle <= powerup_cycle + 1;
+						next_state <= PowerUp_SetAddr;
+					end if;
+				end if;
+			----------------------------------------------------------------------
+
+
+			----------------------------------------------------------------------
+			-- read active status register
+			----------------------------------------------------------------------
+			when ReadStatus_SetAddr =>
+				out_bus_addr <= BUS_WRITEADDR;
+				-- active status register, address 9
+				out_bus_data <= "0001001" & '0';
+				out_bus_enable <= '1';
+
+				if bus_cycle = '1' then
+					next_state <= ReadStatus_SetReg;
+				end if;
+
+			when ReadStatus_SetReg =>
+				out_bus_addr <= BUS_READADDR;
+				out_bus_enable <= '1';
+
+				if bus_cycle = '1' then
+					out_bus_enable <= '0';
+					next_state <= ReadStatus_GetData;
+				end if;
+
+			when ReadStatus_GetData =>
+				out_bus_addr <= BUS_READADDR;
+
+				if in_bus_ready = '1' then
+					next_status_reg <= in_bus_data;
+					next_state <= Idle;
+				end if;
+			----------------------------------------------------------------------
+
+
+			when others =>
+				next_state <= Wait_Reset;
+		end case;
+	end process;
+
+end architecture;
