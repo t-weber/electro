@@ -17,12 +17,13 @@ entity main is
 		key : in std_logic_vector(3 downto 0);
 		sw : in std_logic_vector(7 downto 0);
 
-		ledg, ledr : out std_logic_vector(7 downto 0);
+		ledg : out std_logic_vector(7 downto 0);
+		ledr : out std_logic_vector(9 downto 0);
 
 		aud_scl, aud_sda : inout std_logic;
-		aud_adclrck, aud_daclrck, aud_bclk : inout std_logic;
-		aud_adcdat : in std_logic;
-		aud_dacdat : out std_logic;
+		aud_adclrck, aud_daclrck, aud_bclk : in std_logic; --inout std_logic;
+		--aud_adcdat : in std_logic;   -- ADC data, from microphone
+		aud_dacdat : out std_logic;  -- DAC data, to speaker
 		aud_xck : out std_logic
 	);
 end entity;
@@ -51,12 +52,28 @@ architecture main_impl of main is
 	signal audio_active : std_logic := '0';
 	signal audio_status : std_logic_vector(SERIAL_DATABITS - 1 downto 0);
 
+	-- debugging
+	signal bclk_slow : std_logic;
+
 begin
 
 	reset <= not key(0);
-	ledg <= audio_status(7 downto 0);
-	ledr <= (others => '0');
+	aud_xck <= 'Z';
+	aud_dacdat <= '0';
 
+	-- debugging
+	ledg <= audio_status(7 downto 0);
+	ledr(0) <= '0' when aud_daclrck = '0' else '1';
+	ledr(1) <= '0' when aud_adclrck = '0' else '1';
+	ledr(2) <= bclk_slow; --'0' when aud_bclk = '0' else '1';
+	ledr(9) <= serial_audio_err;
+	ledr(8 downto 3) <= (others => '0');
+
+	clkgen_bclk : entity work.clkdiv(clkdiv_impl)
+		generic map(NUM_CTRBITS => 24, SHIFT_BITS => 23)
+		port map(in_clk => aud_bclk, in_rst => reset, out_clk => bclk_slow);
+
+	-- audio configuration serial interface
 	audio_serial : entity work.serial_2wire
 		generic map(MAIN_HZ => MAIN_HZ, SERIAL_HZ => SERIAL_HZ,
 			ADDR_BITS => SERIAL_ADDRBITS, BITS => SERIAL_DATABITS)
@@ -70,7 +87,7 @@ begin
 			out_next_word => serial_audio_byte_finished,
 			inout_clk => aud_scl, inout_serial => aud_sda);
 
-	  -- configuration
+	  -- audio configuration
 	  audio_cfg : entity work.audio_cfg
 		generic map(MAIN_CLK => MAIN_HZ,
 			BUS_ADDRBITS => SERIAL_ADDRBITS, BUS_DATABITS => SERIAL_DATABITS,

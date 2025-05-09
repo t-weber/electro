@@ -28,8 +28,10 @@ entity audio_cfg is
 		constant BUS_DATABITS : natural := 8;
 
 		-- addresses, see: [hw, p. 17]
-		constant BUS_WRITEADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"34";
-		constant BUS_READADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"35"
+		--constant BUS_WRITEADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"34";
+		--constant BUS_READADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"35"
+		constant BUS_WRITEADDR : std_logic_vector(7 downto 0) := x"34";
+		constant BUS_READADDR : std_logic_vector(7 downto 0) := x"35"
 	);
 
 	port(
@@ -56,17 +58,18 @@ end entity;
 
 architecture audio_cfg_impl of audio_cfg is
 	-- states
-	type t_state is ( Wait_Reset,
+	type t_state is ( Reset_Wait, Idle,
 		ReadStatus_SetAddr, ReadStatus_SetReg, ReadStatus_GetData,
-		PowerUp_SetAddr, PowerUp_SetData, PowerUp_Next,
-		Idle);
+		Config_SetAddr, Config_SetData, Config_Next,
+		PowerUp_Wait, PowerUp_SetAddr, PowerUp_SetData, PowerUp_Next);
 
-	signal state, next_state : t_state := Wait_Reset;
+	signal state, next_state : t_state := Reset_Wait;
 
 	signal last_bus_byte_finished, bus_cycle : std_logic := '0';
 
 	-- reset delay and counter for busy wait
 	constant const_wait_reset : natural := MAIN_CLK/1000*200;  -- 200 ms
+	constant const_wait_power : natural := MAIN_CLK/1000*100;  -- 100 ms
 	signal wait_counter, wait_counter_max : natural range 0 to const_wait_reset := 0;
 
 	-- status register
@@ -93,16 +96,27 @@ architecture audio_cfg_impl of audio_cfg is
 	constant MIKE_MUTE        : std_logic := '1';
 	constant MIKE_BOOST       : std_logic := '0';
 	constant MIKE_GAIN_ENABLE : std_logic := '0';
+	constant INVERT_BCLK      : std_logic := '0';
+	constant CONTROL_CLOCKS   : std_logic := '1';  -- output (1) or receive (0) clock signals
+	constant DAC_SWAP         : std_logic := '0';
+	constant CLK_POLARITY     : std_logic := '0';
+	constant CLK_OVERSAMPLE   : std_logic := '0';
+	constant SERIAL_MODE      : std_logic := '0';
 	constant ADC_VOLUME       : std_logic_vector(5 downto 0) := 6x"00";
 	constant DAC_VOLUME       : std_logic_vector(6 downto 0) := 7x"79";
 	constant DEEMPHASIS       : std_logic_vector(1 downto 0) := "00";
 	constant MIKE_GAIN        : std_logic_vector(1 downto 0) := "00";
+	constant WORD_SIZE        : std_logic_vector(1 downto 0) := "10";
+	constant ADC_FORMAT       : std_logic_vector(1 downto 0) := "10";
+	constant CLK_DIVS         : std_logic_vector(1 downto 0) := "00";
+	constant CLK_CONFIG       : std_logic_vector(3 downto 0) := "0000";
 
-	-- power up sequence, see [hw, pp. 17, 19]
-	type t_powerup_arr is array(0 to 10 - 1) of std_logic_vector(2*BUS_DATABITS - 1 downto 0);
-	constant powerup_arr : t_powerup_arr := (
+	-- configuration sequence, see [hw, pp. 17, 19]
+	type t_config_arr is array(0 to 11 - 1) of std_logic_vector(2*BUS_DATABITS - 1 downto 0);
+	constant config_arr : t_config_arr := (
 		-- reg: 7 bits, val: 9 bits
 		7x"0f" & "000000000",  -- reset, [hw, p. 27]
+		7x"09" & "000000000",  -- inactive, [hw, p. 27]
 		7x"06" & '0' & ALL_OFF & CLOCKOUT_OFF & OSCI_OFF & '1' & DAC_OFF & ADC_OFF & MIKE_OFF & LINEIN_OFF,  -- power (active low), [hw, p. 23]
 
 		7x"00" & '0' & ADC_MUTE & '0' & ADC_VOLUME,  -- adc volumne (left), [hw, p. 20]
@@ -113,10 +127,19 @@ architecture audio_cfg_impl of audio_cfg is
 		7x"04" & '0' & MIKE_GAIN & MIKE_GAIN_ENABLE & DAC_SELECT & LINEIN_SELECT & MIKE_SELECT & MIKE_MUTE & MIKE_BOOST,  -- [hw, p. 22]
 		7x"05" & "0000" & ADC_DC_OFFS & DAC_MUTE & DEEMPHASIS & ADC_HIGHPASS_OFF,  -- [hw, pp. 22, 23]
 
+		7x"07" & '0' & INVERT_BCLK & CONTROL_CLOCKS & DAC_SWAP & CLK_POLARITY & WORD_SIZE & ADC_FORMAT,  -- [hw, p. 24]
+		7x"08" & '0' & CLK_DIVS & CLK_CONFIG & CLK_OVERSAMPLE & SERIAL_MODE  -- [hw, p. 24]
+	);
+
+	-- power up sequence, see [hw, pp. 17, 19]
+	type t_powerup_arr is array(0 to 2 - 1) of std_logic_vector(2*BUS_DATABITS - 1 downto 0);
+	constant powerup_arr : t_powerup_arr := (
+		-- reg: 7 bits, val: 9 bits
 		7x"09" & "000000001",  -- active, [hw, p. 27]
 		7x"06" & '0' & ALL_OFF & CLOCKOUT_OFF & OSCI_OFF & '0' & DAC_OFF & ADC_OFF & MIKE_OFF & LINEIN_OFF   -- power (active low), [hw, p. 23]
 	);
 
+	signal config_cycle, next_config_cycle : natural range 0 to config_arr'length := 0;
 	signal powerup_cycle, next_powerup_cycle : natural range 0 to powerup_arr'length := 0;
 
 begin
@@ -138,9 +161,10 @@ begin
 		-- reset
 		if in_reset = '1' then
 			-- state register
-			state <= Wait_Reset;
+			state <= Reset_Wait;
 
 			-- command counter
+			config_cycle <= 0;
 			powerup_cycle <= 0;
 
 			-- status register
@@ -160,6 +184,7 @@ begin
 			state <= next_state;
 
 			-- command counter
+			config_cycle <= next_config_cycle;
 			powerup_cycle <= next_powerup_cycle;
 
 			-- status register
@@ -189,11 +214,12 @@ begin
 		state,
 		wait_counter, wait_counter_max,
 		in_bus_ready, in_bus_data,
-		bus_cycle, powerup_cycle,
+		bus_cycle, config_cycle, powerup_cycle,
 		status_reg, is_powered)
 	begin
 		-- defaults
 		next_state <= state;
+		next_config_cycle <= config_cycle;
 		next_powerup_cycle <= powerup_cycle;
 		next_status_reg <= status_reg;
 		next_is_powered <= is_powered;
@@ -210,10 +236,10 @@ begin
 			--
 			-- reset delay
 			--
-			when Wait_Reset =>
+			when Reset_Wait =>
 				wait_counter_max <= const_wait_reset;
 				if wait_counter = wait_counter_max then
-					next_state <= PowerUp_SetAddr;
+					next_state <= Config_SetAddr;
 				end if;
 
 
@@ -225,8 +251,61 @@ begin
 
 
 			----------------------------------------------------------------------
+			-- configuration
+			----------------------------------------------------------------------
+			when Config_SetAddr =>
+				out_bus_addr <= BUS_WRITEADDR;
+
+				-- write register address + 1 data bit
+				out_bus_data <= config_arr(config_cycle)(2*BUS_DATABITS - 1 downto BUS_DATABITS);
+				out_bus_enable <= '1';
+
+				if bus_cycle = '1' then
+					next_state <= Config_SetData;
+				end if;
+
+			when Config_SetData =>
+				out_bus_addr <= BUS_WRITEADDR;
+
+				-- write the rest of the value bits
+				out_bus_data <= config_arr(config_cycle)(BUS_DATABITS - 1 downto 0);
+				out_bus_enable <= '1';
+
+				if bus_cycle = '1' then
+					next_state <= Config_Next;
+				end if;
+
+			when Config_Next =>
+				out_bus_addr <= BUS_WRITEADDR;
+
+				if in_bus_ready = '1' then
+					if config_cycle + 1 = config_arr'length then
+						-- at end of command list
+							next_state <= PowerUp_Wait;
+						next_is_powered <= '1';
+						next_config_cycle <= 0;
+					else
+						-- next command
+						next_config_cycle <= config_cycle + 1;
+						next_state <= Config_SetAddr;
+					end if;
+				end if;
+			----------------------------------------------------------------------
+
+
+			----------------------------------------------------------------------
 			-- power up
 			----------------------------------------------------------------------
+			--
+			-- power up delay
+			--
+			when PowerUp_Wait =>
+				wait_counter_max <= const_wait_power;
+				if wait_counter = wait_counter_max then
+					next_state <= PowerUp_SetAddr;
+				end if;
+
+
 			when PowerUp_SetAddr =>
 				out_bus_addr <= BUS_WRITEADDR;
 
@@ -300,7 +379,7 @@ begin
 
 
 			when others =>
-				next_state <= Wait_Reset;
+				next_state <= Reset_Wait;
 		end case;
 	end process;
 
