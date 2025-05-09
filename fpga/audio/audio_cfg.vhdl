@@ -28,10 +28,8 @@ entity audio_cfg is
 		constant BUS_DATABITS : natural := 8;
 
 		-- addresses, see: [hw, p. 17]
-		--constant BUS_WRITEADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"34";
-		--constant BUS_READADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"35"
-		constant BUS_WRITEADDR : std_logic_vector(7 downto 0) := x"34";
-		constant BUS_READADDR : std_logic_vector(7 downto 0) := x"35"
+		constant BUS_WRITEADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"34";
+		constant BUS_READADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"35"
 	);
 
 	port(
