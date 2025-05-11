@@ -6,8 +6,6 @@
 --
 -- references for audio chip:
 --   - [hw] https://www.analog.com/media/en/technical-documentation/data-sheets/ssm2603.pdf
--- reference for serial bus usage:
---   - [bus] https://www.digikey.com/eewiki/pages/viewpage.action?pageId=10125324
 --
 -- note: serial data and clock signal need to be declared 3-state (high-Z for idle state)
 --
@@ -27,7 +25,7 @@ entity audio_cfg is
 		constant BUS_ADDRBITS : natural := 8;
 		constant BUS_DATABITS : natural := 8;
 
-		-- addresses, see: [hw, p. 17]
+		-- addresses, see [hw, p. 17]
 		constant BUS_WRITEADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"34";
 		constant BUS_READADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"35"
 	);
@@ -95,7 +93,7 @@ architecture audio_cfg_impl of audio_cfg is
 	constant MIKE_BOOST       : std_logic := '0';
 	constant MIKE_GAIN_ENABLE : std_logic := '0';
 	constant INVERT_BCLK      : std_logic := '0';
-	constant CONTROL_CLOCKS   : std_logic := '1';  -- output (1) or receive (0) clock signals
+	constant CONTROL_CLOCKS   : std_logic := '0';  -- output (1) or receive (0) clock signals
 	constant DAC_SWAP         : std_logic := '0';
 	constant CLK_POLARITY     : std_logic := '0';
 	constant CLK_OVERSAMPLE   : std_logic := '0';
@@ -104,10 +102,10 @@ architecture audio_cfg_impl of audio_cfg is
 	constant DAC_VOLUME       : std_logic_vector(6 downto 0) := 7x"79";
 	constant DEEMPHASIS       : std_logic_vector(1 downto 0) := "00";
 	constant MIKE_GAIN        : std_logic_vector(1 downto 0) := "00";
-	constant WORD_SIZE        : std_logic_vector(1 downto 0) := "10";
-	constant ADC_FORMAT       : std_logic_vector(1 downto 0) := "10";
+	constant WORD_SIZE        : std_logic_vector(1 downto 0) := "00";  -- 16 bit
+	constant DAC_FORMAT       : std_logic_vector(1 downto 0) := "01";
 	constant CLK_DIVS         : std_logic_vector(1 downto 0) := "00";
-	constant CLK_CONFIG       : std_logic_vector(3 downto 0) := "0000";
+	constant CLK_RATE         : std_logic_vector(3 downto 0) := "1000";  -- 44.1 kHz
 
 	-- configuration sequence, see [hw, pp. 17, 19]
 	type t_config_arr is array(0 to 11 - 1) of std_logic_vector(2*BUS_DATABITS - 1 downto 0);
@@ -125,8 +123,8 @@ architecture audio_cfg_impl of audio_cfg is
 		7x"04" & '0' & MIKE_GAIN & MIKE_GAIN_ENABLE & DAC_SELECT & LINEIN_SELECT & MIKE_SELECT & MIKE_MUTE & MIKE_BOOST,  -- [hw, p. 22]
 		7x"05" & "0000" & ADC_DC_OFFS & DAC_MUTE & DEEMPHASIS & ADC_HIGHPASS_OFF,  -- [hw, pp. 22, 23]
 
-		7x"07" & '0' & INVERT_BCLK & CONTROL_CLOCKS & DAC_SWAP & CLK_POLARITY & WORD_SIZE & ADC_FORMAT,  -- [hw, p. 24]
-		7x"08" & '0' & CLK_DIVS & CLK_CONFIG & CLK_OVERSAMPLE & SERIAL_MODE  -- [hw, p. 24]
+		7x"07" & '0' & INVERT_BCLK & CONTROL_CLOCKS & DAC_SWAP & CLK_POLARITY & WORD_SIZE & DAC_FORMAT,  -- [hw, p. 24]
+		7x"08" & '0' & CLK_DIVS & CLK_RATE & CLK_OVERSAMPLE & SERIAL_MODE  -- [hw, p. 24]
 	);
 
 	-- power up sequence, see [hw, pp. 17, 19]
@@ -138,7 +136,6 @@ architecture audio_cfg_impl of audio_cfg is
 	);
 
 	signal config_cycle, next_config_cycle : natural range 0 to config_arr'length := 0;
-	signal powerup_cycle, next_powerup_cycle : natural range 0 to powerup_arr'length := 0;
 
 begin
 
@@ -163,7 +160,6 @@ begin
 
 			-- command counter
 			config_cycle <= 0;
-			powerup_cycle <= 0;
 
 			-- status register
 			status_reg <= (others => '0');
@@ -183,7 +179,6 @@ begin
 
 			-- command counter
 			config_cycle <= next_config_cycle;
-			powerup_cycle <= next_powerup_cycle;
 
 			-- status register
 			status_reg <= next_status_reg;
@@ -212,13 +207,12 @@ begin
 		state,
 		wait_counter, wait_counter_max,
 		in_bus_ready, in_bus_data,
-		bus_cycle, config_cycle, powerup_cycle,
+		bus_cycle, config_cycle,
 		status_reg, is_powered)
 	begin
 		-- defaults
 		next_state <= state;
 		next_config_cycle <= config_cycle;
-		next_powerup_cycle <= powerup_cycle;
 		next_status_reg <= status_reg;
 		next_is_powered <= is_powered;
 		wait_counter_max <= 0;
@@ -308,7 +302,7 @@ begin
 				out_bus_addr <= BUS_WRITEADDR;
 
 				-- write register address + 1 data bit
-				out_bus_data <= powerup_arr(powerup_cycle)(2*BUS_DATABITS - 1 downto BUS_DATABITS);
+				out_bus_data <= powerup_arr(config_cycle)(2*BUS_DATABITS - 1 downto BUS_DATABITS);
 				out_bus_enable <= '1';
 
 				if bus_cycle = '1' then
@@ -319,7 +313,7 @@ begin
 				out_bus_addr <= BUS_WRITEADDR;
 
 				-- write the rest of the value bits
-				out_bus_data <= powerup_arr(powerup_cycle)(BUS_DATABITS - 1 downto 0);
+				out_bus_data <= powerup_arr(config_cycle)(BUS_DATABITS - 1 downto 0);
 				out_bus_enable <= '1';
 
 				if bus_cycle = '1' then
@@ -330,14 +324,14 @@ begin
 				out_bus_addr <= BUS_WRITEADDR;
 
 				if in_bus_ready = '1' then
-					if powerup_cycle + 1 = powerup_arr'length then
+					if config_cycle + 1 = powerup_arr'length then
 						-- at end of command list
 							next_state <= ReadStatus_SetAddr;
 						next_is_powered <= '1';
-						next_powerup_cycle <= 0;
+						next_config_cycle <= 0;
 					else
 						-- next command
-						next_powerup_cycle <= powerup_cycle + 1;
+						next_config_cycle <= config_cycle + 1;
 						next_state <= PowerUp_SetAddr;
 					end if;
 				end if;

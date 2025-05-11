@@ -21,7 +21,7 @@ entity main is
 		ledr : out std_logic_vector(9 downto 0);
 
 		aud_scl, aud_sda : inout std_logic;
-		aud_adclrck, aud_daclrck, aud_bclk : in std_logic; --inout std_logic;
+		aud_adclrck, aud_daclrck, aud_bclk : out std_logic;  --inout std_logic;
 		--aud_adcdat : in std_logic;   -- ADC data, from microphone
 		aud_dacdat : out std_logic;  -- DAC data, to speaker
 		aud_xck : out std_logic
@@ -31,9 +31,13 @@ end entity;
 
 
 architecture main_impl of main is
+	constant SAMPLE_BITS : natural := 16;
+	constant SAMPLE_FREQ : natural := 44_100;
+
 	-- clocks
 	constant MAIN_HZ   : natural := 50_000_000;
 	constant SERIAL_HZ : natural := 100_000;
+	constant AUDIO_HZ  : natural := SAMPLE_FREQ * SAMPLE_BITS * 2 * 4;
 
 	-- serial bus addresses
 	constant SERIAL_ADDRBITS : natural := 8;
@@ -52,26 +56,56 @@ architecture main_impl of main is
 	signal audio_active : std_logic := '0';
 	signal audio_status : std_logic_vector(SERIAL_DATABITS - 1 downto 0);
 
-	-- debugging
-	signal bclk_slow : std_logic;
+	-- clocks
+	signal xclk, bitclk, channelclk : std_logic;
+	-- slow clocks for debugging
+	signal xclk_slow, bitclk_slow, channelclk_slow : std_logic;
+
+	signal samples_end : std_logic;
 
 begin
 
 	reset <= not key(0);
-	aud_xck <= 'Z';
-	aud_dacdat <= '0';
+	aud_xck <= xclk;
+	aud_bclk <= bitclk;
+	aud_daclrck <= channelclk;
+	aud_adclrck <= '0';
 
 	-- debugging
 	ledg <= audio_status(7 downto 0);
-	ledr(0) <= '0' when aud_daclrck = '0' else '1';
-	ledr(1) <= '0' when aud_adclrck = '0' else '1';
-	ledr(2) <= bclk_slow; --'0' when aud_bclk = '0' else '1';
+	ledr(0) <= xclk_slow;
+	ledr(1) <= bitclk_slow;
+	ledr(2) <= channelclk_slow;
+	ledr(8) <= samples_end;
 	ledr(9) <= serial_audio_err;
-	ledr(8 downto 3) <= (others => '0');
+	ledr(7 downto 3) <= (others => '0');
 
-	clkgen_bclk : entity work.clkdiv(clkdiv_impl)
-		generic map(NUM_CTRBITS => 24, SHIFT_BITS => 23)
-		port map(in_clk => aud_bclk, in_rst => reset, out_clk => bclk_slow);
+	-- generate audio clocks
+	-- TODO: frequency not exact, use PLL instead
+	clkgen_xclk : entity work.clkgen
+		generic map(MAIN_HZ => MAIN_HZ, CLK_HZ => AUDIO_HZ, CLK_INIT => '1')
+		port map(in_clk => clock_50_b7a, in_reset => reset, out_clk => xclk);
+
+	clkgen_bitclk : entity work.clkdiv(clkdiv_impl)
+		generic map(NUM_CTRBITS => 3, SHIFT_BITS => 2)
+		port map(in_clk => xclk, in_rst => reset, out_clk => bitclk);
+
+	clkgen_chclk : entity work.clkdiv(clkdiv_impl)
+		generic map(NUM_CTRBITS => 5, SHIFT_BITS => 4)  -- SHIFT_BITS => ceil(log2(SAMPLE_BITS))
+		port map(in_clk => bitclk, in_rst => reset, out_clk => channelclk);
+
+	-- generate slow clocks for debugging
+	clkgen_slowxclk : entity work.clkdiv(clkdiv_impl)
+		generic map(NUM_CTRBITS => 20, SHIFT_BITS => 19)
+		port map(in_clk => xclk, in_rst => reset, out_clk => xclk_slow);
+
+	clkgen_slowbitclk : entity work.clkdiv(clkdiv_impl)
+		generic map(NUM_CTRBITS => 20, SHIFT_BITS => 19)
+		port map(in_clk => bitclk, in_rst => reset, out_clk => bitclk_slow);
+
+	clkgen_slowchclk : entity work.clkdiv(clkdiv_impl)
+		generic map(NUM_CTRBITS => 20, SHIFT_BITS => 19)
+		port map(in_clk => channelclk, in_rst => reset, out_clk => channelclk_slow);
 
 	-- audio configuration serial interface
 	audio_serial : entity work.serial_2wire
@@ -88,7 +122,7 @@ begin
 			inout_clk => aud_scl, inout_serial => aud_sda);
 
 	  -- audio configuration
-	  audio_cfg : entity work.audio_cfg
+	audio_cfg : entity work.audio_cfg
 		generic map(MAIN_CLK => MAIN_HZ,
 			BUS_ADDRBITS => SERIAL_ADDRBITS, BUS_DATABITS => SERIAL_DATABITS,
 			BUS_WRITEADDR => SERIAL_AUDIO_WRITE_ADDR, BUS_READADDR => SERIAL_AUDIO_READ_ADDR)
@@ -97,5 +131,12 @@ begin
 			out_bus_enable => serial_audio_enable, in_bus_byte_finished => serial_audio_byte_finished,
 			out_bus_data => serial_audio_data_write, in_bus_data => serial_audio_data_read,
 			out_bus_addr => serial_audio_addr, out_active => audio_active, out_status => audio_status);
+
+	-- audio generation
+	audio_gen : entity work.audio
+		generic map(SAMPLE_BITS => SAMPLE_BITS, SAMPLE_FREQ => SAMPLE_FREQ)
+		port map(in_reset => reset,
+			in_bitclk => bitclk, in_channelclk => channelclk,
+			out_data => aud_dacdat, out_samples_end => samples_end);
 
 end architecture;
