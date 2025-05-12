@@ -62,7 +62,7 @@ begin
 		samples_end <= samples_end;
 	
 		-- channel clock
-		if rising_edge(in_channelclk) then
+		if falling_edge(in_channelclk) then
 			if in_reset = '1' then
 				-- counter register
 				sample_ctr <= 0;

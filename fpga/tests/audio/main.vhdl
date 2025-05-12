@@ -8,6 +8,9 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
+library audclk_pll;
+use audclk_pll.all;
+
 
 
 entity main is
@@ -15,7 +18,7 @@ entity main is
 		clock_50_b7a : in std_logic;
 
 		key : in std_logic_vector(3 downto 0);
-		sw : in std_logic_vector(7 downto 0);
+		--sw : in std_logic_vector(7 downto 0);
 
 		ledg : out std_logic_vector(7 downto 0);
 		ledr : out std_logic_vector(9 downto 0);
@@ -37,7 +40,7 @@ architecture main_impl of main is
 	-- clocks
 	constant MAIN_HZ   : natural := 50_000_000;
 	constant SERIAL_HZ : natural := 100_000;
-	constant AUDIO_HZ  : natural := SAMPLE_FREQ * SAMPLE_BITS * 2 * 4;
+	constant AUDIO_HZ  : natural := SAMPLE_FREQ * SAMPLE_BITS * 4 * 4;
 
 	-- serial bus addresses
 	constant SERIAL_ADDRBITS : natural := 8;
@@ -69,7 +72,7 @@ begin
 	aud_xck <= xclk;
 	aud_bclk <= bitclk;
 	aud_daclrck <= channelclk;
-	aud_adclrck <= '0';
+	aud_adclrck <= channelclk;
 
 	-- debugging
 	ledg <= audio_status(7 downto 0);
@@ -81,10 +84,12 @@ begin
 	ledr(7 downto 3) <= (others => '0');
 
 	-- generate audio clocks
-	-- TODO: frequency not exact, use PLL instead
-	clkgen_xclk : entity work.clkgen
-		generic map(MAIN_HZ => MAIN_HZ, CLK_HZ => AUDIO_HZ, CLK_INIT => '1')
-		port map(in_clk => clock_50_b7a, in_reset => reset, out_clk => xclk);
+	clkgen_xclk : entity audclk_pll.audclk_pll
+	port map(refclk => clock_50_b7a, rst => reset, outclk_0 => xclk);
+
+	--clkgen_xclk : entity work.clkgen
+	--	generic map(MAIN_HZ => MAIN_HZ, CLK_HZ => AUDIO_HZ, CLK_INIT => '1')
+	--	port map(in_clk => clock_50_b7a, in_reset => reset, out_clk => xclk);
 
 	clkgen_bitclk : entity work.clkdiv(clkdiv_impl)
 		generic map(NUM_CTRBITS => 3, SHIFT_BITS => 2)

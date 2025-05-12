@@ -79,14 +79,14 @@ architecture audio_cfg_impl of audio_cfg is
 	constant MIKE_OFF         : std_logic := '1';
 	constant ADC_OFF          : std_logic := '1';
 	constant DAC_OFF          : std_logic := '0';
-	constant OSCI_OFF         : std_logic := '0';
-	constant CLOCKOUT_OFF     : std_logic := '0';
+	constant OSCI_OFF         : std_logic := '1';
+	constant CLOCKOUT_OFF     : std_logic := '1';
 	constant ALL_OFF          : std_logic := '0';
 	constant ADC_HIGHPASS_OFF : std_logic := '0';
 	constant ADC_DC_OFFS      : std_logic := '0';
 	constant ADC_MUTE         : std_logic := '1';
 	constant DAC_MUTE         : std_logic := '0';
-	constant DAC_SELECT       : std_logic := '0';
+	constant DAC_SELECT       : std_logic := '1';
 	constant LINEIN_SELECT    : std_logic := '0';
 	constant MIKE_SELECT      : std_logic := '0';
 	constant MIKE_MUTE        : std_logic := '1';
@@ -103,9 +103,9 @@ architecture audio_cfg_impl of audio_cfg is
 	constant DEEMPHASIS       : std_logic_vector(1 downto 0) := "00";
 	constant MIKE_GAIN        : std_logic_vector(1 downto 0) := "00";
 	constant WORD_SIZE        : std_logic_vector(1 downto 0) := "00";  -- 16 bit
-	constant DAC_FORMAT       : std_logic_vector(1 downto 0) := "01";
+	constant DAC_FORMAT       : std_logic_vector(1 downto 0) := "10";
 	constant CLK_DIVS         : std_logic_vector(1 downto 0) := "00";
-	constant CLK_RATE         : std_logic_vector(3 downto 0) := "1000";  -- 44.1 kHz
+	constant CLK_RATE         : std_logic_vector(3 downto 0) := "1010";  -- 44.1 kHz
 
 	-- configuration sequence, see [hw, pp. 17, 19]
 	type t_config_arr is array(0 to 11 - 1) of std_logic_vector(2*BUS_DATABITS - 1 downto 0);
@@ -344,7 +344,7 @@ begin
 			when ReadStatus_SetAddr =>
 				out_bus_addr <= BUS_WRITEADDR;
 				-- active status register, address 9
-				out_bus_data <= "0001001" & '0';
+				out_bus_data <= 7x"09" & '0';
 				out_bus_enable <= '1';
 
 				if bus_cycle = '1' then
