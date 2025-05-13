@@ -17,7 +17,8 @@ entity clkdiv is
 	(
 		-- number of bits for counter
 		constant NUM_CTRBITS : natural := 8;
-		constant SHIFT_BITS : natural := 0
+		constant SHIFT_BITS : natural := 0;
+		constant USE_RISING_EDGE : std_logic := '1'
 	);
 
 	port
@@ -41,15 +42,28 @@ begin
 	--out_clk <= slow_clk;
 	out_clk <= in_clk when SHIFT_BITS = 1 else slow_clk;
 
-	ctrprc : process(in_clk, in_rst) begin
-		if in_rst='1' then
-			ctr <= (others => '0');
-			slow_clk <= '0';
-		elsif rising_edge(in_clk) then
-			ctr <= next_ctr;
-			slow_clk <= next_slow_clk;
-		end if;
-	end process;
+	ctrprc_gen_if : if USE_RISING_EDGE = '1' generate
+		ctrprc : process(in_clk, in_rst) begin
+			if in_rst = '1' then
+				ctr <= (others => '0');
+				slow_clk <= '0';
+			elsif rising_edge(in_clk) then
+				ctr <= next_ctr;
+				slow_clk <= next_slow_clk;
+			end if;
+		end process;
+	end generate;
+	ctrprc_gen_else : if USE_RISING_EDGE = '0' generate
+		ctrprc : process(in_clk, in_rst) begin
+			if in_rst = '1' then
+				ctr <= (others => '0');
+				slow_clk <= '0';
+			elsif falling_edge(in_clk) then
+				ctr <= next_ctr;
+				slow_clk <= next_slow_clk;
+			end if;
+		end process;
+	end generate;
 
 	clkproc : process(ctr_fin) begin
 		next_slow_clk <= slow_clk;
@@ -81,13 +95,24 @@ architecture clkdiv_impl of clkdiv is
 	signal ctr, next_ctr : std_logic_vector(NUM_CTRBITS - 1 downto 0) := (others=>'0');
 begin
 
-	ctrprc : process(in_clk, in_rst) begin
-		if in_rst = '1' then
-			ctr <= (others => '0');
-		elsif rising_edge(in_clk) then
-			ctr <= next_ctr;
-		end if;
-	end process;
+	ctrprc_gen_if : if USE_RISING_EDGE = '1' generate
+		ctrprc : process(in_clk, in_rst) begin
+			if in_rst = '1' then
+				ctr <= (others => '0');
+			elsif rising_edge(in_clk) then
+				ctr <= next_ctr;
+			end if;
+		end process;
+	end generate;
+	ctrprc_gen_else : if USE_RISING_EDGE = '0' generate
+		ctrprc : process(in_clk, in_rst) begin
+			if in_rst = '1' then
+				ctr <= (others => '0');
+			elsif falling_edge(in_clk) then
+				ctr <= next_ctr;
+			end if;
+		end process;
+	end generate;
 
 	next_ctr <= inc_logvec(ctr, 1);
 	out_clk <= ctr(SHIFT_BITS);
