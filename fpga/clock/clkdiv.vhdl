@@ -18,6 +18,7 @@ entity clkdiv is
 		-- number of bits for counter
 		constant NUM_CTRBITS : natural := 8;
 		constant SHIFT_BITS : natural := 0;
+
 		constant USE_RISING_EDGE : std_logic := '1'
 	);
 

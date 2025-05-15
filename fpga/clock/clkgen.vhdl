@@ -65,7 +65,7 @@ begin
 
 	else generate
 
-	-- output slower clock
+		-- output slower clock
 		out_clk <= clk;
 
 		--

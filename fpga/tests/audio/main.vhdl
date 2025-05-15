@@ -8,8 +8,13 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
+-- freq: SAMPLE_FREQ * SAMPLE_BITS * 4 * 4
 library audclk_pll;
 use audclk_pll.all;
+
+-- freq: SAMPLE_FREQ * (SAMPLE_BITS + 2) * 2
+library bitclk_pll;
+use bitclk_pll.all;
 
 
 
@@ -40,7 +45,7 @@ architecture main_impl of main is
 	-- clocks
 	constant MAIN_HZ   : natural := 50_000_000;
 	constant SERIAL_HZ : natural := 100_000;
-	constant AUDIO_HZ  : natural := SAMPLE_FREQ * SAMPLE_BITS * 4 * 4;
+	--constant AUDIO_HZ  : natural := SAMPLE_FREQ * SAMPLE_BITS * 4 * 4;
 
 	-- serial bus addresses
 	constant SERIAL_ADDRBITS : natural := 8;
@@ -61,6 +66,7 @@ architecture main_impl of main is
 
 	-- clocks
 	signal xclk, bitclk, channelclk : std_logic;
+	signal xclk_locked, bitclk_locked : std_logic;
 	-- slow clocks for debugging
 	signal xclk_slow, bitclk_slow, channelclk_slow : std_logic;
 
@@ -69,10 +75,10 @@ architecture main_impl of main is
 begin
 
 	reset <= not key(0);
-	aud_xck <= xclk;
-	aud_bclk <= bitclk;
-	aud_daclrck <= channelclk;
-	aud_adclrck <= channelclk;
+	aud_xck <= xclk when xclk_locked = '1' and audio_active = '1' else '0';
+	aud_bclk <= bitclk when bitclk_locked = '1' and audio_active = '1' else '0';
+	aud_daclrck <= channelclk when bitclk_locked = '1' and audio_active = '1' else '0';
+	aud_adclrck <= channelclk when bitclk_locked = '1' and audio_active = '1' else '0';
 
 	-- debugging
 	ledg <= audio_status(7 downto 0);
@@ -85,31 +91,42 @@ begin
 
 	-- generate audio clocks
 	clkgen_xclk : entity audclk_pll.audclk_pll
-	port map(refclk => clock_50_b7a, rst => reset, outclk_0 => xclk);
+		port map(refclk => clock_50_b7a, rst => reset, outclk_0 => xclk, locked => xclk_locked);
 
 	--clkgen_xclk : entity work.clkgen
 	--	generic map(MAIN_HZ => MAIN_HZ, CLK_HZ => AUDIO_HZ, CLK_INIT => '1')
 	--	port map(in_clk => clock_50_b7a, in_reset => reset, out_clk => xclk);
 
-	clkgen_bitclk : entity work.clkdiv(clkdiv_impl)
-		generic map(NUM_CTRBITS => 3, SHIFT_BITS => 2)
-		port map(in_clk => xclk, in_rst => reset, out_clk => bitclk);
+	--clkgen_bitclk : entity work.clkdiv(clkdiv_impl)
+	--	generic map(USE_RISING_EDGE => '0', NUM_CTRBITS => 3, SHIFT_BITS => 2)
+	--	port map(in_clk => xclk, in_rst => reset, out_clk => bitclk);
 
-	clkgen_chclk : entity work.clkdiv(clkdiv_impl)
-		generic map(NUM_CTRBITS => 5, SHIFT_BITS => 4)  -- SHIFT_BITS => ceil(log2(SAMPLE_BITS))
-		port map(in_clk => bitclk, in_rst => reset, out_clk => channelclk);
+	clkgen_bitclk : entity bitclk_pll.bitclk_pll
+		port map(refclk => clock_50_b7a, rst => reset, outclk_0 => bitclk, locked => bitclk_locked);
+
+	--clkgen_chclk : entity work.clkdiv(clkdiv_impl)
+	--	generic map(USE_RISING_EDGE => '0', NUM_CTRBITS => 5, SHIFT_BITS => 4)  -- SHIFT_BITS => ceil(log2(SAMPLE_BITS))
+	--	port map(in_clk => bitclk, in_rst => reset, out_clk => channelclk);
+
+	--clkgen_chclk : entity work.clkdiv(clkdiv_impl)
+	--	generic map(USE_RISING_EDGE => '0', NUM_CTRBITS => 8, SHIFT_BITS => 7)  -- SHIFT_BITS => ceil(log2(SAMPLE_BITS*8))
+	--	port map(in_clk => xclk, in_rst => reset, out_clk => channelclk);
+
+	clkgen_chclk : entity work.clkctr
+		generic map(USE_RISING_EDGE => '0', COUNTER => SAMPLE_BITS + 2, CLK_INIT => '0')
+		port map(in_clk => bitclk, in_reset => reset, out_clk => channelclk);
 
 	-- generate slow clocks for debugging
 	clkgen_slowxclk : entity work.clkdiv(clkdiv_impl)
-		generic map(NUM_CTRBITS => 20, SHIFT_BITS => 19)
+		generic map(NUM_CTRBITS => 21, SHIFT_BITS => 20)
 		port map(in_clk => xclk, in_rst => reset, out_clk => xclk_slow);
 
 	clkgen_slowbitclk : entity work.clkdiv(clkdiv_impl)
-		generic map(NUM_CTRBITS => 20, SHIFT_BITS => 19)
+		generic map(NUM_CTRBITS => 21, SHIFT_BITS => 20)
 		port map(in_clk => bitclk, in_rst => reset, out_clk => bitclk_slow);
 
 	clkgen_slowchclk : entity work.clkdiv(clkdiv_impl)
-		generic map(NUM_CTRBITS => 20, SHIFT_BITS => 19)
+		generic map(NUM_CTRBITS => 21, SHIFT_BITS => 20)
 		port map(in_clk => channelclk, in_rst => reset, out_clk => channelclk_slow);
 
 	-- audio configuration serial interface
@@ -139,7 +156,7 @@ begin
 
 	-- audio generation
 	audio_gen : entity work.audio
-		generic map(SAMPLE_BITS => SAMPLE_BITS, SAMPLE_FREQ => SAMPLE_FREQ)
+		generic map(SAMPLE_BITS => SAMPLE_BITS + 2, SAMPLE_FREQ => SAMPLE_FREQ)
 		port map(in_reset => reset,
 			in_bitclk => bitclk, in_channelclk => channelclk,
 			out_data => aud_dacdat, out_samples_end => samples_end);
