@@ -25,6 +25,7 @@ entity audio is
 		in_reset : in std_logic;
 		in_bitclk : in std_logic;
 		in_channelclk : in std_logic;
+		in_freqsel : in std_logic;
 
 		out_data : out std_logic;
 		out_samples_end : out std_logic  -- for debugging
@@ -37,21 +38,21 @@ architecture audio_impl of audio is
 
 	-- bit and sample counter
 	signal bit_ctr, next_bit_ctr : natural range 0 to SAMPLE_BITS - 1 := 0;
-	signal sample_ctr, next_sample_ctr : natural range 0 to SAMPLE_FREQ - 1 := 0;
-	signal sample_ctr_vec : std_logic_vector(15 downto 0);  -- ceil(log2(SAMPLE_FREQ))
+	signal sec_ctr, next_sec_ctr : natural range 0 to SAMPLE_FREQ - 1 := 0;
+	signal sample_ctr, next_sample_ctr : std_logic_vector(15 downto 0) := (others => '0');
 
 	signal samples_end, next_samples_end : std_logic := '0';
 
 begin
 
 	-- counters
-	next_bit_ctr <= bit_ctr + 1 when bit_ctr < SAMPLE_BITS - 1 else 0;
-	next_sample_ctr <= sample_ctr + 1 when sample_ctr < SAMPLE_FREQ - 1 else 0;
-	sample_ctr_vec <= nat_to_logvec(sample_ctr, sample_ctr_vec'length);
+	next_bit_ctr <= bit_ctr + 1 when bit_ctr < bit_ctr'right else 0;
+	next_sec_ctr <= sec_ctr + 1 when sec_ctr < sec_ctr'right else 0;
+	next_sample_ctr <= inc_logvec(sample_ctr, 1);
 
 
 	-- sample bit output
-	out_data <= sample_ctr_vec(10);
+	out_data <= sample_ctr(8) when in_freqsel = '0' else sample_ctr(6);
 	out_samples_end <= samples_end;
 
 
@@ -65,12 +66,14 @@ begin
 		if falling_edge(in_channelclk) then
 			if in_reset = '1' then
 				-- counter register
-				sample_ctr <= 0;
+				sec_ctr <= 0;
 				samples_end <= '0';
+				sample_ctr <= (others => '0');
 			else
 				-- counter register
-				sample_ctr <= next_sample_ctr;
+				sec_ctr <= next_sec_ctr;
 				samples_end <= next_samples_end;
+				sample_ctr <= next_sample_ctr;
 			end if;
 		end if;
 
@@ -90,11 +93,10 @@ begin
 	--
 	-- combinatorics
 	--
-	proc_comb : process(samples_end, sample_ctr) begin
+	proc_comb : process(samples_end, sec_ctr) begin
 		next_samples_end <= samples_end;
 
-		if sample_ctr = SAMPLE_FREQ - 1 then
-		--if next_sample_ctr = 0 then
+		if sec_ctr = SAMPLE_FREQ - 1 then
 			next_samples_end <= not samples_end;
 		end if;
 	end process;

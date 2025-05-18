@@ -26,8 +26,10 @@ entity audio_cfg is
 		constant BUS_DATABITS : natural := 8;
 
 		-- addresses, see [hw, p. 17]
-		constant BUS_WRITEADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"34";
-		constant BUS_READADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"35"
+		--constant BUS_WRITEADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"34";
+		--constant BUS_READADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"35"
+		constant BUS_WRITEADDR : std_logic_vector(7 downto 0) := x"34";
+		constant BUS_READADDR : std_logic_vector(7 downto 0) := x"35"
 	);
 
 	port(
@@ -56,8 +58,8 @@ architecture audio_cfg_impl of audio_cfg is
 	-- states
 	type t_state is ( Reset_Wait, Idle,
 		ReadStatus_SetAddr, ReadStatus_SetReg, ReadStatus_GetData,
-		Config_SetAddr, Config_SetData, Config_Next,
-		PowerUp_Wait, PowerUp_SetAddr, PowerUp_SetData, PowerUp_Next);
+		Config_SetAddr, Config_SetData, Config_Wait, Config_Next,
+		PowerUp_Wait, PowerUp_SetAddr, PowerUp_SetData, PowerUp_Wait2, PowerUp_Next);
 
 	signal state, next_state : t_state := Reset_Wait;
 
@@ -66,6 +68,7 @@ architecture audio_cfg_impl of audio_cfg is
 	-- reset delay and counter for busy wait
 	constant const_wait_reset : natural := MAIN_CLK/1000*200;  -- 200 ms
 	constant const_wait_power : natural := MAIN_CLK/1000*100;  -- 100 ms
+	constant const_wait_config : natural := MAIN_CLK/1000*10;  -- 10 ms
 	signal wait_counter, wait_counter_max : natural range 0 to const_wait_reset := 0;
 
 	-- status register
@@ -264,6 +267,12 @@ begin
 				out_bus_enable <= '1';
 
 				if bus_cycle = '1' then
+					next_state <= Config_Wait;
+				end if;
+
+			when Config_Wait =>
+				wait_counter_max <= const_wait_config;
+				if wait_counter = wait_counter_max then
 					next_state <= Config_Next;
 				end if;
 
@@ -317,6 +326,12 @@ begin
 				out_bus_enable <= '1';
 
 				if bus_cycle = '1' then
+					next_state <= PowerUp_Wait2;
+				end if;
+
+			when PowerUp_Wait2 =>
+				wait_counter_max <= const_wait_config;
+				if wait_counter = wait_counter_max then
 					next_state <= PowerUp_Next;
 				end if;
 
