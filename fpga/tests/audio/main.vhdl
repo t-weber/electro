@@ -8,13 +8,9 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
--- freq: SAMPLE_FREQ * SAMPLE_BITS * 4 * 4
+-- freq: SAMPLE_FREQ * SAMPLE_BITS [= 32] * 2 channels * 4
 library audclk_pll;
 use audclk_pll.all;
-
--- freq: SAMPLE_FREQ * (SAMPLE_BITS + 2) * 2
---library bitclk_pll;
---use bitclk_pll.all;
 
 
 
@@ -39,7 +35,7 @@ end entity;
 
 
 architecture main_impl of main is
-	constant SAMPLE_BITS : natural := 16;
+	constant SAMPLE_BITS : natural := 32;
 	constant SAMPLE_FREQ : natural := 44_100;
 
 	-- clocks
@@ -66,7 +62,8 @@ architecture main_impl of main is
 
 	-- clocks
 	signal xclk, xclk_lck, bitclk, sampleclk : std_logic;
-	signal xclk_locked, bitclk_locked : std_logic;
+	signal xclk_locked : std_logic;
+
 	-- slow clocks for debugging
 	signal xclk_slow, bitclk_slow, sampleclk_slow : std_logic;
 
@@ -77,8 +74,8 @@ begin
 	reset <= not key(0);
 	xclk_lck <= xclk when xclk_locked = '1' else '0';
 	aud_xck <= xclk_lck when audio_active = '1' else '0';
-	aud_bclk <= bitclk; --when audio_active = '1' else '0';
-	aud_daclrck <= sampleclk; --when audio_active = '1' else '0';
+	aud_bclk <= bitclk; -- when audio_active = '1' else '1';
+	aud_daclrck <= sampleclk; -- when audio_active = '1' else '1';
 	aud_adclrck <= '0';
 
 	-- debugging
@@ -90,7 +87,12 @@ begin
 	ledr(9) <= serial_audio_err;
 	ledr(7 downto 3) <= (others => '0');
 
-	-- generate audio clocks
+	--
+	-- generate audio clocks:
+	--   xclk = sample_freq * sample_bits * 2 channels * 4
+	--   bclk = sample_freq * sample_bits * 2 channels     = xclk / 4
+	--   sclk = sample_freq                                = bclk / sample_bits / 2 = xclk / 256
+	--
 	clkgen_xclk : entity audclk_pll.audclk_pll
 		port map(refclk => clock_50_b7a, rst => reset, outclk_0 => xclk, locked => xclk_locked);
 
@@ -99,19 +101,20 @@ begin
 	--	port map(in_clk => clock_50_b7a, in_reset => reset, out_clk => xclk);
 
 	clkgen_bitclk : entity work.clkdiv(clkdiv_impl)
-		generic map(USE_RISING_EDGE => '1', NUM_CTRBITS => 3, SHIFT_BITS => 2)
+		generic map(USE_RISING_EDGE => '1', NUM_CTRBITS => 2, SHIFT_BITS => 1)
 		port map(in_clk => xclk_lck, in_rst => reset, out_clk => bitclk);
 
-	--clkgen_bitclk : entity bitclk_pll.bitclk_pll
-	--	port map(refclk => clock_50_b7a, rst => reset, outclk_0 => bitclk, locked => bitclk_locked);
+	--clkgen_bitclk : entity work.clkctr
+	--	generic map(USE_RISING_EDGE => '1', COUNTER => 2, CLK_INIT => '0')
+	--	port map(in_clk => xclk_lck, in_reset => reset, out_clk => bitclk);
 
-	clkgen_sampleclk : entity work.clkdiv(clkdiv_impl)
-		generic map(USE_RISING_EDGE => '1', NUM_CTRBITS => 5, SHIFT_BITS => 4)  -- SHIFT_BITS => ceil(log2(SAMPLE_BITS))
-		port map(in_clk => bitclk, in_rst => reset, out_clk => sampleclk);
+	--clkgen_sampleclk : entity work.clkdiv(clkdiv_impl)
+	--	generic map(USE_RISING_EDGE => '0', NUM_CTRBITS => 6, SHIFT_BITS => 5)  -- SHIFT_BITS => ceil(log2(SAMPLE_BITS))
+	--	port map(in_clk => bitclk, in_rst => reset, out_clk => sampleclk);
 
-	--clkgen_sampleclk : entity work.clkctr
-	--	generic map(USE_RISING_EDGE => '1', COUNTER => SAMPLE_BITS, CLK_INIT => '0')
-	--	port map(in_clk => bitclk, in_reset => reset, out_clk => sampleclk);
+	clkgen_sampleclk : entity work.clkctr
+		generic map(USE_RISING_EDGE => '0', COUNTER => SAMPLE_BITS, CLK_INIT => '0')
+		port map(in_clk => bitclk, in_reset => reset, out_clk => sampleclk);
 
 	--clkgen_sampleclk : entity work.clkdiv(clkdiv_impl)
 	--	generic map(USE_RISING_EDGE => '1', NUM_CTRBITS => 8, SHIFT_BITS => 7)
@@ -159,7 +162,7 @@ begin
 	audio_gen : entity work.audio
 		generic map(SAMPLE_BITS => SAMPLE_BITS, SAMPLE_FREQ => SAMPLE_FREQ)
 		port map(in_reset => reset, in_freqsel => not key(1),
-			in_bitclk => bitclk, in_channelclk => sampleclk,
+			in_bitclk => bitclk, in_sampleclk => sampleclk,
 			out_data => aud_dacdat, out_samples_end => samples_end);
 
 end architecture;

@@ -65,8 +65,8 @@ architecture audio_cfg_impl of audio_cfg is
 
 	-- reset delay and counter for busy wait
 	constant const_wait_reset : natural := MAIN_CLK/1000*200;  -- 200 ms
-	constant const_wait_power : natural := MAIN_CLK/1000*100;  -- 100 ms
-	constant const_wait_config : natural := MAIN_CLK/1000*10;  -- 10 ms
+	constant const_wait_power : natural := MAIN_CLK/1000*200;  -- 200 ms
+	constant const_wait_config : natural := MAIN_CLK/1000*5;  -- 5 ms
 	signal wait_counter, wait_counter_max : natural range 0 to const_wait_reset := 0;
 
 	-- status register
@@ -103,13 +103,13 @@ architecture audio_cfg_impl of audio_cfg is
 	constant DAC_VOLUME       : std_logic_vector(6 downto 0) := 7x"79";
 	constant DEEMPHASIS       : std_logic_vector(1 downto 0) := "00";
 	constant MIKE_GAIN        : std_logic_vector(1 downto 0) := "00";
-	constant WORD_SIZE        : std_logic_vector(1 downto 0) := "00";  -- 16 bit
+	constant WORD_SIZE        : std_logic_vector(1 downto 0) := "11";  -- 32 bits
 	constant DAC_FORMAT       : std_logic_vector(1 downto 0) := "10";
 	constant CLK_DIVS         : std_logic_vector(1 downto 0) := "00";
-	constant CLK_RATE         : std_logic_vector(3 downto 0) := "1010";  -- 44.1 kHz
+	constant CLK_RATE         : std_logic_vector(3 downto 0) := "1000";  -- 44.1 kHz
 
 	-- configuration sequence, see [hw, pp. 17, 19]
-	type t_config_arr is array(0 to 11 - 1) of std_logic_vector(2*BUS_DATABITS - 1 downto 0);
+	type t_config_arr is array(0 to 14 - 1) of std_logic_vector(2*BUS_DATABITS - 1 downto 0);
 	constant config_arr : t_config_arr := (
 		-- reg: 7 bits, val: 9 bits
 		7x"0f" & "000000000",  -- reset, [hw, p. 27]
@@ -125,7 +125,11 @@ architecture audio_cfg_impl of audio_cfg is
 		7x"05" & "0000" & ADC_DC_OFFS & DAC_MUTE & DEEMPHASIS & ADC_HIGHPASS_OFF,  -- [hw, pp. 22, 23]
 
 		7x"07" & '0' & INVERT_BCLK & CONTROL_CLOCKS & DAC_SWAP & CLK_POLARITY & WORD_SIZE & DAC_FORMAT,  -- [hw, p. 24]
-		7x"08" & '0' & CLK_DIVS & CLK_RATE & CLK_OVERSAMPLE & SERIAL_MODE  -- [hw, p. 24]
+		7x"08" & '0' & CLK_DIVS & CLK_RATE & CLK_OVERSAMPLE & SERIAL_MODE,  -- [hw, p. 24]
+
+		7x"10" & "000000000",  -- [hw, p. 28]
+		7x"11" & "000000000",  -- [hw, p. 28]
+		7x"12" & "000000000"  -- [hw, p. 29]
 	);
 
 	-- power up sequence, see [hw, pp. 17, 19]
@@ -303,7 +307,6 @@ begin
 				if wait_counter = wait_counter_max then
 					next_state <= PowerUp_SetAddr;
 				end if;
-
 
 			when PowerUp_SetAddr =>
 				out_bus_addr <= BUS_WRITEADDR;

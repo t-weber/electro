@@ -24,7 +24,7 @@ entity audio is
 	port(
 		in_reset : in std_logic;
 		in_bitclk : in std_logic;
-		in_channelclk : in std_logic;
+		in_sampleclk : in std_logic;
 		in_freqsel : in std_logic;
 
 		out_data : out std_logic;
@@ -52,18 +52,19 @@ begin
 
 
 	-- sample bit output
-	out_data <= sample_ctr(8) when in_freqsel = '0' else sample_ctr(6);
+	out_data <= sample_ctr(8) when in_freqsel = '0' else sample_ctr(5);
+	--out_data <= sample_ctr(8) when bit_ctr < SAMPLE_BITS - 2 else '0';
 	out_samples_end <= samples_end;
 
 
 	--
 	-- flip-flops for bit and channel clocks
 	--
-	proc_ff : process(in_bitclk, in_channelclk, in_reset, samples_end) begin
+	proc_ff : process(in_bitclk, in_sampleclk, in_reset, samples_end) begin
 		samples_end <= samples_end;
 	
 		-- channel clock
-		if falling_edge(in_channelclk) then
+		if falling_edge(in_sampleclk) then
 			if in_reset = '1' then
 				-- counter register
 				sec_ctr <= 0;
