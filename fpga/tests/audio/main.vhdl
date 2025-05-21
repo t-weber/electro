@@ -41,7 +41,6 @@ architecture main_impl of main is
 	-- clocks
 	constant MAIN_HZ   : natural := 50_000_000;
 	constant SERIAL_HZ : natural := 100_000;
-	--constant AUDIO_HZ  : natural := SAMPLE_FREQ * SAMPLE_BITS * 4 * 4;
 
 	-- serial bus addresses
 	constant SERIAL_ADDRBITS : natural := 8;
@@ -72,8 +71,8 @@ architecture main_impl of main is
 begin
 
 	reset <= not key(0);
-	xclk_lck <= xclk when xclk_locked = '1' else '0';
-	aud_xck <= xclk_lck when audio_active = '1' else '0';
+	xclk_lck <= xclk when xclk_locked = '1' else '1';
+	aud_xck <= xclk_lck when audio_active = '1' else '1';
 	aud_bclk <= bitclk; -- when audio_active = '1' else '1';
 	aud_daclrck <= sampleclk; -- when audio_active = '1' else '1';
 	aud_adclrck <= '0';
@@ -96,29 +95,13 @@ begin
 	clkgen_xclk : entity audclk_pll.audclk_pll
 		port map(refclk => clock_50_b7a, rst => reset, outclk_0 => xclk, locked => xclk_locked);
 
-	--clkgen_xclk : entity work.clkgen
-	--	generic map(MAIN_HZ => MAIN_HZ, CLK_HZ => AUDIO_HZ, CLK_INIT => '1')
-	--	port map(in_clk => clock_50_b7a, in_reset => reset, out_clk => xclk);
-
 	clkgen_bitclk : entity work.clkdiv(clkdiv_impl)
 		generic map(USE_RISING_EDGE => '1', NUM_CTRBITS => 2, SHIFT_BITS => 1)
 		port map(in_clk => xclk_lck, in_rst => reset, out_clk => bitclk);
 
-	--clkgen_bitclk : entity work.clkctr
-	--	generic map(USE_RISING_EDGE => '1', COUNTER => 2, CLK_INIT => '0')
-	--	port map(in_clk => xclk_lck, in_reset => reset, out_clk => bitclk);
-
-	--clkgen_sampleclk : entity work.clkdiv(clkdiv_impl)
-	--	generic map(USE_RISING_EDGE => '0', NUM_CTRBITS => 6, SHIFT_BITS => 5)  -- SHIFT_BITS => ceil(log2(SAMPLE_BITS))
-	--	port map(in_clk => bitclk, in_rst => reset, out_clk => sampleclk);
-
 	clkgen_sampleclk : entity work.clkctr
 		generic map(USE_RISING_EDGE => '0', COUNTER => SAMPLE_BITS, CLK_INIT => '0')
 		port map(in_clk => bitclk, in_reset => reset, out_clk => sampleclk);
-
-	--clkgen_sampleclk : entity work.clkdiv(clkdiv_impl)
-	--	generic map(USE_RISING_EDGE => '1', NUM_CTRBITS => 8, SHIFT_BITS => 7)
-	--	port map(in_clk => xclk_lck, in_rst => reset, out_clk => sampleclk);
 
 	-- generate slow clocks for debugging
 	clkgen_slowxclk : entity work.clkdiv(clkdiv_impl)

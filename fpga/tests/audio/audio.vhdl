@@ -43,6 +43,9 @@ architecture audio_impl of audio is
 
 	signal samples_end, next_samples_end : std_logic := '0';
 
+	-- data amplitude
+	signal amp, next_amp : std_logic_vector(SAMPLE_BITS - 1 downto 0) := (others => '0');
+
 begin
 
 	-- counters
@@ -52,8 +55,7 @@ begin
 
 
 	-- sample bit output
-	out_data <= sample_ctr(8) when in_freqsel = '0' else sample_ctr(5);
-	--out_data <= sample_ctr(8) when bit_ctr < SAMPLE_BITS - 2 else '0';
+	out_data <= amp(0);
 	out_samples_end <= samples_end;
 
 
@@ -62,43 +64,60 @@ begin
 	--
 	proc_ff : process(in_bitclk, in_sampleclk, in_reset, samples_end) begin
 		samples_end <= samples_end;
-	
-		-- channel clock
-		if falling_edge(in_sampleclk) then
-			if in_reset = '1' then
-				-- counter register
-				sec_ctr <= 0;
-				samples_end <= '0';
-				sample_ctr <= (others => '0');
-			else
-				-- counter register
+
+		if in_reset = '1' then
+			sec_ctr <= 0;
+			samples_end <= '0';
+			sample_ctr <= (others => '0');
+
+			bit_ctr <= 0;
+			amp <= (others => '0');
+		else
+			-- channel clock
+			if falling_edge(in_sampleclk) then
 				sec_ctr <= next_sec_ctr;
 				samples_end <= next_samples_end;
 				sample_ctr <= next_sample_ctr;
 			end if;
-		end if;
 
-		-- bit clock
-		if rising_edge(in_bitclk) then
-			if in_reset = '1' then
-				-- counter register
-				bit_ctr <= 0;
-			else
-				-- counter register
+			-- bit clock
+			if rising_edge(in_bitclk) then
 				bit_ctr <= next_bit_ctr;
+				amp <= next_amp;
 			end if;
 		end if;
 	end process;
 
 
 	--
-	-- combinatorics
+	-- combinatorics for sample counter
 	--
-	proc_comb : process(samples_end, sec_ctr) begin
+	proc_comb_sample : process(samples_end, sec_ctr) begin
 		next_samples_end <= samples_end;
 
 		if sec_ctr = SAMPLE_FREQ - 1 then
 			next_samples_end <= not samples_end;
+		end if;
+	end process;
+
+
+	--
+	-- combinatorics for bit counter
+	--
+	proc_comb_bit : process(bit_ctr, amp, sample_ctr, in_freqsel) begin
+		next_amp <= amp;
+
+		if bit_ctr = 0 then
+			-- set new output amplitude
+			-- NOTE: data is in signed 2s-complement!
+			if in_freqsel = '0' then
+				next_amp <= (0 to 5 => '0', others => sample_ctr(6));
+			else
+				next_amp <= (0 to 5 => '0', others => sample_ctr(5));
+			end if;
+		else
+			-- shift output amplitude bits
+			next_amp <= "0" & amp(SAMPLE_BITS - 1 downto 1);
 		end if;
 	end process;
 
