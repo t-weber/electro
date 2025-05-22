@@ -17,6 +17,7 @@ use work.conv.all;
 
 entity audio is
 	generic(
+		FRAME_BITS  : natural := 32;    -- number of bits in a sample frame
 		SAMPLE_BITS : natural := 16;    -- number of sample bits (for encoding the amplitude)
 		SAMPLE_FREQ : natural := 44_100 -- number of sample per second (*2 channels)
 	);
@@ -37,14 +38,14 @@ end entity;
 architecture audio_impl of audio is
 
 	-- bit and sample counter
-	signal bit_ctr, next_bit_ctr : natural range 0 to SAMPLE_BITS - 1 := 0;
+	signal bit_ctr, next_bit_ctr : natural range 0 to FRAME_BITS - 1 := 0;
 	signal sec_ctr, next_sec_ctr : natural range 0 to SAMPLE_FREQ - 1 := 0;
 	signal sample_ctr, next_sample_ctr : std_logic_vector(15 downto 0) := (others => '0');
 
 	signal samples_end, next_samples_end : std_logic := '0';
 
 	-- data amplitude
-	signal amp, next_amp : std_logic_vector(SAMPLE_BITS - 1 downto 0) := (others => '0');
+	signal amp, next_amp : std_logic_vector(FRAME_BITS - 1 downto 0) := (others => '0');
 
 begin
 
@@ -111,13 +112,13 @@ begin
 			-- set new output amplitude
 			-- NOTE: data is in signed 2s-complement!
 			if in_freqsel = '0' then
-				next_amp <= (0 to 5 => '0', others => sample_ctr(6));
+				next_amp <= (0 to 2 => '0', FRAME_BITS - 1 downto SAMPLE_BITS - 1 => '0', others => sample_ctr(6));
 			else
-				next_amp <= (0 to 5 => '0', others => sample_ctr(5));
+				next_amp <= (0 to 2 => '0', FRAME_BITS - 1 downto SAMPLE_BITS - 1 => '0', others => sample_ctr(5));
 			end if;
 		else
 			-- shift output amplitude bits
-			next_amp <= "0" & amp(SAMPLE_BITS - 1 downto 1);
+			next_amp <= "0" & amp(FRAME_BITS - 1 downto 1);
 		end if;
 	end process;
 

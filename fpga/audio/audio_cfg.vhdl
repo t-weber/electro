@@ -28,6 +28,8 @@ entity audio_cfg is
 		-- addresses, see [hw, p. 17]
 		constant BUS_WRITEADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"34";
 		constant BUS_READADDR : std_logic_vector(BUS_ADDRBITS - 1 downto 0) := x"35"
+
+		constant SAMPLE_BITS : natural := 16
 	);
 
 	port(
@@ -64,20 +66,30 @@ architecture audio_cfg_impl of audio_cfg is
 	signal last_bus_byte_finished, bus_cycle : std_logic := '0';
 
 	-- reset delay and counter for busy wait
-	constant const_wait_reset : natural := MAIN_CLK/1000*200;  -- 200 ms
-	constant const_wait_power : natural := MAIN_CLK/1000*200;  -- 200 ms
-	constant const_wait_config : natural := MAIN_CLK/1000*5;  -- 5 ms
+	constant const_wait_reset : natural := MAIN_CLK/1000*100;  -- 100 ms
+	constant const_wait_power : natural := MAIN_CLK/1000*100;  -- 100 ms
+	constant const_wait_config : natural := MAIN_CLK/1000*1;  -- 1 ms
 	signal wait_counter, wait_counter_max : natural range 0 to const_wait_reset := 0;
 
 	-- status register
 	signal status_reg, next_status_reg : std_logic_vector(BUS_DATABITS - 1 downto 0) := (others => '0');
 
-	-- all video outputs on?
-	signal is_powered, next_is_powered : std_logic := '0';
+	pure function get_sample_size(bits : natural) return std_logic_vector is
+	begin
+		if SAMPLE_BITS = 16 then
+			return "00";
+		elsif SAMPLE_BITS = 24 then
+			return "10";
+		elsif SAMPLE_BITS = 32 then
+			return "11";
+		else
+			return "00";
+		end if;
+	end function;
 
 	-- power up sequence options, see [hw, p. 19]
 	constant LINEIN_OFF       : std_logic := '1';
-	constant MIKE_OFF         : std_logic := '1';
+	constant MIC_OFF          : std_logic := '1';
 	constant ADC_OFF          : std_logic := '1';
 	constant DAC_OFF          : std_logic := '0';
 	constant OSCI_OFF         : std_logic := '1';
@@ -89,10 +101,10 @@ architecture audio_cfg_impl of audio_cfg is
 	constant DAC_MUTE         : std_logic := '0';
 	constant DAC_SELECT       : std_logic := '1';
 	constant LINEIN_SELECT    : std_logic := '0';
-	constant MIKE_SELECT      : std_logic := '0';
-	constant MIKE_MUTE        : std_logic := '1';
-	constant MIKE_BOOST       : std_logic := '0';
-	constant MIKE_GAIN_ENABLE : std_logic := '0';
+	constant MIC_SELECT       : std_logic := '0';
+	constant MIC_MUTE         : std_logic := '1';
+	constant MIC_BOOST        : std_logic := '0';
+	constant MIC_GAIN_ENABLE  : std_logic := '0';
 	constant INVERT_BCLK      : std_logic := '0';
 	constant CONTROL_CLOCKS   : std_logic := '0';  -- output (1) or receive (0) clock signals
 	constant DAC_SWAP         : std_logic := '0';
@@ -102,11 +114,16 @@ architecture audio_cfg_impl of audio_cfg is
 	constant ADC_VOLUME       : std_logic_vector(5 downto 0) := 6x"00";
 	constant DAC_VOLUME       : std_logic_vector(6 downto 0) := 7x"79";
 	constant DEEMPHASIS       : std_logic_vector(1 downto 0) := "00";
-	constant MIKE_GAIN        : std_logic_vector(1 downto 0) := "00";
-	constant WORD_SIZE        : std_logic_vector(1 downto 0) := "11";  -- 32 bits
-	constant DAC_FORMAT       : std_logic_vector(1 downto 0) := "10";
+	constant MIC_GAIN         : std_logic_vector(1 downto 0) := "00";
 	constant CLK_DIVS         : std_logic_vector(1 downto 0) := "00";
-	constant CLK_RATE         : std_logic_vector(3 downto 0) := "1000";  -- 44.1 kHz
+	constant DAC_FORMAT       : std_logic_vector(1 downto 0) := "01";
+	--constant SAMPLE_SIZE      : std_logic_vector(1 downto 0) :=
+	--	"00" when SAMPLE_BITS = 16
+	--	else "10" when SAMPLE_BITS = 24
+	--	else "11" when SAMPLE_BITS = 32
+	--	else "00";
+	constant SAMPLE_SIZE      : std_logic_vector(1 downto 0) := get_sample_size(SAMPLE_BITS);
+	constant SAMPLE_FREQ      : std_logic_vector(3 downto 0) := "1000";  -- 44.1 kHz
 
 	-- configuration sequence, see [hw, pp. 17, 19]
 	type t_config_arr is array(0 to 14 - 1) of std_logic_vector(2*BUS_DATABITS - 1 downto 0);
@@ -114,18 +131,18 @@ architecture audio_cfg_impl of audio_cfg is
 		-- reg: 7 bits, val: 9 bits
 		7x"0f" & "000000000",  -- reset, [hw, p. 27]
 		7x"09" & "000000000",  -- inactive, [hw, p. 27]
-		7x"06" & '0' & ALL_OFF & CLOCKOUT_OFF & OSCI_OFF & '1' & DAC_OFF & ADC_OFF & MIKE_OFF & LINEIN_OFF,  -- power (active low), [hw, p. 23]
+		7x"06" & '0' & ALL_OFF & CLOCKOUT_OFF & OSCI_OFF & '1' & DAC_OFF & ADC_OFF & MIC_OFF & LINEIN_OFF,  -- power (active low), [hw, p. 23]
 
 		7x"00" & '0' & ADC_MUTE & '0' & ADC_VOLUME,  -- adc volumne (left), [hw, p. 20]
 		7x"01" & '0' & ADC_MUTE & '0' & ADC_VOLUME,  -- adc volumne (right), [hw, p. 21]
 		7x"02" & "00" & DAC_VOLUME,  -- dac volumne (left), [hw, p. 21]
 		7x"03" & "00" & DAC_VOLUME,  -- dac volumne (right), [hw, p. 22]
 
-		7x"04" & '0' & MIKE_GAIN & MIKE_GAIN_ENABLE & DAC_SELECT & LINEIN_SELECT & MIKE_SELECT & MIKE_MUTE & MIKE_BOOST,  -- [hw, p. 22]
+		7x"04" & '0' & MIC_GAIN & MIC_GAIN_ENABLE & DAC_SELECT & LINEIN_SELECT & MIC_SELECT & MIC_MUTE & MIC_BOOST,  -- [hw, p. 22]
 		7x"05" & "0000" & ADC_DC_OFFS & DAC_MUTE & DEEMPHASIS & ADC_HIGHPASS_OFF,  -- [hw, pp. 22, 23]
 
-		7x"07" & '0' & INVERT_BCLK & CONTROL_CLOCKS & DAC_SWAP & CLK_POLARITY & WORD_SIZE & DAC_FORMAT,  -- [hw, p. 24]
-		7x"08" & '0' & CLK_DIVS & CLK_RATE & CLK_OVERSAMPLE & SERIAL_MODE,  -- [hw, p. 24]
+		7x"07" & '0' & INVERT_BCLK & CONTROL_CLOCKS & DAC_SWAP & CLK_POLARITY & SAMPLE_SIZE & DAC_FORMAT,  -- [hw, p. 24]
+		7x"08" & '0' & CLK_DIVS & SAMPLE_FREQ & CLK_OVERSAMPLE & SERIAL_MODE,  -- [hw, p. 24]
 
 		7x"10" & "000000000",  -- [hw, p. 28]
 		7x"11" & "000000000",  -- [hw, p. 28]
@@ -137,7 +154,7 @@ architecture audio_cfg_impl of audio_cfg is
 	constant powerup_arr : t_powerup_arr := (
 		-- reg: 7 bits, val: 9 bits
 		7x"09" & "000000001",  -- active, [hw, p. 27]
-		7x"06" & '0' & ALL_OFF & CLOCKOUT_OFF & OSCI_OFF & '0' & DAC_OFF & ADC_OFF & MIKE_OFF & LINEIN_OFF   -- power (active low), [hw, p. 23]
+		7x"06" & '0' & ALL_OFF & CLOCKOUT_OFF & OSCI_OFF & '0' & DAC_OFF & ADC_OFF & MIC_OFF & LINEIN_OFF   -- power (active low), [hw, p. 23]
 	);
 
 	signal config_cycle, next_config_cycle : natural range 0 to config_arr'length := 0;
@@ -152,6 +169,7 @@ begin
 	-- rising edge of serial bus finished signal
 	bus_cycle <= in_bus_byte_finished and (not last_bus_byte_finished);
 	--bus_cycle <= (not in_bus_byte_finished) and last_bus_byte_finished;
+
 
 
 	--
@@ -169,9 +187,6 @@ begin
 			-- status register
 			status_reg <= (others => '0');
 
-			-- all video outputs on?
-			is_powered <= '0';
-
 			-- timer register
 			wait_counter <= 0;
 
@@ -188,9 +203,6 @@ begin
 			-- status register
 			status_reg <= next_status_reg;
 
-			-- all video outputs on?
-			is_powered <= next_is_powered;
-
 			-- timer register
 			if wait_counter = wait_counter_max then
 				-- reset timer counter
@@ -205,6 +217,7 @@ begin
 	end process;
 
 
+
 	--
 	-- state combinatorics
 	--
@@ -212,14 +225,12 @@ begin
 		state,
 		wait_counter, wait_counter_max,
 		in_bus_ready, in_bus_data,
-		bus_cycle, config_cycle,
-		status_reg, is_powered)
+		bus_cycle, config_cycle, status_reg)
 	begin
 		-- defaults
 		next_state <= state;
 		next_config_cycle <= config_cycle;
 		next_status_reg <= status_reg;
-		next_is_powered <= is_powered;
 		wait_counter_max <= 0;
 
 		out_bus_enable <= '0';
@@ -285,7 +296,6 @@ begin
 					if config_cycle + 1 = config_arr'length then
 						-- at end of command list
 							next_state <= PowerUp_Wait;
-						next_is_powered <= '1';
 						next_config_cycle <= 0;
 					else
 						-- next command
@@ -343,7 +353,6 @@ begin
 					if config_cycle + 1 = powerup_arr'length then
 						-- at end of command list
 							next_state <= ReadStatus_SetAddr;
-						next_is_powered <= '1';
 						next_config_cycle <= 0;
 					else
 						-- next command
