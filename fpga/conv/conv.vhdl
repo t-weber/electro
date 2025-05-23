@@ -65,7 +65,7 @@ package body conv is
 	--
 	pure function bool_to_int(b : boolean) return integer is
 	begin
-		if b=true then
+		if b = true then
 			return 1;
 		else
 			return 0;

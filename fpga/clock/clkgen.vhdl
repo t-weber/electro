@@ -76,12 +76,15 @@ begin
 			constant clk_ctr_shifted : natural := get_clk_shift(is_shifted => CLK_SHIFT);
 			variable clk_ctr : natural range 0 to clk_ctr_max := 0;
 		begin
+			--report "ref_clk = " & natural'image(MAIN_HZ) & " Hz"
+			--	& ", req_clk = " & natural'image(CLK_HZ) & " Hz"
+			--	& ", gen_clk = " & natural'image(MAIN_HZ / (clk_ctr_max*2 + 2)) & " Hz"
+			--	& ", clk_ctr_max = " & natural'image(clk_ctr_max)
+			--	& ", clk_ctr_shifted = " & natural'image(clk_ctr_shifted);
+
 			-- asynchronous reset
 			if in_reset = '1' then
-				--report "clk_ctr_max = " & natural'image(clk_ctr_max)
-				--	& ", clk_ctr_shifted = " & natural'image(clk_ctr_shifted);
-
-				clk_ctr := 0;
+				clk_ctr := clk_ctr_shifted;
 				clk <= CLK_INIT;
 
 			-- clock

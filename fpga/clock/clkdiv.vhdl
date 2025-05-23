@@ -90,7 +90,7 @@ end architecture;
 
 --
 -- standard behaviour:
--- divides clock by 2**shift_bits
+-- divides clock by 2**(shift_bits + 1)
 --
 architecture clkdiv_impl of clkdiv is
 	signal ctr, next_ctr : std_logic_vector(NUM_CTRBITS - 1 downto 0) := (others=>'0');

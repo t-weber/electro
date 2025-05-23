@@ -41,11 +41,15 @@ architecture audio_impl of audio is
 	signal bit_ctr, next_bit_ctr : natural range 0 to FRAME_BITS - 1 := 0;
 	signal sec_ctr, next_sec_ctr : natural range 0 to SAMPLE_FREQ - 1 := 0;
 	signal sample_ctr, next_sample_ctr : std_logic_vector(15 downto 0) := (others => '0');
+	signal tone_clk : std_logic;
 
 	signal samples_end, next_samples_end : std_logic := '0';
 
 	-- data amplitude
 	signal amp, next_amp : std_logic_vector(FRAME_BITS - 1 downto 0) := (others => '0');
+
+	-- generated tone frequency
+	signal tone_hz : std_logic_vector(31 downto 0) := 32d"330";
 
 begin
 
@@ -105,21 +109,38 @@ begin
 	--
 	-- combinatorics for bit counter
 	--
-	proc_comb_bit : process(bit_ctr, amp, sample_ctr, in_freqsel) begin
+	proc_comb_bit : process(bit_ctr, amp, tone_clk, in_freqsel) begin
 		next_amp <= amp;
 
 		if bit_ctr = 0 then
 			-- set new output amplitude
 			-- NOTE: data is in signed 2s-complement!
-			if in_freqsel = '0' then
-				next_amp <= (0 to 2 => '0', FRAME_BITS - 1 downto SAMPLE_BITS - 1 => '0', others => sample_ctr(6));
-			else
-				next_amp <= (0 to 2 => '0', FRAME_BITS - 1 downto SAMPLE_BITS - 1 => '0', others => sample_ctr(5));
-			end if;
+			next_amp <= (0 to 2 => '0', FRAME_BITS - 1 downto SAMPLE_BITS - 1 => '0', others => tone_clk);
 		else
 			-- shift output amplitude bits
 			next_amp <= "0" & amp(FRAME_BITS - 1 downto 1);
 		end if;
 	end process;
+
+
+	--
+	-- select frequency of tone to generate
+	--
+	proc_tonesel : process(in_freqsel) begin
+		if in_freqsel = '1' then
+			tone_hz <= 32d"660";
+		else
+			tone_hz <= 32d"330";
+		end if;
+	end process;
+
+
+	--
+	-- clock for tone generation
+	--
+	proc_tonegen : entity work.clkgen_var
+		generic map(MAIN_HZ => SAMPLE_FREQ)
+		port map(in_clk => in_sampleclk, in_reset => in_reset, out_clk => tone_clk,
+			in_clk_hz => tone_hz, in_clk_shift => '0', in_clk_init => '0');
 
 end architecture;
