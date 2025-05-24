@@ -18,7 +18,7 @@ entity main is
 	port(
 		clock_50_b7a : in std_logic;
 
-		key : in std_logic_vector(3 downto 0);
+		key : in std_logic_vector(0 downto 0);
 		sw : in std_logic_vector(0 downto 0);
 
 		ledg : out std_logic_vector(7 downto 0);
@@ -69,6 +69,7 @@ architecture main_impl of main is
 
 	signal samples_end : std_logic;
 	signal amp : std_logic;
+	signal tone_hz : std_logic_vector(15 downto 0) := 16d"330";
 
 begin
 
@@ -122,7 +123,9 @@ begin
 		generic map(NUM_CTRBITS => 21, SHIFT_BITS => 20)
 		port map(in_clk => sampleclk, in_rst => reset, out_clk => sampleclk_slow);
 
+	--
 	-- audio configuration serial interface
+	--
 	audio_serial : entity work.serial_2wire
 		generic map(MAIN_HZ => MAIN_HZ, SERIAL_HZ => SERIAL_HZ,
 			ADDR_BITS => SERIAL_ADDRBITS, BITS => SERIAL_DATABITS)
@@ -136,7 +139,9 @@ begin
 			out_next_word => serial_audio_byte_finished,
 			inout_clk => aud_scl, inout_serial => aud_sda);
 
-	  -- audio configuration
+	--
+	-- audio configuration
+	--
 	audio_cfg : entity work.audio_cfg
 		generic map(MAIN_CLK => MAIN_HZ,
 			BUS_ADDRBITS => SERIAL_ADDRBITS, BUS_DATABITS => SERIAL_DATABITS,
@@ -148,11 +153,23 @@ begin
 			out_bus_data => serial_audio_data_write, in_bus_data => serial_audio_data_read,
 			out_bus_addr => serial_audio_addr, out_active => audio_active, out_status => audio_status);
 
+	--
 	-- audio generation
+	--
 	audio_gen : entity work.audio
-		generic map(FRAME_BITS => FRAME_BITS, SAMPLE_BITS => SAMPLE_BITS, SAMPLE_FREQ => SAMPLE_FREQ)
-		port map(in_reset => reset, in_freqsel => not key(1),
+		generic map(TONE_BITS => tone_hz'length, FRAME_BITS => FRAME_BITS,
+			SAMPLE_BITS => SAMPLE_BITS, SAMPLE_FREQ => SAMPLE_FREQ)
+		port map(in_reset => reset, --in_freqsel => not key(1),
 			in_bitclk => bitclk, in_sampleclk => sampleclk,
+			in_tone_hz => tone_hz,
 			out_data => amp, out_samples_end => samples_end);
+
+	--
+	-- tone sequence
+	--
+	tone_seq : entity work.tones
+		generic map(MAIN_HZ => SAMPLE_FREQ, FREQ_BITS => tone_hz'length)
+		port map(in_clk => sampleclk, in_reset => reset,
+			in_enable => audio_active, out_freq => tone_hz);
 
 end architecture;

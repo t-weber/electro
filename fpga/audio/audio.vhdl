@@ -1,5 +1,5 @@
 --
--- generates an audio signal
+-- generates a simple rectangular audio signal
 -- @author Tobias Weber <tobias.weber@tum.de>
 -- @date 11-may-2025
 -- @license see 'LICENSE' file
@@ -17,18 +17,21 @@ use work.conv.all;
 
 entity audio is
 	generic(
-		FRAME_BITS  : natural := 32;    -- number of bits in a sample frame
-		SAMPLE_BITS : natural := 16;    -- number of sample bits (for encoding the amplitude)
-		SAMPLE_FREQ : natural := 44_100 -- number of sample per second (*2 channels)
+		TONE_BITS   : natural := 16;     -- number of bits for the tone frequency
+		FRAME_BITS  : natural := 32;     -- number of bits in a sample frame
+		SAMPLE_BITS : natural := 16;     -- number of sample bits (for encoding the amplitude)
+		SAMPLE_FREQ : natural := 44_100  -- number of sample per second (*2 channels)
 	);
 
 	port(
 		in_reset : in std_logic;
+		--in_freqsel : in std_logic;
 		in_bitclk : in std_logic;
 		in_sampleclk : in std_logic;
-		in_freqsel : in std_logic;
 
-		out_data : out std_logic;
+		in_tone_hz : in std_logic_vector(TONE_BITS - 1 downto 0);
+
+		out_data : out std_logic;        -- current sample bit
 		out_samples_end : out std_logic  -- for debugging
 	);
 end entity;
@@ -49,7 +52,7 @@ architecture audio_impl of audio is
 	signal amp, next_amp : std_logic_vector(FRAME_BITS - 1 downto 0) := (others => '0');
 
 	-- generated tone frequency
-	signal tone_hz : std_logic_vector(31 downto 0) := 32d"330";
+	signal tone_hz : std_logic_vector(TONE_BITS - 1 downto 0) := 16d"330";
 
 begin
 
@@ -109,7 +112,7 @@ begin
 	--
 	-- combinatorics for bit counter
 	--
-	proc_comb_bit : process(bit_ctr, amp, tone_clk, in_freqsel) begin
+	proc_comb_bit : process(bit_ctr, amp, tone_clk) begin
 		next_amp <= amp;
 
 		if bit_ctr = 0 then
@@ -124,22 +127,25 @@ begin
 
 
 	--
-	-- select frequency of tone to generate
+	-- select frequency of test tone to generate
 	--
-	proc_tonesel : process(in_freqsel) begin
-		if in_freqsel = '1' then
-			tone_hz <= 32d"660";
-		else
-			tone_hz <= 32d"330";
-		end if;
-	end process;
+	--proc_tonesel : process(in_freqsel) begin
+	--	if in_freqsel = '1' then
+	--		tone_hz <= 32d"660";
+	--	else
+	--		tone_hz <= 32d"330";
+	--	end if;
+	--end process;
+
+	-- or use externally given tone frequency
+	tone_hz <= in_tone_hz;
 
 
 	--
 	-- clock for tone generation
 	--
-	proc_tonegen : entity work.clkgen_var
-		generic map(MAIN_HZ => SAMPLE_FREQ)
+	tonegen : entity work.clkgen_var
+		generic map(MAIN_HZ => SAMPLE_FREQ, HZ_BITS => TONE_BITS)
 		port map(in_clk => in_sampleclk, in_reset => in_reset, out_clk => tone_clk,
 			in_clk_hz => tone_hz, in_clk_shift => '0', in_clk_init => '0');
 
