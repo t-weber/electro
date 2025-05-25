@@ -10,7 +10,7 @@
  */
 
 
- `timescale 1ns / 100ps
+`timescale 1ns / 100ps
 `default_nettype /*wire*/ none  // no implicit declarations
 
 

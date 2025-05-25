@@ -8,7 +8,8 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
--- freq: SAMPLE_FREQ * FRAME_BITS [= 32] * 2 channels * 4
+
+-- pll freq: SAMPLE_FREQ * FRAME_BITS [= 32] * 2 channels * 4
 library audclk_pll;
 use audclk_pll.all;
 

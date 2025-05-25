@@ -40,7 +40,7 @@ architecture tones_impl of tones is
 	signal wait_counter, wait_counter_max : natural := 0;
 
 	-- data struct
-	type t_seq_freq is record
+	type t_seq is record
 		freq     : std_logic_vector(FREQ_BITS - 1 downto 0);
 		duration : natural;  -- time to keep frequency
 		delay    : natural;  -- time to wait before next frequency
@@ -51,7 +51,7 @@ architecture tones_impl of tones is
 	--   melody: https://en.wikipedia.org/wiki/Symphony_No._9_(Beethoven)#IV._Finale
 	--   tuning: https://en.wikipedia.org/wiki/Equal_temperament
 	--
-	type t_seq_arr is array(0 to 57 - 1) of t_seq_freq;
+	type t_seq_arr is array(0 to 57 - 1) of t_seq;
 	constant def_delay : natural := MAIN_HZ / 20;
 	constant seq_arr : t_seq_arr := (
 		-- sequence 1
