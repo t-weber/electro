@@ -17,14 +17,21 @@ use audclk_pll.all;
 
 entity main is
 	port(
+		-- main clock
 		clock_50_b7a : in std_logic;
 
+		-- buttons and switches
 		key : in std_logic_vector(0 downto 0);
 		sw : in std_logic_vector(0 downto 0);
 
+		-- leds
 		ledg : out std_logic_vector(7 downto 0);
 		ledr : out std_logic_vector(9 downto 0);
 
+		 -- segment displays
+		hex0, hex1, hex2, hex3 : out std_logic_vector(6 downto 0);
+
+		-- audio interface
 		aud_scl, aud_sda : inout std_logic;
 		aud_adclrck, aud_daclrck, aud_bclk : out std_logic;  --inout std_logic;
 		--aud_adcdat : in std_logic;   -- ADC data, from microphone
@@ -76,6 +83,7 @@ begin
 
 	reset <= not key(0);
 
+	-- audio interface
 	xclk_lck <= xclk when xclk_locked = '1' else '0';
 	aud_xck <= xclk_lck when audio_active = '1' else '0';
 	aud_bclk <= bitclk; -- when audio_active = '1' else '0';
@@ -93,6 +101,21 @@ begin
 	ledr(8) <= samples_end;
 	ledr(9) <= serial_audio_err;
 	ledr(7 downto 3) <= (others => '0');
+
+	-- display current tone frequency
+	seg0 : entity work.sevenseg
+		 generic map(zero_is_on => '1', inverse_numbering => '1')
+		 port map(in_digit => tone_hz(3 downto 0), out_leds => hex0);
+	seg1 : entity work.sevenseg
+		 generic map(zero_is_on => '1', inverse_numbering => '1')
+		 port map(in_digit => tone_hz(7 downto 4), out_leds => hex1);
+	seg2 : entity work.sevenseg
+		 generic map(zero_is_on => '1', inverse_numbering => '1')
+		 port map(in_digit => tone_hz(11 downto 8), out_leds => hex2);
+	seg3 : entity work.sevenseg
+		 generic map(zero_is_on => '1', inverse_numbering => '1')
+		 port map(in_digit => tone_hz(15 downto 12), out_leds => hex3);
+
 
 	--
 	-- generate audio clocks:
@@ -124,6 +147,7 @@ begin
 		generic map(NUM_CTRBITS => 21, SHIFT_BITS => 20)
 		port map(in_clk => sampleclk, in_rst => reset, out_clk => sampleclk_slow);
 
+
 	--
 	-- audio configuration serial interface
 	--
@@ -154,8 +178,9 @@ begin
 			out_bus_data => serial_audio_data_write, in_bus_data => serial_audio_data_read,
 			out_bus_addr => serial_audio_addr, out_active => audio_active, out_status => audio_status);
 
+
 	--
-	-- audio generation
+	-- tone generation
 	--
 	audio_gen : entity work.audio
 		generic map(TONE_BITS => tone_hz'length, FRAME_BITS => FRAME_BITS,
@@ -172,5 +197,6 @@ begin
 		generic map(MAIN_HZ => SAMPLE_FREQ, FREQ_BITS => tone_hz'length)
 		port map(in_clk => sampleclk, in_reset => reset,
 			in_enable => audio_active, out_freq => tone_hz);
+
 
 end architecture;

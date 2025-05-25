@@ -50,12 +50,14 @@ typedef struct packed
 } t_seq;
 
 // sequence array
-localparam num_data = 2;
+localparam num_data = 4;
 t_seq [0 : num_data - 1] seq_arr;
 assign seq_arr =
 {
-	{ DATA_BITS'(8'b10101010), WAIT_BITS'(MAIN_HZ/1_000*500) },
-	{ DATA_BITS'(8'b01010101), WAIT_BITS'(MAIN_HZ/1_000*500) }
+	{ DATA_BITS'(8'b10101010), WAIT_BITS'(MAIN_HZ/1_000_000*5) },
+	{ DATA_BITS'(8'b01010101), WAIT_BITS'(MAIN_HZ/1_000_000*5) },
+	{ DATA_BITS'(8'b00001111), WAIT_BITS'(MAIN_HZ/1_000_000*5) },
+	{ DATA_BITS'(8'b11110000), WAIT_BITS'(MAIN_HZ/1_000_000*5) }
 };
 
 /*initial begin
