@@ -27,8 +27,10 @@ entity video_cfg is
 		-- word length and address of the serial bus
 		constant BUS_NUM_ADDRBITS : natural := 8;
 		constant BUS_NUM_DATABITS : natural := 8;
-		constant BUS_WRITEADDR : std_logic_vector(BUS_NUM_ADDRBITS-1 downto 0) := x"10";
-		constant BUS_READADDR : std_logic_vector(BUS_NUM_ADDRBITS-1 downto 0) := x"11"
+		--constant BUS_WRITEADDR : std_logic_vector(BUS_NUM_ADDRBITS - 1 downto 0) := x"10";
+		--constant BUS_READADDR : std_logic_vector(BUS_NUM_ADDRBITS - 1 downto 0)  := x"11"
+		constant BUS_WRITEADDR : std_logic_vector(7 downto 0) := x"10";
+		constant BUS_READADDR : std_logic_vector(7 downto 0)  := x"11"
 	);
 
 	port(
@@ -40,16 +42,16 @@ entity video_cfg is
 
 		-- serial bus interface
 		in_bus_ready : in std_logic;
-		in_bus_data : in std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+		in_bus_data : in std_logic_vector(BUS_NUM_DATABITS - 1 downto 0);
 		in_bus_byte_finished : in std_logic;
 
 		-- serial bus interface
 		out_bus_enable : out std_logic;
-		out_bus_addr : out std_logic_vector(BUS_NUM_ADDRBITS-1 downto 0);
-		out_bus_data : out std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+		out_bus_addr : out std_logic_vector(BUS_NUM_ADDRBITS - 1 downto 0);
+		out_bus_data : out std_logic_vector(BUS_NUM_DATABITS - 1 downto 0);
 
 		-- is a monitor connected and the video output active?
-		out_status : out std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+		out_status : out std_logic_vector(BUS_NUM_DATABITS - 1 downto 0);
 		out_active : out std_logic
 	);
 end entity;
@@ -75,42 +77,82 @@ architecture video_cfg_impl of video_cfg is
 
 	-- status register
 	constant CHECK_STATUS_REG : std_logic := '1';
-	signal status_reg, next_status_reg : std_logic_vector(BUS_NUM_DATABITS-1 downto 0) := (others => '0');
+	signal status_reg, next_status_reg : std_logic_vector(BUS_NUM_DATABITS - 1 downto 0) := (others => '0');
 	signal int_triggered, next_int_triggered : std_logic := '0';
 
 	-- all video outputs on?
 	signal is_powered, next_is_powered : std_logic := '0';
 
+
+	-- register configuration values, [sw, pp. 138 - 167]
+	constant SYNC_ADJ      : std_logic := '0';
+	constant OUT_FORMAT    : std_logic := '0';
+	constant IN_EDGE       : std_logic := '0';
+	constant IN_YCBCR      : std_logic := '0';  -- 0: rgb
+	constant GEN_DAT_ENA   : std_logic := '0';
+	constant ASPECT        : std_logic := '1';  -- 16 / 9
+	constant USE_INTERP    : std_logic := '0';
+	constant USE_COLCONV   : std_logic := '0';
+	constant CYCLE_PACKET  : std_logic := '0';
+	constant AUDIO_PACKET  : std_logic := '0';
+	constant VIDEO_INFO    : std_logic := '0';
+	constant AUDIO_INFO    : std_logic := '0';
+	constant PACKET_READ   : std_logic := '1';
+	constant INFO_AVAIL    : std_logic := '0';
+	constant VIDEO_MODE    : std_logic := '1';
+	constant CRYPT         : std_logic := '0';
+	constant CRYPT_FRAME   : std_logic := '0';
+	constant SENSE_MON_OFF : std_logic := '0';
+	constant CLK_OFF       : std_logic := '0';
+	constant CLK_SOFT      : std_logic := '0';
+	constant CLK_GATE      : std_logic := '0';
+	constant IN_FORMAT     : std_logic_vector(3 downto 0) := "0000";
+	constant OUT_FORMAT2   : std_logic_vector(1 downto 0) := "00";  -- rgb
+	constant IN_COLOURS    : std_logic_vector(1 downto 0) := "11";  -- 8 bits
+	constant IN_PINS       : std_logic_vector(1 downto 0) := "01";
+	constant AUDIO_FREQ    : std_logic_vector(3 downto 0) := "0000";
+	constant SYNC_POL      : std_logic_vector(1 downto 0) := "00";
+	constant COLCONV_SC    : std_logic_vector(1 downto 0) := "00";
+	constant COLCONV_PARAM : std_logic_vector(4 downto 0) := "00000";
+	constant INFO_BAR      : std_logic_vector(1 downto 0) := "00";
+	constant INFO_SCAN     : std_logic_vector(1 downto 0) := "00";
+	constant INFO_TEMP     : std_logic_vector(1 downto 0) := "00";
+	constant INFO_ASPECT   : std_logic_vector(1 downto 0) := "10";  -- 16 / 9
+	constant INFO_ASPECT2  : std_logic_vector(3 downto 0) := "1000";  -- as INFO_ASPECT
+	constant CHANNELS_OFF  : std_logic_vector(2 downto 0) := "000";
+	constant HOTPLUG_MODE  : std_logic_vector(1 downto 0) := "10";
+
+
 	-- power down sequence
-	type t_powerdown_arr is array(0 to 2*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+	type t_powerdown_arr is array(0 to 2*2 - 1) of std_logic_vector(BUS_NUM_DATABITS - 1 downto 0);
 	constant powerdown_arr : t_powerdown_arr := (
 		-- reg, val
-		x"41", "01010000",    -- power off, [sw, p. 149]
+		x"41", "01" & "0100" & SYNC_ADJ & '0',  -- power off, [sw, p. 149]
 
-		x"96", "11000000"     -- clear interrupts, [sw, p. 130]
+		x"96", "11000000"                       -- clear interrupts, [sw, p. 130]
 	);
 
 	-- power up sequence
-	type t_powerup_arr is array(0 to 10*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+	type t_powerup_arr is array(0 to 10*2 - 1) of std_logic_vector(BUS_NUM_DATABITS - 1 downto 0);
 	constant powerup_arr : t_powerup_arr := (
 		-- reg, val
-		x"41", "00010000",  -- power on, [sw, p. 149]
+		x"41", "00" & "0100" & SYNC_ADJ & '0',  -- power on, [sw, p. 149]
 
 		-- set i/o formats
-		x"15", "00000000",  -- input format, [sw, p. 34, p. 141]
-		x"16", "00110100",  -- in/out formats, [sw, p. 34, p. 142]
-		x"17", "00000010",  -- aspect, [sw, p. 34, p. 143]
-		x"18", "00000000",  -- colour space converter, [sw, p. 144]
-		x"44", "00010001",  -- avi, [sw, p. 150]
-		x"55", "00000000",  -- output format, [sw, p. 152]
-		x"56", "00101000",  -- aspect, [sw, p. 153]
-		x"af", "00000110",  -- mode, [sw, p. 161]
+		x"15", AUDIO_FREQ & IN_FORMAT,                                        -- input format, [sw, p. 34, p. 141]
+		x"16", OUT_FORMAT & '0' & IN_COLOURS & IN_PINS & IN_EDGE & IN_YCBCR,  -- in/out formats, [sw, p. 34, p. 142]
+		x"17", '0' & SYNC_POL & "00" & USE_INTERP & ASPECT & GEN_DAT_ENA,     -- aspect, [sw, p. 34, p. 143]
+		x"18", USE_COLCONV & COLCONV_SC & COLCONV_PARAM,                      -- colour space converter, [sw, p. 144]
+		x"44", '0' & CYCLE_PACKET & AUDIO_PACKET & VIDEO_INFO & AUDIO_INFO & "00" & PACKET_READ,  -- avi, [sw, p. 150]
+		x"55", '0' & OUT_FORMAT2 & INFO_AVAIL & INFO_BAR & INFO_SCAN,         -- output format, [sw, p. 152]
+		x"56", INFO_TEMP & INFO_ASPECT & INFO_ASPECT2,                        -- aspect, [sw, p. 153]
+		x"af", CRYPT & "00" & CRYPT_FRAME & "01" & VIDEO_MODE & '0',          -- mode, [sw, p. 161]
 
 		x"96", "11000000"   -- clear interrupts, [sw, p. 130]
 	);
 
 	-- sequence to set up interrupts (and basic constants)
-	type t_setupint_arr is array(0 to 12*2 - 1) of std_logic_vector(BUS_NUM_DATABITS-1 downto 0);
+	type t_setupint_arr is array(0 to 12*2 - 1) of std_logic_vector(BUS_NUM_DATABITS - 1 downto 0);
 	constant setupint_arr : t_setupint_arr := (
 		-- reg, val
 		x"98", x"03",         -- constants, [sw, p. 14, p. 25]
@@ -125,8 +167,8 @@ architecture video_cfg_impl of video_cfg is
 		-- set up interrupt handling
 		x"94", "11000000",  -- status interrupts enable, [sw, p. 17, p. 158]
 		x"96", "11000000",  -- clear interrupts, [sw, p. 130]
-		x"a1", "00000000",  -- monitor sense, [sw, p. 104, p. 160]
-		x"d6", "10000000"   -- hotplug detection, [sw, p. 17, p. 164]
+		x"a1", '0' & SENSE_MON_OFF & CHANNELS_OFF & CLK_OFF & "00",  -- monitor sense, [sw, p. 104, p. 160]
+		x"d6", HOTPLUG_MODE & '0' & CLK_SOFT & "000" & CLK_GATE      -- hotplug detection, [sw, p. 17, p. 164]
 	);
 
 	signal powerdown_cycle, next_powerdown_cycle : natural range 0 to powerup_arr'length := 0;
