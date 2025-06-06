@@ -141,7 +141,7 @@ void loop()
 	mult_mat(mat_translation, mat_rotation, mat_tmp, 4, 4, 4);
 	mult_mat(mat_viewport_perspective, mat_tmp, cube_trafo, 4, 4, 4);
 
-	draw_cube(0.5, cube_trafo, &oled_draw_func, &oled);
+	draw_cube(0.5, cube_trafo, 1, &oled_draw_func, &oled);
 
 #ifdef _HAS_FONT_
 	oled_set_cursor(&oled, 0, 0);

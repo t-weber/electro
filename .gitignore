@@ -53,7 +53,7 @@
 *.ttf
 
 # generated files
-micro_proc/lib/characters.c
+micro_ctrl/lib/characters.c
 fpga/tests/video/font.vhdl
 fpga_sv/tests/lcd_serial/font.?v
 fpga_sv/tests/lcd_serial/textmem*.?v

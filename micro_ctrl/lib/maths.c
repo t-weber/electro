@@ -334,6 +334,31 @@ void perspective(t_real* M,
 
 
 /**
+ * parallel projection matrix (homogeneous 4x4)
+ * @see https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glOrtho.xml
+ * @see https://github.com/PacktPublishing/Vulkan-Cookbook/blob/master/Library/Source%20Files/10%20Helper%20Recipes/05%20Preparing%20an%20orthographic%20projection%20matrix.cpp
+ */
+void parallel(t_real *M,
+	t_real n, t_real f, t_real l, t_real r, t_real b, t_real t,
+	bool inv_z, bool z01, bool inv_y)
+{
+	t_real w = r - l;
+	t_real h = t - b;
+	t_real d = n - f;
+
+	t_real sc = z01 ? 1. : 2.;
+	t_real f0 = z01 ? 0. : f;
+	t_real ys = inv_y ? -1. : 1.;
+	t_real zs = inv_z ? -1. : 1.;
+
+	M[0*4 + 0] = 2./w; M[0*4 + 1] = 0.;      M[0*4 + 2] = 0.;      M[0*4 + 3] = -(r+l)/w;
+	M[1*4 + 0] = 0.;   M[1*4 + 1] = 2.*ys/h; M[1*4 + 2] = 0.;      M[1*4 + 3] = -ys*(t+b)/h;
+	M[2*4 + 0] = 0.;   M[2*4 + 1] = 0.;      M[2*4 + 2] = sc*zs/d; M[2*4 + 3] = zs*(n+f0)/d;
+	M[3*4 + 0] = 0.;   M[3*4 + 1] = 0.;      M[3*4 + 2] = 0.;      M[3*4 + 3] = 1.;
+}
+
+
+/**
  * rotation around the x axis
  * @see https://en.wikipedia.org/wiki/Rotation_matrix
  */

@@ -17,7 +17,7 @@
  * draw a cube
  */
 extern void draw_cube(
-	t_real len, const t_real* trafo,
+	t_real len, const t_real* trafo, t_int linewidth,
 	void (*draw_func)(void*, t_int x, t_int y),
 	void *user_data);
 

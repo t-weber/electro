@@ -75,6 +75,8 @@ int main(int argc, char **argv)
 
 	image.height = 512;
 	image.width = 512;
+	t_int linewidth = 2;
+	bool use_perspective = 1;
 
 	image.data = malloc(image.width*image.height);
 	memset(image.data, 0, image.width*image.height);
@@ -85,8 +87,17 @@ int main(int argc, char **argv)
 	viewport(mat_viewport, image.width, image.height, 0., 1.);
 
 	t_real mat_perspective[4*4];
-	perspective(mat_perspective, 0.01, 100., 70./180.*M_PI,
-		((t_real)image.height) / ((t_real)image.width), 0, 0, 0);
+	if(use_perspective)
+	{
+		// perspective projection
+		perspective(mat_perspective, 0.01, 100., 70./180.*M_PI,
+			((t_real)image.height) / ((t_real)image.width), 0, 0, 0);
+	}
+	else
+	{
+		// parallel projection
+		parallel(mat_perspective, 0.01, 100., -1., 1., -1., 1., 0, 0, 0);
+	}
 
 	t_real mat_viewport_perspective[4*4];
 	mult_mat(mat_viewport, mat_perspective, mat_viewport_perspective, 4, 4, 4);
@@ -111,7 +122,7 @@ int main(int argc, char **argv)
 	mult_mat(mat_translation, mat_rotation, mat_transrot, 4, 4, 4);
 	mult_mat(mat_viewport_perspective, mat_transrot, cube_trafo, 4, 4, 4);
 
-	draw_cube(0.5, cube_trafo, &draw_func, &image);
+	draw_cube(0.5, cube_trafo, linewidth, &draw_func, &image);
 
 
 	/**

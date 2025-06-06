@@ -106,10 +106,19 @@ extern void viewport(t_real* M, t_real w, t_real h, t_real n, t_real f);
  * @see https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
  * @see https://github.com/PacktPublishing/Vulkan-Cookbook/blob/master/Library/Source%20Files/10%20Helper%20Recipes/04%20Preparing%20a%20perspective%20projection%20matrix.cpp
  */
-extern void perspective(t_real* M,
+extern void perspective(t_real *M,
 	t_real n, t_real f, t_real fov, t_real ratio,
 	bool inv_z, bool z01, bool inv_y);
 
+
+/**
+ * parallel projection matrix (homogeneous 4x4)
+ * @see https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glOrtho.xml
+ * @see https://github.com/PacktPublishing/Vulkan-Cookbook/blob/master/Library/Source%20Files/10%20Helper%20Recipes/05%20Preparing%20an%20orthographic%20projection%20matrix.cpp
+ */
+extern void parallel(t_real *M,
+	t_real n, t_real f, t_real l, t_real r, t_real b, t_real t,
+	bool inv_z, bool z01, bool inv_y);
 
 /**
  * rotation around the x axis
