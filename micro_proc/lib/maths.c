@@ -54,13 +54,13 @@ int equals(t_real x, t_real y, t_real eps)
 void submat(const t_real* M, t_int N, t_real* M_new, t_int iremove, t_int jremove)
 {
 	t_int row_new = 0;
-	for(t_int row=0; row<N; ++row)
+	for(t_int row = 0; row < N; ++row)
 	{
 		if(row == iremove)
 			continue;
 
 		t_int col_new = 0;
-		for(t_int col=0; col<N; ++col)
+		for(t_int col = 0; col < N; ++col)
 		{
 			if(col == jremove)
 				continue;
@@ -90,10 +90,10 @@ t_real determinant(const t_real* M, t_int N)
 	/* get row with maximum number of zeros */
 	t_int row = 0;
 	t_int maxNumZeros = 0;
-	for(t_int curRow=0; curRow<N; ++curRow)
+	for(t_int curRow = 0; curRow < N; ++curRow)
 	{
 		t_int numZeros = 0;
-		for(t_int curCol=0; curCol<N; ++curCol)
+		for(t_int curCol = 0; curCol < N; ++curCol)
 		{
 			if(equals(M[curRow*N + curCol], 0, g_eps))
 				++numZeros;
@@ -111,7 +111,7 @@ t_real determinant(const t_real* M, t_int N)
 	t_real fullDet = 0.;
 
 	t_real *sub = (t_real*)calloc((N-1)*(N-1), sizeof(t_real));
-	for(t_int col=0; col<N; ++col)
+	for(t_int col = 0; col < N; ++col)
 	{
 		const t_real elem = M[row*N + col];
 		if(equals(elem, 0, g_eps))
@@ -140,9 +140,9 @@ t_int inverse(const t_real* M, t_real* I, t_int N)
 		return 0;
 
 	t_real *sub = (t_real*)calloc((N-1)*(N-1), sizeof(t_real));
-	for(t_int i=0; i<N; ++i)
+	for(t_int i = 0; i < N; ++i)
 	{
-		for(t_int j=0; j<N; ++j)
+		for(t_int j = 0; j < N; ++j)
 		{
 			submat(M, N, sub, i, j);
 			const t_real sgn = ((i+j) % 2) == 0 ? 1. : -1.;
@@ -160,13 +160,13 @@ t_int inverse(const t_real* M, t_real* I, t_int N)
  */
 void mult_mat(const t_real* M1, const t_real* M2, t_real *RES, t_int I, t_int J, t_int K)
 {
-	for(t_int i=0; i<I; ++i)
+	for(t_int i = 0; i < I; ++i)
 	{
-		for(t_int j=0; j<J; ++j)
+		for(t_int j = 0; j < J; ++j)
 		{
 			RES[i*J + j] = 0.;
 
-			for(t_int k=0; k<K; ++k)
+			for(t_int k = 0; k < K; ++k)
 				RES[i*J + j] += M1[i*K + k]*M2[k*J + j];
 		}
 	}
@@ -178,11 +178,11 @@ void mult_mat(const t_real* M1, const t_real* M2, t_real *RES, t_int I, t_int J,
  */
 void mult_mat_vec(const t_real* M, const t_real* v, t_real *RES, t_int I, t_int J)
 {
-	for(t_int i=0; i<I; ++i)
+	for(t_int i = 0; i < I; ++i)
 	{
 		RES[i] = 0.;
 
-		for(t_int j=0; j<J; ++j)
+		for(t_int j = 0; j < J; ++j)
 			RES[i] += M[i*J + j] * v[j];
 	}
 }
@@ -193,7 +193,7 @@ void mult_mat_vec(const t_real* M, const t_real* v, t_real *RES, t_int I, t_int 
  */
 void mult_vec(t_real *v, t_real val, t_int N)
 {
-	for(t_int i=0; i<N; ++i)
+	for(t_int i = 0; i < N; ++i)
 		v[i] *= val;
 }
 
@@ -205,7 +205,7 @@ t_real inner(const t_real* v1, const t_real* v2, t_int N)
 {
 	t_real res = 0;
 
-	for(t_int i=0; i<N; ++i)
+	for(t_int i = 0; i < N; ++i)
 		res += v1[i]*v2[i];
 
 	return res;
@@ -228,7 +228,7 @@ t_real norm_p(const t_real* v, t_int N, t_real p)
 {
 	t_real val = 0.;
 
-	for(t_int i=0; i<N; ++i)
+	for(t_int i = 0; i < N; ++i)
 		val += fabs(pow(v[i], p));
 	val = pow(val, 1./p);
 
@@ -249,18 +249,18 @@ t_int pow_mat(const t_real* M, t_real* P, t_int N, t_int POW)
 	t_real *Mtmp2 = (t_real*)calloc(N*N, sizeof(t_real));
 
 	/* Mtmp = M */
-	for(t_int i=0; i<N; ++i)
-		for(t_int j=0; j<N; ++j)
+	for(t_int i = 0; i < N; ++i)
+		for(t_int j = 0; j < N; ++j)
 			Mtmp[i*N + j] = M[i*N + j];
 
 	/* matrix power */
-	for(t_int i=0; i<POW_pos-1; ++i)
+	for(t_int i = 0; i < POW_pos - 1; ++i)
 	{
 		mult_mat(Mtmp, M, Mtmp2, N, N, N);
 
 		/* Mtmp = Mtmp2 */
-		for(t_int i=0; i<N; ++i)
-			for(t_int j=0; j<N; ++j)
+		for(t_int i = 0; i < N; ++i)
+			for(t_int j = 0; j < N; ++j)
 				Mtmp[i*N + j] = Mtmp2[i*N + j];
 	}
 
@@ -269,8 +269,8 @@ t_int pow_mat(const t_real* M, t_real* P, t_int N, t_int POW)
 		status = inverse(Mtmp, Mtmp2, N);
 
 	/* P = Mtmp2 */
-	for(t_int i=0; i<N; ++i)
-		for(t_int j=0; j<N; ++j)
+	for(t_int i = 0; i < N; ++i)
+		for(t_int j = 0; j < N; ++j)
 			P[i*N + j] = Mtmp2[i*N + j];
 
 	free(Mtmp);
@@ -284,7 +284,7 @@ t_int pow_mat(const t_real* M, t_real* P, t_int N, t_int POW)
  */
 void transpose(const t_real* M, t_real* T, t_int rows, t_int cols)
 {
-	for(t_int ctr=0; ctr<rows*cols; ++ctr)
+	for(t_int ctr = 0; ctr < rows*cols; ++ctr)
 	{
 		t_int i = ctr/cols;
 		t_int j = ctr%cols;

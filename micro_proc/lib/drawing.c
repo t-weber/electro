@@ -42,14 +42,14 @@ void draw_line(
 	/* special cases: straight line */
 	if(x_range == 0)
 	{
-		for(t_int y=y_start; pixel_in_bounds(y, y_inc, y_end); y+=y_inc)
+		for(t_int y = y_start; pixel_in_bounds(y, y_inc, y_end); y += y_inc)
 			draw_func(user_data, x_start, y);
 		return;
 	}
 
 	if(y_range == 0)
 	{
-		for(t_int x=x_start; pixel_in_bounds(x, x_inc, x_end); x+=x_inc)
+		for(t_int x = x_start; pixel_in_bounds(x, x_inc, x_end); x += x_inc)
 			draw_func(user_data, x, y_start);
 		return;
 	}
@@ -62,7 +62,7 @@ void draw_line(
 		t_int y = y_start;
 		t_int err = x_range * mult/2;
 
-		for(t_int x=x_start; pixel_in_bounds(x, x_inc, x_end); x+=x_inc)
+		for(t_int x = x_start; pixel_in_bounds(x, x_inc, x_end); x += x_inc)
 		{
 			draw_func(user_data, x, y);
 			err -= mult * y_range;
@@ -89,7 +89,7 @@ void draw_line(
 		t_int x = x_start;
 		t_int err = y_range * mult/2;
 
-		for(t_int y=y_start; pixel_in_bounds(y, y_inc, y_end); y+=y_inc)
+		for(t_int y = y_start; pixel_in_bounds(y, y_inc, y_end); y += y_inc)
 		{
 			draw_func(user_data, x, y);
 			err -= mult * x_range;
@@ -139,7 +139,7 @@ void draw_circle(
 	void *user_data)
 {
 	t_int x = rad;
-	for(t_int y=0, err=-x; y<x; ++y, err+=2*y + 1)
+	for(t_int y = 0, err = -x; y < x; ++y, err += 2*y + 1)
 	{
 		if(err > 0)
 		{
@@ -155,7 +155,7 @@ void draw_circle(
 
 
 	t_int y = rad;
-	for(t_int x=0, err=-y; x<y; ++x, err+=2*x + 1)
+	for(t_int x = 0, err = -y; x < y; ++x, err += 2*x + 1)
 	{
 		if(err > 0)
 		{

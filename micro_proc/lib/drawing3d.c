@@ -30,14 +30,14 @@ void draw_cube(
 	};
 
 	/* transform the vertices */
-	for(t_int i=0; i<8; ++i)
+	for(t_int i = 0; i < 8; ++i)
 	{
 		t_real vertex_trafo[4];
 		mult_mat_vec(trafo, vertices[i], vertex_trafo, 4, 4);
 		mult_vec(vertex_trafo, 1./vertex_trafo[3], 4);
 
-		for(t_int j=0; j<4; ++j)
-		vertices[i][j] = vertex_trafo[j];
+		for(t_int j = 0; j < 4; ++j)
+			vertices[i][j] = vertex_trafo[j];
 	}
 
 	/* draw cube edges */
