@@ -5,8 +5,8 @@
 -- @license see 'LICENSE' file
 --
 -- references for lcd:
---   - https://www.lcd-module.de/fileadmin/pdf/doma/dogm204.pdf
---   - https://www.lcd-module.de/fileadmin/eng/pdf/zubehoer/ssd1803a_2_0.pdf
+--   - [lcd] https://www.lcd-module.de/fileadmin/pdf/doma/dogm204.pdf
+--   - [ic]  https://www.lcd-module.de/fileadmin/eng/pdf/zubehoer/ssd1803a_2_0.pdf
 -- reference for serial bus usage:
 --   - https://www.digikey.com/eewiki/pages/viewpage.action?pageId=10125324
 --
@@ -98,42 +98,84 @@ architecture txtlcd_3wire_impl of txtlcd_3wire is
 	signal wait_counter, wait_counter_max : natural range 0 to const_wait_max := 0;
 
 
+	--
+	-- lcd init commands
+	-- see p. 5 in [lcd] and pp. 38-40 in [ic]
+	--
 	-- control bytes
 	constant ctrl_command : std_logic_vector(BUS_NUM_DATABITS/2 - 1 downto 0) := "0001";
 	constant ctrl_data    : std_logic_vector(BUS_NUM_DATABITS/2 - 1 downto 0) := "0101";
 	constant ctrl_read    : std_logic_vector(BUS_NUM_DATABITS/2 - 1 downto 0) := "0011";
 
-	-- lcd init commands
-	-- see p. 5 in https://www.lcd-module.de/fileadmin/pdf/doma/dogm204.pdf
+	-- options
+	constant use_8bits : std_logic                        := '1';
+	constant use_4lines : std_logic                       := '1';
+	constant invert_h : std_logic                         := '1';
+	constant invert_v : std_logic                         := '1';
+	constant caret_on : std_logic                         := '0';
+	constant blink_on : std_logic                         := '0';
+	constant char_rom : std_logic_vector(1 downto 0)      := "00";
+
+	constant booster_on : std_logic                       := '1';
+	constant divider_on : std_logic                       := '1';
+	constant divider_ratio : std_logic_vector(2 downto 0) := "110";
+	constant divider_bias : std_logic_vector(1 downto 0)  := "11";
+	constant contrast : std_logic_vector(5 downto 0)      := "110000";
+	constant oscillator : std_logic_vector(2 downto 0)    := "011";
+	constant temperature : std_logic_vector(2 downto 0)   := "010";
+
+	constant fontheight_on : std_logic                    := '0';
+	constant double_height : std_logic_vector(1 downto 0) := "00";
+	constant use_longfont : std_logic                     := '0';
+	constant shift_on : std_logic                         := '0';
+	constant shift_disp_on : std_logic                    := '0';      -- otherwise shift caret
+	constant shift_lines : std_logic_vector(3 downto 0)   := "0000";   -- lines 3-0
+	constant scroll : std_logic_vector(5 downto 0)        := "000000"; -- scroll or shift
+	constant caret_right : std_logic                      := '1';
+	constant invert_caret : std_logic                     := '0';
+	constant mirror_y : std_logic                         := '1';
+	constant mirror_x : std_logic                         := '0';
+
 	constant init_num_commands : natural := 22;
 	type t_init_arr is array(0 to init_num_commands*3 - 1)
 		of std_logic_vector(LCD_NUM_DATABITS/2 - 1 downto 0);
 	constant init_arr : t_init_arr := (
-		ctrl_command, "1011", "0011",  -- 8 bit, 4 lines, normal font size, re=1, is=1
+		-- power, [ic, p. 38]
+		ctrl_command, use_4lines & fontheight_on & '1' & '1', "001" & use_8bits,  -- re=1, is=1
 		ctrl_command, "0010", "0000",  -- no sleep
-		ctrl_command, "0110", "0000",  -- shift direction (mirror view)
-		ctrl_command, "1001", "0000",  -- short font width, no caret inversion, 4 lines
-		ctrl_command, "0000", "0001",  -- scroll (or shift) off for lines 3-0
-		ctrl_command, "0000", "1100",  -- scroll amount
-		ctrl_command, "0010", "0111",  -- select rom
-		ctrl_data,    "0000", "0000",  -- first rom
-		--ctrl_data, "0100", "0000",   -- second rom
-		--ctrl_data, "1000", "0000",   -- third rom
-		ctrl_command, "0110", "0111",  -- select temperature control
-		ctrl_data,    "0010", "0000",  -- temperature
 
-		ctrl_command, "1010", "0011",  -- 8 bit, 4 lines, normal font size, re=1, is=0
-		ctrl_command, "0010", "0001",  -- 2 double-height bits, voltage divider bias bit 1, shift off (scroll on)
+		-- scrolling or shifting, [ic, pp. 39-40]
+		ctrl_command, "01" & mirror_y & mirror_x, "0000",
+		ctrl_command, '1' & use_longfont & invert_caret & use_4lines, "0000",
+		ctrl_command, shift_lines, "0001",
+		ctrl_command, scroll(3 downto 0), std_logic_vector'("11" & scroll(5 downto 4)),
 
-		ctrl_command, "1001", "0011",  -- 8 bit, 4 lines, no blinking, no reversing, re=0, is=1
-		ctrl_command, "1011", "0001",  -- voltage divider bias bit 0, oscillator bits 2-0
-		ctrl_command, "0111", "0101",  -- no icon, voltage regulator, contrast bits 5 and 4
-		ctrl_command, "0000", "0111",  -- contrast bits 3-0
-		ctrl_command, "1110", "0110",  -- voltage divider, amplifier bits 2-0
+		-- rom selection, [ic, p. 40]
+		ctrl_command, "0010", "0111",
+		ctrl_data,    std_logic_vector'(char_rom & "00"), "0000",
 
-		ctrl_command, "1000", "0011",  -- 8 bit, 4 lines, no blinking, no reversing, re=0, is=0
-		ctrl_command, "0110", "0000",  -- caret moving right, no display shifting
-		ctrl_command, "1100", "0000",  -- turn on display, no caret, no blinking
+		-- select temperature, [ic, p. 40]
+		ctrl_command, "0110", "0111",
+		ctrl_data,    '0' & temperature, "0000",
+
+		-- voltage divider, [ic, pp. 39-40]
+		ctrl_command, use_4lines & fontheight_on & '1' & '0', "001" & use_8bits,  -- re=1, is=0
+		ctrl_command, double_height & divider_bias(1) & shift_on, "0001",
+
+		-- voltage divider, [ic, pp. 39-40]
+		ctrl_command, use_4lines & fontheight_on & '0' & '1', "001" & use_8bits,  -- re=0, is=1
+		ctrl_command, divider_bias(0) & oscillator, "0001",
+		ctrl_command, std_logic_vector'('0' & booster_on & contrast(5 downto 4)), "0101",
+		ctrl_command, contrast(3 downto 0), "0111",
+		ctrl_command, divider_on & divider_ratio, "0110",
+
+		-- scrolling or shifting [ic, p. 38]
+		ctrl_command, use_4lines & fontheight_on & '0' & '0', "001" & use_8bits,  -- re=0, is=0
+		ctrl_command, "01" & caret_right & shift_disp_on, "0000",
+
+		-- turn on display, [ic, p. 38]
+		ctrl_command, "11" & caret_on & blink_on, "0000",
+
 		--ctrl_command, "0000", "0100" -- character ram address
 		--ctrl_data, "1111", "0001",   -- define character 0 line 0
 		--ctrl_data, "1011", "0001",   -- define character 0 line 1
@@ -143,8 +185,10 @@ architecture txtlcd_3wire_impl of txtlcd_3wire is
 		--ctrl_data, "0001", "0001",   -- define character 0 line 5
 		--ctrl_data, "0001", "0001",   -- define character 0 line 6
 		--ctrl_data, "0000", "0000",   -- define character 0 line 7
-		ctrl_command, "0001", "0000",  -- clear
-		ctrl_command, "0010", "0000"   -- return
+
+		-- clear and return, [ic, p. 38]
+		ctrl_command, "0001", "0000",
+		ctrl_command, "0010", "0000"
 
 		--ctrl_data, "0010", "0011",   -- test data -> 0x32 = '2'
 		--ctrl_data, "0011", "0011"    -- test data -> 0x33 = '3'

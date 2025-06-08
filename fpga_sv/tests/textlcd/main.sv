@@ -3,6 +3,12 @@
  * @author Tobias Weber <tobias.weber@tum.de>
  * @date 21-april-2025
  * @license see 'LICENSE' file
+ *
+ * pins:
+ *    blue |   green || violet
+ *    ○○○○○●○○ ... ○○●●
+ *    ○○○○○●○○ ... ○○●●
+ *     red |  orange || yellow
  */
 
 
@@ -61,7 +67,7 @@ sevenseg_clk_mod
 );
 
 sevenseg_multi #(
-	.NUM_LEDS(2), .ZERO_IS_ON(1'b1), 
+	.NUM_LEDS(2), .ZERO_IS_ON(1'b1),
 	.INVERSE_NUMBERING(1'b1), .ROTATED(1'b1))
 sevenseg_mod(.in_clk(sevenseg_clk), .in_rst(reset),
 	.in_digits(flags), .out_leds(seg), .out_sel(seg_sel));
