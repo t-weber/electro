@@ -4,7 +4,8 @@
 -- @date 27-jan-2024
 -- @license see 'LICENSE' file
 --
--- pins:
+-- fpga gpio pins:
+-- ==============
 --              ○○
 --              ○○
 --              ○○
@@ -18,6 +19,11 @@
 -- rst (orange) ●○
 --              ○○ gpio_0
 --
+-- lcd pins:
+-- ========
+--   orange |    | yellow
+--          ●○○○●●●○○ ...
+--        green | | violet
 
 library ieee;
 use ieee.std_logic_1164.all;

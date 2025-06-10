@@ -509,11 +509,7 @@ begin
 						end if;
 					else
 						out_mem_addr <= int_to_logvec(write_cycle, LCD_NUM_ADDRBITS);
-						out_bus_data <= "0000" &
-							in_mem_word(cmd_byte_cycle*4 + 3) &
-							in_mem_word(cmd_byte_cycle*4 + 2) &
-							in_mem_word(cmd_byte_cycle*4 + 1) &
-							in_mem_word(cmd_byte_cycle*4 + 0);
+						out_bus_data <= "0000" & in_mem_word(cmd_byte_cycle*4 + 3 downto cmd_byte_cycle*4);
 						out_bus_enable <= '1';
 					end if;
 				end if;

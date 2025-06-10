@@ -30,10 +30,10 @@ entity bcd is
 		in_start : in std_logic;
 
 		-- input
-		in_num : in std_logic_vector(IN_BITS-1 downto 0);
+		in_num : in std_logic_vector(IN_BITS - 1 downto 0);
 
 		-- output
-		out_bcd : out std_logic_vector(OUT_BITS-1 downto 0);
+		out_bcd : out std_logic_vector(OUT_BITS - 1 downto 0);
 
 		-- conversion finished (or idle)?
 		out_finished : out std_logic
@@ -45,23 +45,23 @@ architecture bcd_impl of bcd is
 	type t_state is (Idle, Reset, Shift, Add, NextIndex);
 	signal state, state_next : t_state := Shift;
 
-	signal bcdnum, bcdnum_next : std_logic_vector(OUT_BITS-1 downto 0) := (others=>'0');
-	signal bitidx, bitidx_next : natural range IN_BITS-1 downto 0 := IN_BITS-1;
-	signal bcdidx, bcdidx_next : natural range NUM_BCD_DIGITS-1 downto 0 := NUM_BCD_DIGITS-1;
+	signal bcdnum, bcdnum_next : std_logic_vector(OUT_BITS - 1 downto 0) := (others=>'0');
+	signal bitidx, bitidx_next : natural range IN_BITS - 1 downto 0 := IN_BITS - 1;
+	signal bcdidx, bcdidx_next : natural range NUM_BCD_DIGITS - 1 downto 0 := NUM_BCD_DIGITS - 1;
 
 begin
 
 	-- output
 	out_bcd <= bcdnum;
-	out_finished <= '1' when state=Idle else '0';
+	out_finished <= '1' when state = Idle else '0';
 
 
 	-- clock process
 	clk_proc : process(in_clk, in_rst)
 	begin
-		if in_rst='1' then
+		if in_rst = '1' then
 			state <= Shift;
-			bcdnum <= (others=>'0');
+			bcdnum <= (others => '0');
 			bitidx <= IN_BITS - 1;
 			bcdidx <= NUM_BCD_DIGITS - 1;
 
@@ -92,14 +92,14 @@ begin
 
 			-- reset
 			when Reset =>
-				bcdnum_next <= (others=>'0');
+				bcdnum_next <= (others => '0');
 				bitidx_next <= IN_BITS - 1;
 				bcdidx_next <= NUM_BCD_DIGITS - 1;
 				state_next <= Shift;
 
 			-- shift left
 			when Shift =>
-				bcdnum_next(OUT_BITS-1 downto 1) <= bcdnum(OUT_BITS-2 downto 0);
+				bcdnum_next(OUT_BITS - 1 downto 1) <= bcdnum(OUT_BITS - 2 downto 0);
 				bcdnum_next(0) <= in_num(bitidx);
 
 				-- no addition for last index
@@ -112,7 +112,7 @@ begin
 			-- add 3 if bcd digit >= 5
 			when Add =>
 				-- check if the bcd digit is >= 5, if so, add 3
-				if to_int(bcdnum(bcdidx*4+3 downto bcdidx*4)) >= 5 then
+				if to_int(bcdnum(bcdidx*4 + 3 downto bcdidx*4)) >= 5 then
 					bcdnum_next <= inc_logvec(bcdnum, to_integer(shift_left(to_unsigned(3, OUT_BITS), bcdidx*4)));
 				end if;
 
