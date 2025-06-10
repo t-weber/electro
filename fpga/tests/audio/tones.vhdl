@@ -7,7 +7,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
---use work.conv.all;
+use work.conv.all;
 
 
 
@@ -23,7 +23,9 @@ entity tones is
 		in_clk, in_reset : in std_logic;
 		in_enable : in std_logic;
 
-		out_freq : out std_logic_vector(FREQ_BITS - 1 downto 0)
+		out_freq : out std_logic_vector(FREQ_BITS - 1 downto 0);
+		out_cycle : out std_logic_vector(7 downto 0);
+		out_finished : out std_logic
 	);
 end entity;
 
@@ -153,6 +155,8 @@ begin
 
 	-- data output
 	out_freq <= seq_freq;
+	out_cycle <= nat_to_logvec(seq_cycle, out_cycle'length);
+	out_finished <= '1' when state = Idle else '0';
 
 
 	--

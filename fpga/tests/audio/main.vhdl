@@ -31,6 +31,10 @@ entity main is
 		 -- segment displays
 		hex0, hex1, hex2, hex3 : out std_logic_vector(6 downto 0);
 
+		-- lcd reset, serial clock and data lines (3-wire serial bus)
+		lcd_reset, lcd_scl, lcd_sda : out std_logic;
+		lcd_sda_in : in std_logic;
+
 		-- audio interface
 		aud_scl, aud_sda : inout std_logic;
 		aud_adclrck, aud_daclrck, aud_bclk : out std_logic;  --inout std_logic;
@@ -48,8 +52,14 @@ architecture main_impl of main is
 	constant SAMPLE_FREQ : natural := 44_100;
 
 	-- clocks
-	constant MAIN_HZ   : natural := 50_000_000;
-	constant SERIAL_HZ : natural := 100_000;
+	constant MAIN_HZ       : natural := 50_000_000;
+	constant AUD_SERIAL_HZ : natural := 100_000;
+	constant LCD_SERIAL_HZ : natural := 1_000_000;
+
+	-- lcd
+	constant LCD_SIZE : natural := 4 * 20;
+	constant LCD_WORDBITS : natural := 8;
+	constant LCD_ADDRBITS : natural := 7;
 
 	-- serial bus addresses
 	constant SERIAL_ADDRBITS : natural := 8;
@@ -72,16 +82,26 @@ architecture main_impl of main is
 	signal xclk, xclk_lck, bitclk, sampleclk : std_logic;
 	signal xclk_locked : std_logic;
 
+	-- lcd
+	signal lcd_refresh : std_logic;
+
+	signal lcd_serial_enable, lcd_serial_next, lcd_serial_ready : std_logic;
+	signal lcd_serial_data : std_logic_vector(LCD_WORDBITS - 1 downto 0);
+	signal lcd_serial_data_in : std_logic_vector(LCD_WORDBITS - 1 downto 0);
+
 	-- slow clocks for debugging
 	signal xclk_slow, bitclk_slow, sampleclk_slow : std_logic;
 
 	signal samples_end : std_logic;
 	signal amp : std_logic;
 	signal tone_hz : std_logic_vector(15 downto 0) := 16d"330";
+	signal tone_cycle : std_logic_vector(7 downto 0);
+	signal tone_finished : std_logic;
 
 begin
 
 	reset <= not key(0);
+	lcd_refresh <= '1';
 
 	-- audio interface
 	xclk_lck <= xclk when xclk_locked = '1' else '0';
@@ -93,7 +113,9 @@ begin
 	aud_dacdat <= amp when sw(0) = '0' else '0';
 
 
+	--------------------------------------------------------------------------------
 	-- debugging
+	--------------------------------------------------------------------------------
 	ledg <= audio_status(7 downto 0);
 	ledr(0) <= xclk_slow;
 	ledr(1) <= bitclk_slow;
@@ -101,8 +123,12 @@ begin
 	ledr(8) <= samples_end;
 	ledr(9) <= serial_audio_err;
 	ledr(7 downto 3) <= (others => '0');
+	--------------------------------------------------------------------------------
 
+
+	--------------------------------------------------------------------------------
 	-- display current tone frequency
+	--------------------------------------------------------------------------------
 	seg0 : entity work.sevenseg
 		 generic map(zero_is_on => '1', inverse_numbering => '1')
 		 port map(in_digit => tone_hz(3 downto 0), out_leds => hex0);
@@ -115,8 +141,34 @@ begin
 	seg3 : entity work.sevenseg
 		 generic map(zero_is_on => '1', inverse_numbering => '1')
 		 port map(in_digit => tone_hz(15 downto 12), out_leds => hex3);
+	--------------------------------------------------------------------------------
 
 
+	--------------------------------------------------------------------------------
+	-- lcd
+	--------------------------------------------------------------------------------
+	lcd : entity work.txtlcd_3wire
+		generic map(MAIN_CLK => MAIN_HZ, LCD_SIZE => LCD_SIZE)
+		port map(in_clk => clock_50_b7a, in_reset => reset,
+			in_update => lcd_refresh, in_bus_data => lcd_serial_data_in,
+			in_bus_next => lcd_serial_next, in_bus_ready => lcd_serial_ready,
+			in_tone_cycle => tone_cycle, in_tone_finished => tone_finished,
+			--out_busy_flag => ledr,
+			out_bus_data => lcd_serial_data, out_bus_enable => lcd_serial_enable,
+			out_lcd_reset => lcd_reset);
+
+	-- serial bus for lcd
+	serial_lcd : entity work.serial
+		generic map(MAIN_HZ => MAIN_HZ, SERIAL_HZ => LCD_SERIAL_HZ, LOWBIT_FIRST => '1')
+		port map(in_clk => clock_50_b7a, in_reset => reset,
+			in_enable => lcd_serial_enable, in_parallel => lcd_serial_data,
+			out_next_word => lcd_serial_next, out_ready => lcd_serial_ready,
+			out_clk => lcd_scl, out_serial => lcd_sda,
+			in_serial => lcd_sda_in, out_parallel => lcd_serial_data_in);
+	--------------------------------------------------------------------------------
+
+
+	--------------------------------------------------------------------------------
 	--
 	-- generate audio clocks:
 	--   xclk = sample_freq * sample_bits * 2 channels * 4
@@ -146,13 +198,17 @@ begin
 	clkgen_slowchclk : entity work.clkdiv(clkdiv_impl)
 		generic map(NUM_CTRBITS => 21, SHIFT_BITS => 20)
 		port map(in_clk => sampleclk, in_rst => reset, out_clk => sampleclk_slow);
+	--------------------------------------------------------------------------------
 
 
+	--------------------------------------------------------------------------------
+	-- audio
+	--------------------------------------------------------------------------------
 	--
 	-- audio configuration serial interface
 	--
 	audio_serial : entity work.serial_2wire
-		generic map(MAIN_HZ => MAIN_HZ, SERIAL_HZ => SERIAL_HZ,
+		generic map(MAIN_HZ => MAIN_HZ, SERIAL_HZ => AUD_SERIAL_HZ,
 			ADDR_BITS => SERIAL_ADDRBITS, BITS => SERIAL_DATABITS)
 		port map(in_clk => clock_50_b7a, in_reset => reset,
 			in_enable => serial_audio_enable,
@@ -177,8 +233,12 @@ begin
 			out_bus_enable => serial_audio_enable, in_bus_byte_finished => serial_audio_byte_finished,
 			out_bus_data => serial_audio_data_write, in_bus_data => serial_audio_data_read,
 			out_bus_addr => serial_audio_addr, out_active => audio_active, out_status => audio_status);
+	--------------------------------------------------------------------------------
 
 
+	--------------------------------------------------------------------------------
+	-- tones
+	--------------------------------------------------------------------------------
 	--
 	-- tone generation
 	--
@@ -190,13 +250,16 @@ begin
 			in_tone_hz => tone_hz,
 			out_data => amp, out_samples_end => samples_end);
 
+
 	--
 	-- tone sequence
 	--
 	tone_seq : entity work.tones
 		generic map(MAIN_HZ => SAMPLE_FREQ, FREQ_BITS => tone_hz'length)
 		port map(in_clk => sampleclk, in_reset => reset,
-			in_enable => audio_active, out_freq => tone_hz);
+			in_enable => audio_active, out_freq => tone_hz,
+			out_cycle => tone_cycle, out_finished => tone_finished);
+	--------------------------------------------------------------------------------
 
 
 end architecture;

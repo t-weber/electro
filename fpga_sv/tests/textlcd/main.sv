@@ -4,11 +4,18 @@
  * @date 21-april-2025
  * @license see 'LICENSE' file
  *
- * pins:
+ * fpga gpio pins:
+ * ==============
  *    blue |   green || violet
  *    ○○○○○●○○ ... ○○●●
  *    ○○○○○●○○ ... ○○●●
  *     red |  orange || yellow
+ *
+ * lcd pins:
+ * ========
+ *   orange |    | yellow
+ *          ●○○○●●●○○ ...
+ *        green | | violet
  */
 
 

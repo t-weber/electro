@@ -28,7 +28,7 @@ entity txtlcd_3wire is
 		-- number of characters on the LCD
 		constant LCD_SIZE         : natural := 4*20;
 		constant LCD_NUM_ADDRBITS : natural := 7;
-		constant LCD_NUM_DATABITS : natural := BUS_NUM_DATABITS;
+		constant LCD_NUM_DATABITS : natural := 8; --BUS_NUM_DATABITS;
 
 		-- use the lcd busy flag for waiting instead of the timers
 		constant READ_BUSY_FLAG   : std_logic := '1'
@@ -53,15 +53,37 @@ entity txtlcd_3wire is
 		-- output current busy flag for debugging
 		out_busy_flag    : out std_logic_vector(BUS_NUM_DATABITS - 1 downto 0);
 
-		-- display buffer
-		in_mem_word      : in std_logic_vector(LCD_NUM_DATABITS - 1 downto 0);
-		out_mem_addr     : out std_logic_vector(LCD_NUM_ADDRBITS - 1 downto 0)
+		-- current tone playing
+		in_tone_cycle : in std_logic_vector(7 downto 0);
+		in_tone_finished : in std_logic
 	);
 end entity;
 
 
 
 architecture txtlcd_3wire_impl of txtlcd_3wire is
+	-- screen texts
+	type t_text is array(0 to LCD_SIZE - 1) of std_logic_vector(LCD_NUM_DATABITS - 1 downto 0);
+	constant text_running : t_text :=
+	(
+		x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d",
+		x"50", x"6c", x"61", x"79", x"69", x"6e", x"67", x"20", x"30", x"30", x"2f", x"35", x"37", x"2e", x"2e", x"2e", x"20", x"20", x"20", x"20",
+		x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20",
+		x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d"
+	);
+
+	constant text_finished : t_text :=
+	(
+		x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d",
+		x"50", x"6c", x"61", x"79", x"69", x"6e", x"67", x"20", x"30", x"30", x"2f", x"35", x"37", x"2e", x"2e", x"2e", x"20", x"20", x"20", x"20",
+		x"44", x"4f", x"4e", x"45", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20", x"20",
+		x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d", x"2d"
+	);
+
+	signal tone_cycle_bcd : std_logic_vector(3*4 - 1 downto 0);
+	signal tone_start_bcd : std_logic := '0';
+
+
 	-- states
 	type t_lcd_state is (
 		Wait_Reset, Reset, Resetted,
@@ -176,22 +198,9 @@ architecture txtlcd_3wire_impl of txtlcd_3wire is
 		-- turn on display, [ic, p. 38]
 		ctrl_command, "11" & caret_on & blink_on, "0000",
 
-		--ctrl_command, "0000", "0100" -- character ram address
-		--ctrl_data, "1111", "0001",   -- define character 0 line 0
-		--ctrl_data, "1011", "0001",   -- define character 0 line 1
-		--ctrl_data, "0001", "0001",   -- define character 0 line 2
-		--ctrl_data, "0001", "0001",   -- define character 0 line 3
-		--ctrl_data, "0001", "0001",   -- define character 0 line 4
-		--ctrl_data, "0001", "0001",   -- define character 0 line 5
-		--ctrl_data, "0001", "0001",   -- define character 0 line 6
-		--ctrl_data, "0000", "0000",   -- define character 0 line 7
-
 		-- clear and return, [ic, p. 38]
 		ctrl_command, "0001", "0000",
 		ctrl_command, "0010", "0000"
-
-		--ctrl_data, "0010", "0011",   -- test data -> 0x32 = '2'
-		--ctrl_data, "0011", "0011"    -- test data -> 0x33 = '3'
 	);
 
 
@@ -261,7 +270,8 @@ begin
 	--
 	-- state combinatorics
 	--
-	proc_comb : process(in_bus_ready, in_mem_word, in_update,
+	proc_comb : process(in_bus_ready, in_update,
+		tone_cycle_bcd, in_tone_finished,
 		lcd_state, wait_counter, wait_counter_max,
 		cmd_byte_cycle, write_cycle, init_cycle, next_byte_cycle,
 		busy_flag, in_bus_data, cmd_after_busy_check)
@@ -279,10 +289,11 @@ begin
 		wait_counter_max <= 0;
 
 		out_lcd_reset <= '1';
-		out_mem_addr <= (others => '0');
 
 		out_bus_enable <= '0';
 		out_bus_data <= (others => '0');
+
+		tone_start_bcd <= '0';
 
 
 		-- fsm
@@ -428,6 +439,7 @@ begin
 						-- wait until the busy flag is clear
 						next_lcd_state <= ReadBusyFlag_Cmd;
 						next_cmd_after_busy_check <= UpdateDisplay_Setup1;
+						tone_start_bcd <= '1';
 					else
 						next_lcd_state <= UpdateDisplay_Setup1;
 					end if;
@@ -507,10 +519,22 @@ begin
 							next_write_cycle <= 0;
 							next_cmd_byte_cycle <= 0;
 						end if;
+					-- write current tone number
+					elsif write_cycle = 28 and cmd_byte_cycle = 0 then
+						out_bus_data <= "0000" & tone_cycle_bcd(2*4 - 1 downto 1*4);
+						out_bus_enable <= '1';
+					elsif write_cycle = 29 and cmd_byte_cycle = 0 then
+						out_bus_data <= "0000" & tone_cycle_bcd(1*4 - 1 downto 0);
+						out_bus_enable <= '1';
 					else
-						out_mem_addr <= int_to_logvec(write_cycle, LCD_NUM_ADDRBITS);
-						out_bus_data <= "0000" &
-							in_mem_word(cmd_byte_cycle*4 + 3 downto cmd_byte_cycle*4);
+						-- write screen text
+						if in_tone_finished = '0' then
+							out_bus_data <= "0000" &
+								text_running(write_cycle)(cmd_byte_cycle*4 + 3 downto cmd_byte_cycle*4);
+						else
+							out_bus_data <= "0000" &
+								text_finished(write_cycle)(cmd_byte_cycle*4 + 3 downto cmd_byte_cycle*4);
+						end if;
 						out_bus_enable <= '1';
 					end if;
 				end if;
@@ -522,4 +546,9 @@ begin
 		end case;
 	end process;
 
+
+	tone_cycle_conv : entity work.bcd
+		port map(in_clk => in_clk, in_rst => in_reset,
+			in_start => tone_start_bcd, -- out_finished => tone_finished_bcd,
+			in_num => inc_logvec(in_tone_cycle, 1), out_bcd => tone_cycle_bcd);
 end architecture;
