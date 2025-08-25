@@ -39,6 +39,7 @@ int main(int argc, char** argv)
 
 		std::string repeat_data;
 		std::size_t repeat_times = 0;
+		int word_bits = 8;
 
 		args::options_description arg_descr("ROM generator arguments");
 		arg_descr.add_options()
@@ -72,6 +73,9 @@ int main(int argc, char** argv)
 					+ std::to_string(repeat_times)).c_str())
 			("sync,s", args::value<decltype(cfg.sync)>(&cfg.sync),
 				("produce synchronous design, default: " + std::to_string(cfg.sync)).c_str())
+			("word_bits,w", args::value<decltype(word_bits)>(&word_bits),
+				("number of bits per word, default: "
+					+ std::to_string(word_bits)).c_str())
 			("input,i", args::value<decltype(in_filename)>(&in_filename),
 				"input data file")
 			("output,o", args::value<decltype(out_rom)>(&out_rom),
@@ -139,11 +143,49 @@ int main(int argc, char** argv)
 
 				while(!!ifstr)
 				{
-					int ch = ifstr.get();
-					if(ch == std::istream::traits_type::eof())
-						break;
+					// TODO: correctly handle cases when word_bits is not a multiple of 8
+					if(word_bits <= 8)
+					{
+						int ch = ifstr.get();
+						if(ch == std::istream::traits_type::eof())
+							break;
 
-					cfg.data.emplace_back(t_word(8, ch));
+						cfg.data.emplace_back(t_word(word_bits, ch));
+					}
+					else if(word_bits > 8 && word_bits <= 16)
+					{
+						std::uint16_t i = 0;
+						ifstr.read((char*)&i, /*sizeof(i)*/ word_bits/8);
+						if(ifstr.eof())
+							break;
+
+						cfg.data.emplace_back(t_word(word_bits, i));
+					}
+					else if(word_bits > 16 && word_bits <= 32)
+					{
+						std::uint32_t i = 0;
+						ifstr.read((char*)&i, /*sizeof(i)*/ word_bits/8);
+						if(ifstr.eof())
+							break;
+
+						cfg.data.emplace_back(t_word(word_bits, i));
+					}
+					else if(word_bits > 32 && word_bits <= 64)
+					{
+						std::uint64_t i = 0;
+						ifstr.read((char*)&i, /*sizeof(i)*/ word_bits/8);
+						if(ifstr.eof())
+							break;
+
+						cfg.data.emplace_back(t_word(word_bits, i));
+					}
+					else
+					{
+						std::cerr << "Error: A word size of "
+							<< word_bits << " is not supported."
+							<< std::endl;
+						break;
+					}
 				}
 
 				std::cerr << "Info: Read " << cfg.data.size()
