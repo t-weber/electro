@@ -102,6 +102,8 @@ always_comb begin
 				debounced_next = 1'b1;
 				toggled_next = ~toggled;
 			end
+
+			default: begin end
 	endcase
 end
 

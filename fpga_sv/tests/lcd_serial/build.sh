@@ -52,7 +52,7 @@ target_pins_file=pins9k.cst
 
 # tools
 YOSYS=yosys
-NEXTPNR=nextpnr-gowin
+NEXTPNR=nextpnr-himbaechel
 PACK=gowin_pack
 GENFONT=../../../tools/genfont/build/genfont
 GENROM=../../../tools/genrom/build/genrom
@@ -112,10 +112,9 @@ fi
 if [ $run_pnr -ne 0 ]; then
 	echo -e "Running P&R Fitter for $target_fpga: $synth_file & $target_pins_file -> $pnr_file..."
 	if ! ${NEXTPNR} --threads $num_threads -q --detailed-timing-report -l $pnr_log \
-		--family $target_fpga --device $target_board --freq $target_freq \
-		--parallel-refine --enable-auto-longwires \
-		--cst $target_pins_file --json $synth_file --write $pnr_file --top $top_module \
-		--placed-svg output/placed.svg --routed-svg output/routed.svg --sdf output/delay.sdf
+		--vopt family=$target_fpga --device $target_board --freq $target_freq --parallel-refine \
+		--vopt cst=$target_pins_file --json $synth_file --write $pnr_file --top $top_module \
+		#--placed-svg output/placed.svg --routed-svg output/routed.svg --sdf output/delay.sdf
 	then
 		echo -e "P&R Fitting failed!"
 		exit -1

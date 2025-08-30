@@ -31,20 +31,21 @@ src_files="../../sync/debounce_button.sv \
 	main.sv"
 
 # 9k board
-#target_board=GW1NR-LV9QN88PC6/I5
-#target_fpga=GW1N-9C
-#target_freq=27
+target_board=GW1NR-LV9QN88PC6/I5
+target_fpga=GW1N-9C
+target_freq=27
 #target_pins_file=pins9k.cst
+target_pins_file=pins9k_all.cst
 
 # 1k board
-target_board=GW1NZ-LV1QN48C6/I5
-target_fpga=GW1NZ-1
-target_freq=27
-target_pins_file=pins1k.cst
+#target_board=GW1NZ-LV1QN48C6/I5
+#target_fpga=GW1NZ-1
+#target_freq=27
+#target_pins_file=pins1k.cst
 
 # tools
 YOSYS=yosys
-NEXTPNR=nextpnr-gowin
+NEXTPNR=nextpnr-himbaechel
 PACK=gowin_pack
 
 echo -e "Using tool: $(which $YOSYS)"
@@ -72,9 +73,9 @@ fi
 if [ $run_pnr -ne 0 ]; then
 	echo -e "Running P&R Fitter for $target_fpga: $synth_file & $target_pins_file -> $pnr_file..."
 	if ! ${NEXTPNR} --threads $num_threads -q --detailed-timing-report -l $pnr_log \
-		--family $target_fpga --device $target_board --freq $target_freq \
-		--cst $target_pins_file --json $synth_file --write $pnr_file --top $top_module \
-		--placed-svg output/placed.svg --routed-svg output/routed.svg --sdf output/delay.sdf
+		--vopt family=$target_fpga --device $target_board --freq $target_freq \
+		--vopt cst=$target_pins_file --json $synth_file --write $pnr_file --top $top_module
+		#--placed-svg output/placed.svg --routed-svg output/routed.svg --sdf output/delay.sdf
 	then
 		echo -e "P&R Fitting failed!"
 		exit -1
