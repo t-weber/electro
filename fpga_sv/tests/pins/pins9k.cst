@@ -88,20 +88,40 @@ IO_PORT "txtlcd_sda_i" PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 IO_PORT "txtlcd_sda_o" PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 
 
-// available 3.3 V gpios on the left/bottom side
-/*IO_LOC "gpiol[0]"    25;
-IO_LOC "gpiol[1]"    26;
-IO_LOC "gpiol[2]"    27;
-IO_LOC "gpiol[3]"    28;
-IO_LOC "gpiol[4]"    29;
-IO_LOC "gpiol[5]"    30;
+// green leds on gpios
+IO_LOC "ledg[0]"      57;
+IO_LOC "ledg[1]"      56;
+IO_LOC "ledg[2]"      55;
+IO_LOC "ledg[3]"      54;
+IO_LOC "ledg[4]"      53;
+IO_LOC "ledg[5]"      51;
+IO_LOC "ledg[6]"      42;
+IO_LOC "ledg[7]"      41;
 
-IO_PORT "gpiol[0]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpiol[1]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpiol[2]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpiol[3]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpiol[4]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpiol[5]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;*/
+IO_PORT "ledg[0]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledg[1]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledg[2]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledg[3]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledg[4]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledg[5]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledg[6]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledg[7]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+
+
+// available 3.3 V gpios on the left/bottom side
+//IO_LOC "gpiol[0]"    25;
+//IO_LOC "gpiol[1]"    26;
+//IO_LOC "gpiol[2]"    27;
+//IO_LOC "gpiol[3]"    28;
+//IO_LOC "gpiol[4]"    29;
+//IO_LOC "gpiol[5]"    30;
+
+//IO_PORT "gpiol[0]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+//IO_PORT "gpiol[1]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+//IO_PORT "gpiol[2]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+//IO_PORT "gpiol[3]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+//IO_PORT "gpiol[4]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+//IO_PORT "gpiol[5]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 
 
 // available 3.3 V gpios on the left/bottom side
