@@ -62,10 +62,12 @@ module ram_2port
 	input wire in_rst,
 
 	// port 1
-	`PORT_PINS(1),
+	`PORT_PINS(1)
 
+`ifndef RAM_DISABLE_PORT2
 	// port 2
-	`PORT_PINS(2)
+	, `PORT_PINS(2)
+`endif
 );
 
 
@@ -87,8 +89,10 @@ end
 // port 1
 `PORT_PROC(1)
 
-// port 2
-`PORT_PROC(2)
+`ifndef RAM_DISABLE_PORT2
+	// port 2
+	`PORT_PROC(2)
+`endif
 
 
 endmodule
