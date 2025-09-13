@@ -22,7 +22,12 @@
 std::string gen_rom_sv(const Config& cfg)
 {
 	// rom file
-	std::string rom_sv = R"raw(module %%MODULE_NAME%%
+	std::string rom_sv = R"raw(/**
+ * Automatically created using 'genrom' by T. Weber.
+ * DOI: https://doi.org/10.5281/zenodo.5826411
+ */
+
+module %%MODULE_NAME%%
 #(
 	parameter NUM_PORTS = %%NUM_PORTS%%,
 	parameter NUM_WORDS = %%NUM_WORDS%%,

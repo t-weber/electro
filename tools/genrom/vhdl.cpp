@@ -22,7 +22,12 @@
 std::string gen_rom_vhdl(const Config& cfg)
 {
 	// rom file
-	std::string rom_vhdl = R"raw(library ieee;
+	std::string rom_vhdl = R"raw(--
+-- Automatically created using 'genrom' by T. Weber.
+-- DOI: https://doi.org/10.5281/zenodo.5826411
+--
+
+library ieee;
 use ieee.std_logic_1164.all;
 --use ieee.math_real.all;
 use work.conv.all;
