@@ -304,7 +304,7 @@ always_comb begin
 	cpu_mem_ready = 1'b0;
 	cpu_write_enable = 1'b0;
 	next_data_watch = data_watch;
-	lcd_update = 1'b1;  // TODO
+	lcd_update = 1'b0;
 
 	case(state_memaccess)
 		CPU_WAIT_MEM: begin
@@ -329,7 +329,7 @@ always_comb begin
 			next_state_memaccess = CPU_WRITE;
 			if(addr_1 == addr_watch)          // program wrote to watched variable
 				next_data_watch = write_data_sel;
-			if(addr_1 == addr_lcdctrl_watch)  // program wrote to lcd control reg
+			else if(addr_1 == addr_lcdctrl_watch)  // program wrote to lcd control reg
 				lcd_update = 1'b1;
 		end
 
