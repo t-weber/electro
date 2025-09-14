@@ -37,7 +37,7 @@ void print_char(unsigned int row, unsigned int col, t_char c) noexcept
 
 
 template<typename t_char = char>
-void clear()
+void clear() noexcept
 {
 	for(unsigned int row = 0; row < TXTLCD_ROWS; ++row)
 		for(unsigned int col = 0; col < TXTLCD_COLS; ++col)
@@ -46,7 +46,7 @@ void clear()
 
 
 template<typename t_char = char>
-void update()
+void update() noexcept
 {
 	unsigned long mem_base = reinterpret_cast<unsigned long>(&_mem_base);
 	volatile t_char* buf = reinterpret_cast<volatile t_char*>(mem_base + TXTLCD_CTRL);
