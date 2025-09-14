@@ -24,6 +24,7 @@
 
 /**
  * process for a port
+ * external tool bug: use "=" instead of "<=" in line 45 if the module is not infered as sram
  */
 `define PORT_PROC(PORT_NR)  \
 	logic [WORD_BITS - 1 : 0] data_``PORT_NR``;  \
@@ -80,10 +81,13 @@ module ram_2port
 	logic [0 : NUM_WORDS - 1][WORD_BITS - 1 : 0] words;
 `endif
 
-initial begin
-	for(bit [ADDR_BITS : 0] i = 0; i < NUM_WORDS; ++i)
-		words[i] <= { WORD_BITS{ 1'b1 } };
-end
+
+`ifdef RAM_INIT
+	initial begin
+		for(bit [ADDR_BITS : 0] i = 0; i < NUM_WORDS; ++i)
+			words[i] <= { WORD_BITS{ 1'b1 } };
+	end
+`endif
 
 
 // port 1
