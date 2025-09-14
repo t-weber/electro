@@ -15,7 +15,7 @@ OBJCPY=riscv64-elf-objcopy
 OBJDMP=riscv64-elf-objdump
 
 USE_INTERRUPTS=1
-TESTBENCH_DEFS="-DDEBUG"
+TESTBENCH_DEFS="-DDEBUG -DIS_TESTBENCH"
 #TESTBENCH_DEFS+=" -DRAM_DISABLE_PORT2"
 CFLAGS="-std=c++20 -O2 -Wall -Wextra -Weffc++"
 
@@ -106,9 +106,12 @@ mkdir -p build/src
 cp -v ../../../fpga_sv/mem/ram_2port.sv build/src
 cp -v ../../../fpga_sv/mem/memcpy.sv build/src
 cp -v ../../../fpga_sv/mem/memsel.sv build/src
+cp -v ../../../fpga_sv/mem/bytesel.sv build/src
 cp -v ../../../fpga_sv/clock/clkgen.sv build/src
 cp -v ../../../fpga_sv/sync/debounce_switch.sv build/src
 cp -v ../../../fpga_sv/sync/debounce_button.sv build/src
+cp -v ../../../fpga_sv/comm/serial.sv build/src
+cp -v ../../../fpga_sv/display/txtlcd_3wire.sv build/src
 cp -v externals/*.v build/src
 cp -v externals/*.sv build/src
 cp -v ${ROMFILE} build/src
@@ -127,9 +130,12 @@ if [ -d externals ]; then
 		../../../fpga_sv/mem/ram_2port.sv \
 		../../../fpga_sv/mem/memcpy.sv \
 		../../../fpga_sv/mem/memsel.sv \
+		../../../fpga_sv/mem/bytesel.sv \
 		../../../fpga_sv/clock/clkgen.sv \
 		../../../fpga_sv/sync/debounce_switch.sv \
 		../../../fpga_sv/sync/debounce_button.sv \
+		../../../fpga_sv/comm/serial.sv \
+		../../../fpga_sv/display/txtlcd_3wire.sv \
 		externals/picorv32.v \
 		${ROMFILE} rv_main.sv rv_tb.sv; then
 		exit -1

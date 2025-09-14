@@ -7,9 +7,9 @@
 
 //#define DEBUG_STARTUP
 
-#include "string.h"
+#include "../lib/string.h"
 #ifdef DEBUG_STARTUP
-	#include "serial.h"
+	#include "../lib/serial.h"
 #endif
 
 

@@ -9,11 +9,10 @@
  *   - https://github.com/grughuhler/picorv32_tang_nano_unified/tree/main
  */
 
-
 module rv_main
 #(
 	parameter MAIN_CLK = 27_000_000,
-	parameter SLOW_CLK =        500
+	parameter SYS_CLK  =  1_000_000
 )
 (
 	// main clock
@@ -21,6 +20,11 @@ module rv_main
 
 	// keys
 	input  [1 : 0] key,
+	
+	// lcd module
+	output txtlcd_scl, txtlcd_rst,
+	output txtlcd_sda_o,
+	input txtlcd_sda_i,
 
 	// segment display
 	//output [6:0] seg,
@@ -33,14 +37,11 @@ module rv_main
 
 
 // ----------------------------------------------------------------------------
-// slow clock
+// create system clock from input clock
 // ----------------------------------------------------------------------------
-//localparam MAIN_CLK = 27_000_000;
-//localparam SLOW_CLK =      0_500;
-
 logic clock;
 
-clkgen #(.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(SLOW_CLK))
+clkgen #(.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(SYS_CLK))
 clk_slow (.in_clk(clk27), .in_rst(1'b0), .out_clk(clock));
 // ----------------------------------------------------------------------------
 
@@ -140,7 +141,11 @@ ram_mod(.in_rst(reset),
 // ---------------------------------------------------------------------------
 // instantiate rom
 // ---------------------------------------------------------------------------
-localparam ROM_ADDR_BITS = 8; //rom.ADDR_BITS;  // use value from generated rom.sv
+`ifndef IS_TESTBENCH
+	localparam ROM_ADDR_BITS = rom.ADDR_BITS;  // use value from generated rom.sv
+`else
+	localparam ROM_ADDR_BITS = 8;
+`endif
 
 logic [DATA_BITS - 1 : 0] out_rom_data;
 rom rom_mod(
@@ -331,6 +336,70 @@ end
 // ---------------------------------------------------------------------------
 
 
+// --------------------------------------------------------------------
+// lcd serial bus
+// --------------------------------------------------------------------
+localparam SERIAL_CLK = 1_000_000;
+
+wire serial_enable, serial_ready;
+wire [7 : 0] serial_data, serial_data_in;
+wire serial_next;
+
+// instantiate serial module
+serial #(
+	.BITS(8), .LOWBIT_FIRST(1'b1),
+	.MAIN_CLK_HZ(SYS_CLK), .SERIAL_CLK_HZ(SERIAL_CLK)
+)
+serial_mod(
+	.in_clk(clock), .in_rst(reset), .in_enable(serial_enable),
+	.out_ready(serial_ready), .out_clk(txtlcd_scl),
+	.out_serial(txtlcd_sda_o), .in_serial(txtlcd_sda_i),
+	.in_parallel(serial_data), .out_parallel(serial_data_in),
+	.out_next_word(serial_next), .out_word_finished()
+	//.out_clk_raw(serial_clk_raw)
+);
+// --------------------------------------------------------------------
+
+
+// --------------------------------------------------------------------
+// lcd module
+// --------------------------------------------------------------------
+localparam LCD_SIZE = 4*20;
+
+wire [7 : 0] ram_read_lcd;
+wire [6 : 0] ram_addr_lcd;
+wire [7 : 0] lcd_flags;
+logic lcd_update = 1'b1;
+
+
+// the last two bits of the address select the byte in the data word
+bytesel #(
+	.WORD_BITS(DATA_BITS), .BYTE_BITS(8))
+bytesel_mod(
+	.in_word(out_data_2),
+	.in_idx(ram_addr_lcd[1 : 0]),
+	.out_byte(ram_read_lcd)
+);
+
+// base memory address for lcd text
+assign addr_2 = (16'h3f00 >> 2'h2) + ram_addr_lcd[6 : 2];
+
+
+// instantiate the lcd module
+txtlcd_3wire #(
+	.MAIN_CLK(SYS_CLK), .LCD_SIZE(LCD_SIZE)
+)
+lcd_mod(
+	.in_clk(clock), .in_rst(reset),
+	.in_update(lcd_update), .in_bus_data(serial_data_in),
+	.in_bus_next(serial_next), .in_bus_ready(serial_ready),
+	.out_bus_data(serial_data), .out_bus_enable(serial_enable),
+	.in_mem_word(ram_read_lcd), .out_mem_addr(ram_addr_lcd),
+	.out_busy_flag(lcd_flags), .out_lcd_reset(txtlcd_rst)
+);
+// --------------------------------------------------------------------
+
+
 // ---------------------------------------------------------------------------
 // leds for debugging
 // ---------------------------------------------------------------------------
@@ -338,15 +407,13 @@ assign led[0] = ~(state == COPY_ROM);
 assign led[1] = ~(state == RUN_CPU);
 assign led[2] = ~(state_memaccess == CPU_WAIT_MEM);
 assign led[3] = ~(state_memaccess == CPU_MEM_READY);
-assign led[4] = ~(state_memaccess == CPU_PREPARE_WRITE || state_memaccess == CPU_WRITE);
-//assign led[5] = ~(state_memaccess == CPU_WRITE);
-assign led[5] = ~data_watch[0];
+assign led[4] = ~(state_memaccess == CPU_PREPARE_WRITE);
+assign led[5] = ~(state_memaccess == CPU_WRITE);
 
 
-// watch the 0x3f00 and 0x3f01 addresses for the memory test in main.cpp
-assign addr_2 = (16'h3f00 >> 2'h2);
-assign addr_watch = (16'h3f04 >> 2'h2);
-assign ledg[7:0] = out_data_2[7 : 0];
+// watch address 0x3f00
+assign addr_watch = (16'h3f00 >> 2'h2);
+assign ledg[7:0] = data_watch[7 : 0];
 // ---------------------------------------------------------------------------
 
 
