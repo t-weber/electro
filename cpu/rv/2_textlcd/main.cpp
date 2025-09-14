@@ -31,9 +31,9 @@ extern "C" int main() noexcept
 		unsigned int res = fac(val);
 
 		txtlcd::print<char>(i, 0, val, "! = ", res);
-		txtlcd::update<char>();
 	}
 
+	txtlcd::update<char>();
 	return 0;
 }
 
