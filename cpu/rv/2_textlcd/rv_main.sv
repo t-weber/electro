@@ -12,7 +12,7 @@
 module rv_main
 #(
 	parameter MAIN_CLK = 27_000_000,
-	parameter SYS_CLK  =  1_000_000
+	parameter SYS_CLK  =  9_000_000
 )
 (
 	// main clock
@@ -71,12 +71,14 @@ typedef enum bit [1 : 0]
 
 t_state state = RESET_ALL, next_state = RESET_ALL;
 
+
 always_ff@(posedge clock) begin
 	if(rst == 1'b1)
 		state <= RESET_ALL;
 	else
 		state <= next_state;
 end
+
 
 always_comb begin
 	next_state = state;
@@ -251,7 +253,8 @@ assign cpu_irq = { 28'b0, btn, 3'b0 };
 // ---------------------------------------------------------------------------
 logic [DATA_BITS - 1 : 0] write_data_sel;
 
-// address to watch
+// addresses to watch
+logic [ADDR_BITS - 1 : 0] addr_lcdctrl_watch;
 logic [ADDR_BITS - 1 : 0] addr_watch;
 logic [DATA_BITS - 1 : 0] data_watch, next_data_watch;
 
@@ -277,6 +280,7 @@ typedef enum bit [3 : 0]
 
 t_state_memaccess state_memaccess = CPU_WAIT_MEM, next_state_memaccess = CPU_WAIT_MEM;
 
+
 always_ff@(posedge clock) begin
 	state_memaccess <= next_state_memaccess;
 	write_data <= next_write_data;
@@ -293,12 +297,14 @@ always_ff@(posedge clock) begin
 		write_cycle <= write_cycle + 1'b1;
 end
 
+
 always_comb begin
 	next_state_memaccess = state_memaccess;
 	next_write_data = write_data;
 	cpu_mem_ready = 1'b0;
 	cpu_write_enable = 1'b0;
 	next_data_watch = data_watch;
+	lcd_update = 1'b1;  // TODO
 
 	case(state_memaccess)
 		CPU_WAIT_MEM: begin
@@ -321,8 +327,10 @@ always_comb begin
 		CPU_PREPARE_WRITE: begin
 			next_write_data = write_data_sel;
 			next_state_memaccess = CPU_WRITE;
-			if(addr_1 == addr_watch)
+			if(addr_1 == addr_watch)          // program wrote to watched variable
 				next_data_watch = write_data_sel;
+			if(addr_1 == addr_lcdctrl_watch)  // program wrote to lcd control reg
+				lcd_update = 1'b1;
 		end
 
 		CPU_WRITE: begin
@@ -369,7 +377,7 @@ localparam LCD_SIZE = 4*20;
 wire [7 : 0] ram_read_lcd;
 wire [6 : 0] ram_addr_lcd;
 wire [7 : 0] lcd_flags;
-logic lcd_update = 1'b1;
+logic lcd_update = 1'b0;
 
 
 // the last two bits of the address select the byte in the data word
@@ -411,7 +419,8 @@ assign led[4] = ~(state_memaccess == CPU_PREPARE_WRITE);
 assign led[5] = ~(state_memaccess == CPU_WRITE);
 
 
-// watch address 0x3f00
+// watch addresses
+assign addr_lcdctrl_watch = (16'h3eff >> 2'h2);
 assign addr_watch = (16'h3f00 >> 2'h2);
 assign ledg[7:0] = data_watch[7 : 0];
 // ---------------------------------------------------------------------------

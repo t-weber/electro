@@ -6,9 +6,7 @@
  */
 
 #include "string.h"
-
-
-#define LCD_ADDR  0x3f00  // base address for the lcd text
+#include "textlcd.h"
 
 
 /**
@@ -25,12 +23,16 @@ t_int fac(t_int i) noexcept
 
 extern "C" int main() noexcept
 {
-	extern const volatile void* _mem_base;
-	unsigned long mem_base = reinterpret_cast<unsigned long>(&_mem_base);
+	txtlcd::clear<char>();
 
-	volatile char* buf = reinterpret_cast<volatile char*>(mem_base + LCD_ADDR);
-	buf[0] = 'A'; buf[1] = 'B'; buf[2] = 'C'; buf[3] = 'D';
-	buf[4] = '1'; buf[5] = '2'; buf[6] = '3'; buf[7] = '4';
+	for(unsigned int i = 0; i < TXTLCD_ROWS; ++i)
+	{
+		unsigned int val = i + 5;
+		unsigned int res = fac(val);
+
+		txtlcd::print<char>(i, 0, val, "! = ", res);
+		txtlcd::update<char>();
+	}
 
 	return 0;
 }
