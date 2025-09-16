@@ -273,19 +273,27 @@ typedef enum bit [3 : 0]
 t_state_memaccess state_memaccess = CPU_WAIT_MEM, next_state_memaccess = CPU_WAIT_MEM;
 
 always_ff@(posedge clock) begin
-	state_memaccess <= next_state_memaccess;
-	write_data <= next_write_data;
-	data_watch <= next_data_watch;
-
-	if(read_cycle == READ_CYCLES || state_memaccess != CPU_MEM_READY)
+	if(reset == 1'b1) begin
+		state_memaccess <= CPU_WAIT_MEM;
+		write_data <= 1'b0;
+		data_watch <= 1'b0;
 		read_cycle <= 1'b0;
-	else
-		read_cycle <= read_cycle + 1'b1;
-
-	if(write_cycle == WRITE_CYCLES || state_memaccess != CPU_WRITE)
 		write_cycle <= 1'b0;
-	else
-		write_cycle <= write_cycle + 1'b1;
+	end else begin
+		state_memaccess <= next_state_memaccess;
+		write_data <= next_write_data;
+		data_watch <= next_data_watch;
+
+		if(read_cycle == READ_CYCLES || state_memaccess != CPU_MEM_READY)
+			read_cycle <= 1'b0;
+		else
+			read_cycle <= read_cycle + 1'b1;
+
+		if(write_cycle == WRITE_CYCLES || state_memaccess != CPU_WRITE)
+			write_cycle <= 1'b0;
+		else
+			write_cycle <= write_cycle + 1'b1;
+	end
 end
 
 always_comb begin

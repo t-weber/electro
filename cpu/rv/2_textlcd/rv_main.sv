@@ -20,7 +20,7 @@ module rv_main
 
 	// keys
 	input  [1 : 0] key,
-	
+
 	// lcd module
 	output txtlcd_scl, txtlcd_rst,
 	output txtlcd_sda_o,
@@ -282,19 +282,27 @@ t_state_memaccess state_memaccess = CPU_WAIT_MEM, next_state_memaccess = CPU_WAI
 
 
 always_ff@(posedge clock) begin
-	state_memaccess <= next_state_memaccess;
-	write_data <= next_write_data;
-	data_watch <= next_data_watch;
-
-	if(read_cycle == READ_CYCLES || state_memaccess != CPU_MEM_READY)
+	if(reset == 1'b1) begin
+		state_memaccess <= CPU_WAIT_MEM;
+		write_data <= 1'b0;
+		data_watch <= 1'b0;
 		read_cycle <= 1'b0;
-	else
-		read_cycle <= read_cycle + 1'b1;
-
-	if(write_cycle == WRITE_CYCLES || state_memaccess != CPU_WRITE)
 		write_cycle <= 1'b0;
-	else
-		write_cycle <= write_cycle + 1'b1;
+	end else begin
+		state_memaccess <= next_state_memaccess;
+		write_data <= next_write_data;
+		data_watch <= next_data_watch;
+
+		if(read_cycle == READ_CYCLES || state_memaccess != CPU_MEM_READY)
+			read_cycle <= 1'b0;
+		else
+			read_cycle <= read_cycle + 1'b1;
+
+		if(write_cycle == WRITE_CYCLES || state_memaccess != CPU_WRITE)
+			write_cycle <= 1'b0;
+		else
+			write_cycle <= write_cycle + 1'b1;
+	end
 end
 
 
@@ -304,7 +312,7 @@ always_comb begin
 	cpu_mem_ready = 1'b0;
 	cpu_write_enable = 1'b0;
 	next_data_watch = data_watch;
-	lcd_update = 1'b0;
+	lcd_update = 1'b1; //1'b0;  // TODO
 
 	case(state_memaccess)
 		CPU_WAIT_MEM: begin
@@ -327,10 +335,12 @@ always_comb begin
 		CPU_PREPARE_WRITE: begin
 			next_write_data = write_data_sel;
 			next_state_memaccess = CPU_WRITE;
-			if(addr_1 == addr_watch)          // program wrote to watched variable
+			if(addr_1 == addr_watch)                     // program wrote to watched variable
 				next_data_watch = write_data_sel;
-			else if(addr_1 == addr_lcdctrl_watch)  // program wrote to lcd control reg
+			else if(addr_1 == addr_lcdctrl_watch) begin  // program wrote to lcd control reg
 				lcd_update = 1'b1;
+				next_state_memaccess = CPU_MEM_READY;    // don't actually write the value to mem
+			end
 		end
 
 		CPU_WRITE: begin
