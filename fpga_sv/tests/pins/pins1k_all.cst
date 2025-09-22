@@ -1,0 +1,84 @@
+//
+// @author Tobias Weber
+// @date 11-May-2024
+// @license see 'LICENSE' file
+//
+// references:
+//   - https://github.com/sipeed/sipeed_wiki/blob/main/docs/hardware/en/tang/Tang-Nano-1K/Nano-1k.md
+//       -> Schematic
+//   - https://github.com/YosysHQ/apicula/tree/master/examples
+//   - https://github.com/YosysHQ/nextpnr/blob/master/gowin/arch.cc
+//   - https://github.com/YosysHQ/yosys/tree/main/examples/gowin
+//
+
+
+// internal connections
+IO_LOC "led[0]"      9;
+IO_LOC "led[1]"     10;
+IO_LOC "led[2]"     11;
+
+IO_LOC "key[0]"     13;
+IO_LOC "key[1]"     44;
+
+IO_LOC "clk27"      47;
+
+
+IO_PORT "led[0]"    PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "led[1]"    PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "led[2]"    PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+
+IO_PORT "key[0]"    PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "key[1]"    PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+
+IO_PORT "clk27"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+
+
+
+// available gpios on the left side
+IO_LOC "gpiol[0]"   23;
+IO_LOC "gpiol[1]"   18;
+IO_LOC "gpiol[2]"   17;
+IO_LOC "gpiol[3]"   16;
+
+// these also seem to be internally used
+//IO_LOC "gpiol[4]"   24;
+//IO_LOC "gpiol[5]"   22;
+//IO_LOC "gpiol[6]"   15;
+//IO_LOC "gpiol[7]"   27;
+//IO_LOC "gpiol[8]"   28;
+
+
+IO_PORT "gpiol[0]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "gpiol[1]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "gpiol[2]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "gpiol[3]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+
+
+
+// available gpios on the right side
+IO_LOC "gpior[0]"   40;
+IO_LOC "gpior[1]"   41;
+IO_LOC "gpior[2]"   38;
+IO_LOC "gpior[3]"   39;
+IO_LOC "gpior[4]"   42;
+IO_LOC "gpior[5]"   35;
+IO_LOC "gpior[6]"   34;
+IO_LOC "gpior[7]"   20;
+IO_LOC "gpior[8]"   19;
+IO_LOC "gpior[9]"   29;
+
+// these also seem to be internally used
+//IO_LOC "gpior[10]"  30;
+//IO_LOC "gpior[11]"  31;
+
+
+IO_PORT "gpior[0]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "gpior[1]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "gpior[2]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "gpior[3]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "gpior[4]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "gpior[5]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "gpior[6]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "gpior[7]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "gpior[8]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "gpior[9]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;

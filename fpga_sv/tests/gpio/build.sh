@@ -34,14 +34,13 @@ src_files="../../sync/debounce_button.sv \
 target_board=GW1NR-LV9QN88PC6/I5
 target_fpga=GW1N-9C
 target_freq=27
-#target_pins_file=pins9k.cst
 target_pins_file=pins9k_all.cst
 
 # 1k board
 #target_board=GW1NZ-LV1QN48C6/I5
 #target_fpga=GW1NZ-1
 #target_freq=27
-#target_pins_file=pins1k.cst
+#target_pins_file=pins1k_all.cst
 
 # tools
 YOSYS=yosys

@@ -12,14 +12,26 @@ module leds
 
 	input  [1 : 0] key,
 
+`ifdef USE_1K
+	// leds
+	output [2 : 0] led,
+	output [9 : 0] ledr
+`else
 	// leds
 	output [5 : 0] led,
 	output [7 : 0] ledg
+`endif
 );
 
 
 localparam MAIN_CLK = 27_000_000;
 localparam SLOW_CLK =          4;
+
+`ifdef USE_1K
+	localparam NUM_LEDS = $size(ledr);
+`else
+	localparam NUM_LEDS = $size(ledg);
+`endif
 
 
 // ----------------------------------------------------------------------------
@@ -42,7 +54,7 @@ clk_slow (.in_clk(clk27), .in_rst(rst), .out_clk(slow_clk));
 // ----------------------------------------------------------------------------
 
 
-logic [7 : 0] shiftreg = 1'b1, shiftreg_next = 1'b1;
+logic [NUM_LEDS - 1 : 0] shiftreg = 1'b1, shiftreg_next = 1'b1;
 logic shiftdir = 1'b1, shiftdir_next = 1'b1;
 
 always_ff@(posedge slow_clk, posedge rst) begin
@@ -60,7 +72,7 @@ always_comb begin
 	shiftdir_next = shiftdir;
 	shiftreg_next = shiftreg;
 
-	if(shiftreg == (1'b1 << ($size(ledg) - 2)) && shiftdir == 1'b1)
+	if(shiftreg == (1'b1 << (NUM_LEDS - 2)) && shiftdir == 1'b1)
 		shiftdir_next = 1'b0;
 	if(shiftreg == 2'b10 && shiftdir == 1'b0)
 		shiftdir_next = 1'b1;
@@ -72,8 +84,12 @@ always_comb begin
 end
 
 
-assign ledg = shiftreg;
-assign led = ~shiftreg[5:0];
+`ifdef USE_1K
+	assign ledr = shiftreg;
+`else
+	assign ledg = shiftreg;
+`endif
+assign led = ~shiftreg[$high(led) : 0];
 
 
 endmodule

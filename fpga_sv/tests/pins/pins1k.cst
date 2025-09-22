@@ -33,52 +33,33 @@ IO_PORT "key[1]"    PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 IO_PORT "clk27"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 
 
+// oled
+IO_LOC "oled_scl"   20;
+IO_LOC "oled_sda"   34;
 
-// available gpios on the left side
-IO_LOC "gpiol[0]"   23;
-IO_LOC "gpiol[1]"   18;
-IO_LOC "gpiol[2]"   17;
-IO_LOC "gpiol[3]"   16;
-
-// these also seem to be internally used
-//IO_LOC "gpiol[4]"   24;
-//IO_LOC "gpiol[5]"   22;
-//IO_LOC "gpiol[6]"   15;
-//IO_LOC "gpiol[7]"   27;
-//IO_LOC "gpiol[8]"   28;
+IO_PORT "oled_scl"  PULL_MODE=UP  IO_TYPE=LVCMOS33;
+IO_PORT "oled_sda"  PULL_MODE=UP  IO_TYPE=LVCMOS33;
 
 
-IO_PORT "gpiol[0]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpiol[1]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpiol[2]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpiol[3]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+// red leds
+IO_LOC "ledr[0]"    40;
+IO_LOC "ledr[1]"    41;
+IO_LOC "ledr[2]"    38;
+IO_LOC "ledr[3]"    39;
+IO_LOC "ledr[4]"    42;
+IO_LOC "ledr[5]"    35;
+IO_LOC "ledr[6]"    23;
+IO_LOC "ledr[7]"    18;
+IO_LOC "ledr[8]"    17;
+IO_LOC "ledr[9]"    16;
 
-
-
-// available gpios on the right side
-IO_LOC "gpior[0]"   40;
-IO_LOC "gpior[1]"   41;
-IO_LOC "gpior[2]"   38;
-IO_LOC "gpior[3]"   39;
-IO_LOC "gpior[4]"   42;
-IO_LOC "gpior[5]"   35;
-IO_LOC "gpior[6]"   34;
-IO_LOC "gpior[7]"   20;
-IO_LOC "gpior[8]"   19;
-IO_LOC "gpior[9]"   29;
-
-// these also seem to be internally used
-//IO_LOC "gpior[10]"  30;
-//IO_LOC "gpior[11]"  31;
-
-
-IO_PORT "gpior[0]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpior[1]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpior[2]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpior[3]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpior[4]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpior[5]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpior[6]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpior[7]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpior[8]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpior[9]"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledr[0]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledr[1]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledr[2]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledr[3]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledr[4]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledr[5]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledr[6]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledr[7]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledr[8]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "ledr[9]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;

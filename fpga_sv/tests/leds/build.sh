@@ -30,16 +30,18 @@ src_files="../../clock/clkgen.sv \
 	main.sv"
 
 # 9k board
-target_board=GW1NR-LV9QN88PC6/I5
-target_fpga=GW1N-9C
-target_freq=27
-target_pins_file=pins9k.cst
+#target_board=GW1NR-LV9QN88PC6/I5
+#target_fpga=GW1N-9C
+#target_freq=27
+#target_pins_file=pins9k.cst
+#target_defines="-DUSE_9K"
 
 # 1k board
-#target_board=GW1NZ-LV1QN48C6/I5
-#target_fpga=GW1NZ-1
-#target_freq=27
-#target_pins_file=pins1k.cst
+target_board=GW1NZ-LV1QN48C6/I5
+target_fpga=GW1NZ-1
+target_freq=27
+target_pins_file=pins1k.cst
+target_defines="-DUSE_1K"
 
 # tools
 YOSYS=yosys
@@ -60,6 +62,7 @@ if [ $run_synth -ne 0 ]; then
 	echo -e "Running Synthesis: sv -> $synth_file..."
 	if ! ${YOSYS} -q -d -t -l $synth_log \
 		-p "synth_gowin -top $top_module -json $synth_file" \
+		$target_defines \
 		$src_files
 	then
 		echo -e "Synthesis failed!"
