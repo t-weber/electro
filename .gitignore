@@ -54,7 +54,7 @@
 
 # generated files
 micro_ctrl/lib/characters.c
-fpga/tests/video/font.vhdl
+fpga/projs/video/font.vhdl
 fpga_sv/projs/lcd_serial/font.?v
 fpga_sv/projs/lcd_serial/textmem*.?v
 fpga_sv/projs/lcd_serial/textmem*.txt
