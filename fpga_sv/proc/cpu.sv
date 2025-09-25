@@ -1,6 +1,6 @@
 /**
  * cpu
- * @author Tobias Weber <tobias.weber@tum.de>
+ * @author Tobias Weber <tobias.weber@tum.de> (0000-0002-7230-1932)
  * @date September-2025
  * @license see 'LICENSE' file
  */
@@ -16,7 +16,8 @@ module cpu
 	// memory interface
 	input wire in_mem_ready,
 	input wire [WORD_BITS - 1 : 0] in_mem_data,
-	output wire out_mem_ready,
+
+	output wire out_mem_ready, out_mem_write,
 	output wire [WORD_BITS - 1 : 0] out_mem_data,
 	output wire [ADDR_BITS - 1 : 0] out_mem_addr,
 
@@ -31,9 +32,14 @@ module cpu
 reg [ADDR_BITS - 1 : 0] pc, next_pc;             // program counter
 reg [WORD_BITS - 1 : 0] instr, next_instr;       // current instruction
 reg [ADDR_BITS - 1 : 0] mem_addr, next_mem_addr; // current address
+reg mem_ready, next_mem_ready;                   // request memory read
 
 assign out_mem_addr = mem_addr;
 assign out_instr = instr;
+
+assign out_mem_ready = mem_ready;
+assign out_mem_write = 1'b0;
+assign out_mem_data = 1'b0;
 // ----------------------------------------------------------------------------
 
 
@@ -59,6 +65,7 @@ always_ff@(posedge in_clk) begin
 		pc <= 1'b0;
 		instr <= 1'b0;
 		mem_addr <= 1'b0;
+		mem_ready <= 1'b0;
 	end else begin
 		cycle <= next_cycle;
 		subcycle <= next_subcycle;
@@ -66,6 +73,7 @@ always_ff@(posedge in_clk) begin
 		pc <= next_pc;
 		instr <= next_instr;
 		mem_addr <= next_mem_addr;
+		mem_ready <= next_mem_ready;
 	end
 end
 
@@ -77,6 +85,7 @@ always_comb begin
 	next_pc = pc;
 	next_instr = instr;
 	next_mem_addr = mem_addr;
+	next_mem_ready = mem_ready;
 
 	unique case(cycle)
 		FETCH: begin
@@ -84,6 +93,7 @@ always_comb begin
 				0: begin  // request new instruction at pc
 					next_mem_addr = pc;
 					next_pc = pc + 1'b1;
+					next_mem_ready = 1'b1;
 					next_subcycle = 1;
 				end
 				1: begin  // fetch new instruction

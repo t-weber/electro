@@ -5,7 +5,7 @@
  * @license see 'LICENSE' file
  */
 
-`default_nettype /*wire*/ none
+//`default_nettype /*wire*/ none
 
 
 module memcpy
