@@ -5,6 +5,18 @@
  * @license see 'LICENSE' file
  */
 
+/**
+ * 2-address opcodes
+ * -----------------
+ * 1000_aa_bb      register transfer aa -> bb
+ *
+ * 1-address opcodes
+ * -----------------
+ * 000000_aa val   transfer immediate val to register aa
+ * 010001_aa addr  transfer mem[addr] to register aa
+ * 010010_aa addr  transfer register aa to mem[addr]
+ */
+
 module cpu
 #(
 	parameter ADDR_BITS = 8,
@@ -29,11 +41,27 @@ module cpu
 // ----------------------------------------------------------------------------
 // registers
 // ----------------------------------------------------------------------------
+localparam NUM_REGS = WORD_BITS/2;
+localparam REG_BITS = $clog2(NUM_REGS);
+
 reg [ADDR_BITS - 1 : 0] pc, next_pc;             // program counter
 reg [WORD_BITS - 1 : 0] instr, next_instr;       // current instruction
 reg [ADDR_BITS - 1 : 0] mem_addr, next_mem_addr; // current address
 reg mem_ready, next_mem_ready;                   // request memory read
 
+reg [0 : NUM_REGS - 1][WORD_BITS - 1 : 0] regs, next_regs;  // registers
+reg [REG_BITS - 1 : 0] regidx1, next_regidx1;    // register index 1
+reg [REG_BITS - 1 : 0] regidx2, next_regidx2;    // register index 2
+reg [WORD_BITS - 1 : 0] immval, next_immval;     // immediate value
+
+reg is_1addr, next_is_1addr;
+reg is_2addr, next_is_2addr;
+// ----------------------------------------------------------------------------
+
+
+// ----------------------------------------------------------------------------
+// outputs
+// ----------------------------------------------------------------------------
 assign out_mem_addr = mem_addr;
 assign out_instr = instr;
 
@@ -50,7 +78,8 @@ assign out_mem_data = 1'b0;
 // ----------------------------------------------------------------------------
 typedef enum bit[1 : 0]
 {
-	FETCH, DECODE, EXEC
+	FETCH, DECODE, EXEC,
+	LOAD_IMMVAL
 } t_cycle;
 
 t_cycle cycle = FETCH, next_cycle = FETCH;
@@ -66,6 +95,14 @@ always_ff@(posedge in_clk) begin
 		instr <= 1'b0;
 		mem_addr <= 1'b0;
 		mem_ready <= 1'b0;
+
+		regs <= 1'b0;
+		regidx1 <= 1'b0;
+		regidx2 <= 1'b0;
+		immval <= 1'b0;
+
+		is_1addr <= 1'b0;
+		is_2addr <= 1'b0;
 	end else begin
 		cycle <= next_cycle;
 		subcycle <= next_subcycle;
@@ -74,6 +111,14 @@ always_ff@(posedge in_clk) begin
 		instr <= next_instr;
 		mem_addr <= next_mem_addr;
 		mem_ready <= next_mem_ready;
+
+		regs <= next_regs;
+		regidx1 <= next_regidx1;
+		regidx2 <= next_regidx2;
+		immval <= next_immval;
+
+		is_1addr <= next_is_1addr;
+		is_2addr <= next_is_2addr;
 	end
 end
 
@@ -86,6 +131,14 @@ always_comb begin
 	next_instr = instr;
 	next_mem_addr = mem_addr;
 	next_mem_ready = mem_ready;
+
+	next_regs = regs;
+	next_regidx1 = regidx1;
+	next_regidx2 = regidx2;
+	next_immval = immval;
+
+	next_is_1addr = is_1addr;
+	next_is_2addr = is_2addr;
 
 	unique case(cycle)
 		FETCH: begin
@@ -107,10 +160,84 @@ always_comb begin
 		end
 
 		DECODE: begin
+			next_is_1addr = 1'b0;
+			next_is_2addr = 1'b0;
+			next_cycle = EXEC;
+
+			if(instr[WORD_BITS - 1] == 1'b1) begin
+				// 2-address opcode
+				next_is_2addr = 1'b1;
+				next_regidx1 = instr[WORD_BITS/2 - 1 -: REG_BITS];
+				next_regidx2 = instr[WORD_BITS/2 - 1 - REG_BITS : 0];
+			end else begin
+				// 1-address opcode
+				next_is_1addr = 1'b1;
+				next_regidx1 = instr[0 +: REG_BITS];
+
+				// does the instruction have an immediate value in the following word?
+				if(instr[WORD_BITS - 2] == 1'b1)
+					next_cycle = LOAD_IMMVAL;
+			end
+		end
+
+		LOAD_IMMVAL: begin
+			// load immediate word following pc
+			unique case(subcycle)
+				0: begin  // request immediate value
+					next_mem_addr = pc;
+					next_pc = pc + 1'b1;
+					next_mem_ready = 1'b1;
+					next_subcycle = 1;
+				end
+				1: begin  // fetch immediate value
+					if(in_mem_ready) begin
+						next_immval = in_mem_data;
+						next_cycle = EXEC;
+						next_subcycle = 0;
+					end
+				end
+			endcase
 		end
 
 		EXEC: begin
-		end
+			if(is_2addr) begin
+				if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b000) begin
+					// register transfer
+					next_regs[regidx2] = regs[regidx1];
+					next_cycle = FETCH;
+				end
+			end
+
+			else if(is_1addr) begin
+				if(instr[WORD_BITS - 3 : REG_BITS] == 4'b0000) begin
+					// transfer immediate value to register
+					next_regs[regidx1] = immval;
+					next_cycle = FETCH;
+				end
+
+				else if(instr[WORD_BITS - 3 : REG_BITS] == 4'b0001) begin
+					// transfer memory to register
+					unique case(subcycle)
+						0: begin  // request memory word pointed to by immval
+							next_mem_addr = immval;
+							next_mem_ready = 1'b1;
+							next_subcycle = 1;
+					end
+						1: begin  // fetch memory word
+							if(in_mem_ready) begin
+								next_regs[regidx1] = in_mem_data;
+								next_cycle = FETCH;
+								next_subcycle = 0;
+							end
+						end
+					endcase
+				end
+
+				else if(instr[WORD_BITS - 3 : REG_BITS] == 4'b0010) begin
+					// TODO: transfer register to memory
+				end
+			end  // is_1addr
+		end  // EXEC
 	endcase
 end
 // ----------------------------------------------------------------------------
