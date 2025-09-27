@@ -8,7 +8,7 @@
 module cpuctrl
 #(
 	parameter MAIN_CLK = 27_000_000,
-	parameter SYS_CLK  =         10
+	parameter SYS_CLK  =         20
 )
 (
 	// main clock
@@ -182,7 +182,7 @@ wire clock_cpu;
 
 wire cpu_mem_valid;
 logic cpu_mem_ready = 1'b0;
-wire cpu_mem_write;
+wire cpu_mem_dowrite;
 wire [ADDR_BITS - 1 : 0] cpu_addr;
 
 wire [DATA_BITS - 1 : 0] cpu_data;
@@ -190,7 +190,7 @@ logic [DATA_BITS - 1 : 0] write_data, next_write_data;
 wire [DATA_BITS - 1 : 0] cpu_instr;
 
 // instantiate cpu
-cpu #(.ADDR_BITS(ADDR_BITS), .WORD_BITS(DATA_BITS))
+cpu8 #(.ADDR_BITS(ADDR_BITS), .WORD_BITS(DATA_BITS))
 cpu_mod(
 	.in_clk(clock_cpu), .in_rst(reset),
 
@@ -200,7 +200,7 @@ cpu_mod(
 	.out_mem_ready(cpu_mem_valid),
 	.out_mem_addr(cpu_addr),
 	.out_mem_data(cpu_data),
-	.out_mem_write(cpu_mem_write),
+	.out_mem_write(cpu_mem_dowrite),
 
 	.out_instr(cpu_instr)
 );
@@ -222,8 +222,8 @@ assign write_enable_1 = (state == RUN_CPU ? cpu_write_enable : memcpy_write_enab
 // manage memory read and write access by cpu
 // ---------------------------------------------------------------------------
 // addresses to watch
-//logic [ADDR_BITS - 1 : 0] addr_watch;
-//logic [DATA_BITS - 1 : 0] data_watch, next_data_watch;
+logic [ADDR_BITS - 1 : 0] addr_watch;
+logic [DATA_BITS - 1 : 0] data_watch, next_data_watch;
 
 localparam READ_CYCLES = 1;
 localparam WRITE_CYCLES = 1;
@@ -242,13 +242,13 @@ always_ff@(posedge clock) begin
 	if(reset == 1'b1) begin
 		state_memaccess <= CPU_WAIT_MEM;
 		write_data <= 1'b0;
-		//data_watch <= 1'b0;
+		data_watch <= 1'b0;
 		read_cycle <= 1'b0;
 		write_cycle <= 1'b0;
 	end else begin
 		state_memaccess <= next_state_memaccess;
 		write_data <= next_write_data;
-		//data_watch <= next_data_watch;
+		data_watch <= next_data_watch;
 
 		if(read_cycle == READ_CYCLES || state_memaccess != CPU_MEM_READY)
 			read_cycle <= 1'b0;
@@ -268,12 +268,12 @@ always_comb begin
 	next_write_data = write_data;
 	cpu_mem_ready = 1'b0;
 	cpu_write_enable = 1'b0;
-	//next_data_watch = data_watch;
+	next_data_watch = data_watch;
 
 	case(state_memaccess)
 		CPU_WAIT_MEM: begin
 			if(cpu_mem_valid == 1'b1) begin
-				if(cpu_mem_write == 1'b0)
+				if(cpu_mem_dowrite == 1'b0)
 					next_state_memaccess = CPU_MEM_READY;
 				else
 					next_state_memaccess = CPU_PREPARE_WRITE;
@@ -289,10 +289,10 @@ always_comb begin
 		end
 
 		CPU_PREPARE_WRITE: begin
-			next_write_data = out_data_1;
+			next_write_data = cpu_data;
 			next_state_memaccess = CPU_MEM_WRITE;
-			//if(addr_1 == addr_watch)  // program wrote to watched variable
-			//	next_data_watch = out_data_1;
+			if(addr_1 == addr_watch)  // program wrote to watched variable
+				next_data_watch = cpu_data;
 		end
 
 		CPU_MEM_WRITE: begin
@@ -313,7 +313,8 @@ assign led[0] = ~(state == COPY_ROM);
 assign led[1] = ~(state == RUN_CPU);
 assign led[2] = ~(state_memaccess == CPU_MEM_WRITE);
 
-assign ledr[DATA_BITS - 1 : 0] = cpu_instr;
+assign addr_watch = 3'b111;
+assign ledr[DATA_BITS - 1 : 0] = data_watch; //cpu_instr;
 assign ledr[9 : DATA_BITS] = 1'b0;
 // ---------------------------------------------------------------------------
 

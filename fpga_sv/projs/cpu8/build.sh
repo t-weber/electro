@@ -33,7 +33,7 @@ src_files="../../clock/clkgen.sv \
 	../../sync/debounce_button.sv \
 	../../mem/memcpy.sv \
 	../../mem/ram_2port.sv \
-	../../proc/cpu.sv \
+	../../proc/cpu8.sv \
 	${rom_svfile}
 	main.sv"
 

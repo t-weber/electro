@@ -1,5 +1,5 @@
 /**
- * cpu
+ * 8-bit cpu
  * @author Tobias Weber <tobias.weber@tum.de> (0000-0002-7230-1932)
  * @date September-2025
  * @license see 'LICENSE' file
@@ -17,7 +17,7 @@
  * 010010_aa addr  transfer register aa to mem[addr]
  */
 
-module cpu
+module cpu8
 #(
 	parameter ADDR_BITS = 8,
 	parameter WORD_BITS = 8
@@ -78,10 +78,10 @@ assign out_mem_data = mem_data;
 // see: https://en.wikipedia.org/wiki/Instruction_cycle
 // see: https://en.wikipedia.org/wiki/Classic_RISC_pipeline
 // ----------------------------------------------------------------------------
-typedef enum bit[1 : 0]
+typedef enum bit[2 : 0]
 {
 	FETCH, DECODE, EXEC,
-	LOAD_IMMVAL
+	LOAD_IMMVAL, WRITE_MEM
 } t_cycle;
 
 t_cycle cycle = FETCH, next_cycle = FETCH;
@@ -207,6 +207,26 @@ always_comb begin
 			endcase
 		end
 
+		WRITE_MEM: begin
+			unique case(subcycle)
+				0: begin  // request memory write
+					next_mem_ready = 1'b1;
+					next_mem_write = 1'b1;
+					next_subcycle = 1;
+				end
+				1: begin  // wait for writing done
+					next_mem_ready = 1'b1;
+					next_mem_write = 1'b1;
+					if(in_mem_ready) begin
+						next_mem_ready = 1'b0;
+						next_mem_write = 1'b0;
+						next_cycle = FETCH;
+						next_subcycle = 0;
+					end
+				end
+			endcase
+		end
+
 		EXEC: begin
 			if(is_2addr) begin
 				if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b000) begin
@@ -245,12 +265,7 @@ always_comb begin
 					// transfer register to memory
 					next_mem_addr = immval;
 					next_mem_data = regs[regidx1];
-					next_mem_ready = 1'b1;
-					next_mem_write = 1'b1;
-					if(in_mem_ready) begin
-						next_mem_write = 1'b0;
-						next_cycle = FETCH;
-					end
+					next_cycle = WRITE_MEM;
 				end
 			end  // is_1addr
 		end  // EXEC
