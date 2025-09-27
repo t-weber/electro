@@ -8,7 +8,7 @@
 module cpuctrl
 #(
 	parameter MAIN_CLK = 27_000_000,
-	parameter SYS_CLK  =        100
+	parameter SYS_CLK  =         10
 )
 (
 	// main clock

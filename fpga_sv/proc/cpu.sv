@@ -12,7 +12,7 @@
  *
  * 1-address opcodes
  * -----------------
- * 000000_aa val   transfer immediate val to register aa
+ * 010000_aa val   transfer immediate val to register aa
  * 010001_aa addr  transfer mem[addr] to register aa
  * 010010_aa addr  transfer register aa to mem[addr]
  */
@@ -47,7 +47,9 @@ localparam REG_BITS = $clog2(NUM_REGS);
 reg [ADDR_BITS - 1 : 0] pc, next_pc;             // program counter
 reg [WORD_BITS - 1 : 0] instr, next_instr;       // current instruction
 reg [ADDR_BITS - 1 : 0] mem_addr, next_mem_addr; // current address
-reg mem_ready, next_mem_ready;                   // request memory read
+reg mem_ready, next_mem_ready;                   // request memory read or write
+reg mem_write, next_mem_write;                   // request memory write
+reg [WORD_BITS - 1 : 0] mem_data, next_mem_data; // data to write to memory
 
 reg [0 : NUM_REGS - 1][WORD_BITS - 1 : 0] regs, next_regs;  // registers
 reg [REG_BITS - 1 : 0] regidx1, next_regidx1;    // register index 1
@@ -66,8 +68,8 @@ assign out_mem_addr = mem_addr;
 assign out_instr = instr;
 
 assign out_mem_ready = mem_ready;
-assign out_mem_write = 1'b0;
-assign out_mem_data = 1'b0;
+assign out_mem_write = mem_write;
+assign out_mem_data = mem_data;
 // ----------------------------------------------------------------------------
 
 
@@ -95,6 +97,8 @@ always_ff@(posedge in_clk) begin
 		instr <= 1'b0;
 		mem_addr <= 1'b0;
 		mem_ready <= 1'b0;
+		mem_write <= 1'b0;
+		mem_data <= 1'b0;
 
 		regs <= 1'b0;
 		regidx1 <= 1'b0;
@@ -111,6 +115,8 @@ always_ff@(posedge in_clk) begin
 		instr <= next_instr;
 		mem_addr <= next_mem_addr;
 		mem_ready <= next_mem_ready;
+		mem_write <= next_mem_write;
+		mem_data <= next_mem_data;
 
 		regs <= next_regs;
 		regidx1 <= next_regidx1;
@@ -130,7 +136,9 @@ always_comb begin
 	next_pc = pc;
 	next_instr = instr;
 	next_mem_addr = mem_addr;
-	next_mem_ready = mem_ready;
+	next_mem_ready = 1'b0; //mem_ready;
+	next_mem_write = mem_write;
+	next_mem_data = mem_data;
 
 	next_regs = regs;
 	next_regidx1 = regidx1;
@@ -234,7 +242,15 @@ always_comb begin
 				end
 
 				else if(instr[WORD_BITS - 3 : REG_BITS] == 4'b0010) begin
-					// TODO: transfer register to memory
+					// transfer register to memory
+					next_mem_addr = immval;
+					next_mem_data = regs[regidx1];
+					next_mem_ready = 1'b1;
+					next_mem_write = 1'b1;
+					if(in_mem_ready) begin
+						next_mem_write = 1'b0;
+						next_cycle = FETCH;
+					end
 				end
 			end  // is_1addr
 		end  // EXEC
