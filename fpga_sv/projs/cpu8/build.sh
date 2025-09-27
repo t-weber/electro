@@ -44,12 +44,12 @@ src_files="../../clock/clkgen.sv \
 #target_pins_file=pins9k.cst
 #target_defines="-DUSE_9K"
 
-# 1k board
+# 1k board (define RAM_UNPACKED for it to be recognised as BSRAM)
 target_board=GW1NZ-LV1QN48C6/I5
 target_fpga=GW1NZ-1
 target_freq=27
 target_pins_file=pins1k.cst
-target_defines="-DUSE_1K -DRAM_DISABLE_PORT2"
+target_defines="-DUSE_1K -DRAM_DISABLE_PORT2 -DRAM_UNPACKED -DRAM_INIT"
 
 # tools
 YOSYS=yosys

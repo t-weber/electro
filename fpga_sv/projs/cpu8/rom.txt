@@ -1,0 +1,4 @@
+41 55   # 55 -> reg[1]
+49 ff   # reg[1] -> mem[ff]
+11      # reg[1] ~= reg[1]
+40 02   # jump to addr 2

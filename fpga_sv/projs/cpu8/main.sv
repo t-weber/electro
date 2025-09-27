@@ -8,7 +8,7 @@
 module cpuctrl
 #(
 	parameter MAIN_CLK = 27_000_000,
-	parameter SYS_CLK  =         20
+	parameter SYS_CLK  =         50
 )
 (
 	// main clock
@@ -26,7 +26,7 @@ module cpuctrl
 // ----------------------------------------------------------------------------
 // parameters
 // ----------------------------------------------------------------------------
-localparam ADDR_BITS = 3;
+localparam ADDR_BITS = 8;
 localparam DATA_BITS = 8;
 // ----------------------------------------------------------------------------
 
@@ -313,8 +313,9 @@ assign led[0] = ~(state == COPY_ROM);
 assign led[1] = ~(state == RUN_CPU);
 assign led[2] = ~(state_memaccess == CPU_MEM_WRITE);
 
-assign addr_watch = 3'b111;
-assign ledr[DATA_BITS - 1 : 0] = data_watch; //cpu_instr;
+assign addr_watch = 8'hff;
+assign ledr[DATA_BITS - 1 : 0] = data_watch;
+//assign ledr[DATA_BITS - 1 : 0] = cpu_instr;
 assign ledr[9 : DATA_BITS] = 1'b0;
 // ---------------------------------------------------------------------------
 
