@@ -56,7 +56,8 @@ target_board=GW1NZ-LV1QN48C6/I5
 target_fpga=GW1NZ-1
 target_freq=27
 target_pins_file=pins1k.cst
-target_defines="-DUSE_1K -DRAM_DISABLE_PORT2 -DCPU_DISABLE_FUNCS -DRAM_UNPACKED -DRAM_INIT"
+target_defines="-DUSE_1K -DRAM_DISABLE_PORT2 -DRAM_UNPACKED -DRAM_INIT"
+target_defines+=" -DCPU_DISABLE_FUNCS"
 
 # tools
 YOSYS=yosys

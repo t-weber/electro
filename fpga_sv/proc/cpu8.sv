@@ -25,6 +25,12 @@
  * 00_0_00010        return from function
  * 00_0_00011        TODO: return from interrupt
  *
+ * 00_0_00100        not equal? (call compare before)
+ * 00_0_00101        greater? (call compare before)
+ * 00_0_00110        greater or equal? (call compare before)
+ * 00_0_00111        less? (call compare before)
+ * 00_0_01000        less or equal? (call compare before)
+ *
  * 1-register opcodes with immediate value
  * ---------------------------------------
  * 01_1_000_aa val   transfer immediate value to register aa
@@ -33,6 +39,7 @@
  *
  * 1-register opcodes without immediate value
  * ------------------------------------------
+ * 01_0_000_aa       jump to absolute address in register aa if status_reg[0]
  * 01_0_001_aa       jump to absolute address in register aa
  * 01_0_010_aa       jump to relative address in register aa
  * 01_0_011_aa       call function at absolute address in register aa
@@ -82,8 +89,8 @@ module cpu8
 // ----------------------------------------------------------------------------
 // registers
 // ----------------------------------------------------------------------------
-localparam NUM_REGS = WORD_BITS/2;
-localparam REG_BITS = $clog2(NUM_REGS);
+localparam NUM_REGS   = WORD_BITS/2;
+localparam REG_BITS   = $clog2(NUM_REGS);
 
 // special register indices
 localparam sp_idx     = 0;
@@ -297,61 +304,55 @@ always_comb begin
 			// 2-register instructions
 			// -------------------------------------------------------------------------
 			if(is_2addr) begin
-				if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b000) begin
-					// register transfer
-					next_regs[regidx2] = regs[regidx1];
-					next_cycle = FETCH;
-				end
+				unique case(instr[WORD_BITS - 2 : WORD_BITS/2])
+					3'b000: begin  // register transfer
+						next_regs[regidx2] = regs[regidx1];
+						next_cycle = FETCH;
+					end
 
-				else if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b001) begin
-					// reg1 += reg2
-					next_regs[regidx1] = regs[regidx1] + regs[regidx2];
-					next_cycle = FETCH;
-				end
+					3'b001: begin  // reg1 += reg2
+						next_regs[regidx1] = regs[regidx1] + regs[regidx2];
+						next_cycle = FETCH;
+					end
 
-				else if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b010) begin
-					// reg1 -= reg2
-					next_regs[regidx1] = regs[regidx1] - regs[regidx2];
-					next_cycle = FETCH;
-				end
+					3'b010: begin  // reg1 -= reg2
+						next_regs[regidx1] = regs[regidx1] - regs[regidx2];
+						next_cycle = FETCH;
+					end
 
-				else if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b011) begin
-					// reg1 <<= reg2
-					next_regs[regidx1] = regs[regidx1] << regs[regidx2];
-					next_cycle = FETCH;
-				end
+					3'b011: begin  // reg1 <<= reg2
+						next_regs[regidx1] = regs[regidx1] << regs[regidx2];
+						next_cycle = FETCH;
+					end
 
-				else if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b100) begin
-					// reg1 >>= reg2
-					next_regs[regidx1] = regs[regidx1] >> regs[regidx2];
-					next_cycle = FETCH;
-				end
+					3'b100: begin  // reg1 >>= reg2
+						next_regs[regidx1] = regs[regidx1] >> regs[regidx2];
+						next_cycle = FETCH;
+					end
 
-				else if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b101) begin
-					// compare(reg1, reg2)
-					next_regs[status_idx] = {
-						2'b0,
-						regs[regidx1] == regs[regidx2],  // 5
-						regs[regidx1] != regs[regidx2],  // 4
-						regs[regidx1] < regs[regidx2],   // 3
-						regs[regidx1] <= regs[regidx2],  // 2
-						regs[regidx1] > regs[regidx2],   // 1
-						regs[regidx1] >= regs[regidx2]   // 0
-					};
-					next_cycle = FETCH;
-				end
+					3'b101: begin  // compare(reg1, reg2)
+						next_regs[status_idx] = {
+							2'b0,
+							regs[regidx1] <= regs[regidx2],  // 5
+							regs[regidx1] <  regs[regidx2],  // 4
+							regs[regidx1] >= regs[regidx2],  // 3
+							regs[regidx1] >  regs[regidx2],  // 2
+							regs[regidx1] != regs[regidx2],  // 1
+							regs[regidx1] == regs[regidx2]   // 0
+						};
+						next_cycle = FETCH;
+					end
 
-				else if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b110) begin
-					// reg1 &= reg2
-					next_regs[regidx1] = regs[regidx1] & regs[regidx2];
-					next_cycle = FETCH;
-				end
+					3'b110: begin  // reg1 &= reg2
+						next_regs[regidx1] = regs[regidx1] & regs[regidx2];
+						next_cycle = FETCH;
+					end
 
-				else if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b111) begin
-					// reg1 |= reg2
-					next_regs[regidx1] = regs[regidx1] | regs[regidx2];
-					next_cycle = FETCH;
-				end
+					3'b111: begin  // reg1 |= reg2
+						next_regs[regidx1] = regs[regidx1] | regs[regidx2];
+						next_cycle = FETCH;
+					end
+				endcase
 			end
 			// -------------------------------------------------------------------------
 
@@ -359,36 +360,39 @@ always_comb begin
 			// 1-register instructions with immediate value
 			// -------------------------------------------------------------------------
 			else if(is_1addr && has_immval) begin
-				if(instr[WORD_BITS - 4 : REG_BITS] == 3'b000) begin
-					// transfer immediate value to register
-					next_regs[regidx1] = immval;
-					next_cycle = FETCH;
-				end
-
-				else if(instr[WORD_BITS - 4 : REG_BITS] == 3'b001) begin
-					// transfer memory to register
-					unique case(subcycle)
-						0: begin  // request memory word pointed to by immval
-							next_mem_addr = immval;
-							next_mem_ready = 1'b1;
-							next_subcycle = 1;
+				unique case(instr[WORD_BITS - 4 : REG_BITS])
+					3'b000: begin  // transfer immediate value to register
+						next_regs[regidx1] = immval;
+						next_cycle = FETCH;
 					end
-						1: begin  // fetch memory word
-							if(in_mem_ready) begin
-								next_regs[regidx1] = in_mem_data;
-								next_cycle = FETCH;
-								next_subcycle = 0;
-							end
-						end
-					endcase
-				end
 
-				else if(instr[WORD_BITS - 4 : REG_BITS] == 3'b010) begin
-					// transfer register to memory
-					next_mem_addr = immval;
-					next_mem_data = regs[regidx1];
-					next_cycle = WRITE_MEM;
-				end
+					3'b001: begin  // transfer memory to register
+						unique case(subcycle)
+							0: begin   // request memory word pointed to by immval
+								next_mem_addr = immval;
+								next_mem_ready = 1'b1;
+								next_subcycle = 1;
+						end
+							1: begin   // fetch memory word
+								if(in_mem_ready) begin
+									next_regs[regidx1] = in_mem_data;
+									next_cycle = FETCH;
+									next_subcycle = 0;
+								end
+							end
+						endcase
+					end
+
+					3'b010: begin  // transfer register to memory
+						next_mem_addr = immval;
+						next_mem_data = regs[regidx1];
+						next_cycle = WRITE_MEM;
+					end
+
+					default: begin  // unknown instruction
+						next_cycle = HALT;
+					end
+				endcase
 			end  // is_1addr && has_immval
 			// -------------------------------------------------------------------------
 
@@ -396,71 +400,72 @@ always_comb begin
 			// 1-register instructions without immediate value
 			// -------------------------------------------------------------------------
 			else if(is_1addr && !has_immval) begin
-				if(instr[WORD_BITS - 4 : REG_BITS] == 3'b001) begin
-					// jump to absolute address in register
-					next_pc = regs[regidx1];
-					next_cycle = FETCH;
-				end
-
-				else if(instr[WORD_BITS - 4 : REG_BITS] == 3'b010) begin
-					// jump to relative address in register
-					next_pc = pc + regs[regidx1];
-					next_cycle = FETCH;
-				end
-
-`ifndef CPU_DISABLE_FUNCS
-				else if(instr[WORD_BITS - 4 : REG_BITS] == 3'b011) begin
-					// call absolute address in register
-					next_pc = regs[regidx1];
-					// push return address
-					next_regs[sp_idx] = regs[sp_idx] - 1'b1;
-					next_mem_addr = regs[sp_idx] - 1'b1;
-					next_mem_data = pc;
-					next_cycle = WRITE_MEM;
-				end
-`endif
-
-				else if(instr[WORD_BITS - 4 : REG_BITS] == 3'b100) begin
-					// bit-wise not of register
-					next_regs[regidx1] = ~regs[regidx1];
-					next_cycle = FETCH;
-				end
-
-				else if(instr[WORD_BITS - 4 : REG_BITS] == 3'b101) begin
-					// logical not of register
-					next_regs[regidx1] = !regs[regidx1];
-					next_cycle = FETCH;
-				end
-
-`ifndef CPU_DISABLE_FUNCS
-				else if(instr[WORD_BITS - 4 : REG_BITS] == 3'b110) begin
-					// push register
-					next_regs[sp_idx] = regs[sp_idx] - 1'b1;
-					next_mem_addr = regs[sp_idx] - 1'b1;
-					next_mem_data = regs[regidx1];
-					next_cycle = WRITE_MEM;
-				end
-
-				else if(instr[WORD_BITS - 4 : REG_BITS] == 3'b111) begin
-					// pop register
-					// transfer memory to register
-					unique case(subcycle)
-						0: begin  // request memory word pointed to by sp
-							next_regs[sp_idx] = regs[sp_idx] + 1'b1;
-							next_mem_addr = regs[sp_idx];
-							next_mem_ready = 1'b1;
-							next_subcycle = 1;
+				unique case(instr[WORD_BITS - 4 : REG_BITS])
+					3'b000: begin  // conditional jump to absolute address in register
+						if(regs[status_idx][0] == 1'b1)
+							next_pc = regs[regidx1];
+						next_cycle = FETCH;
 					end
-						1: begin  // fetch memory word
-							if(in_mem_ready) begin
-								next_regs[regidx1] = in_mem_data;
-								next_cycle = FETCH;
-								next_subcycle = 0;
-							end
-						end
-					endcase
-				end
+
+					3'b001: begin  // jump to absolute address in register
+						next_pc = regs[regidx1];
+						next_cycle = FETCH;
+					end
+
+					3'b010: begin  // jump to relative address in register
+						next_pc = pc + regs[regidx1];
+						next_cycle = FETCH;
+					end
+
+`ifndef CPU_DISABLE_FUNCS
+					3'b011: begin  // call absolute address in register
+						next_pc = regs[regidx1];
+						// push return address
+						next_regs[sp_idx] = regs[sp_idx] - 1'b1;
+						next_mem_addr = regs[sp_idx] - 1'b1;
+						next_mem_data = pc;
+						next_cycle = WRITE_MEM;
+					end
 `endif
+
+					3'b100: begin  // bit-wise not of register
+						next_regs[regidx1] = ~regs[regidx1];
+						next_cycle = FETCH;
+					end
+
+					3'b101: begin  // logical not of register
+						next_regs[regidx1] = !regs[regidx1];
+						next_cycle = FETCH;
+					end
+
+`ifndef CPU_DISABLE_FUNCS
+					3'b110: begin  // push register
+						next_regs[sp_idx] = regs[sp_idx] - 1'b1;
+						next_mem_addr = regs[sp_idx] - 1'b1;
+						next_mem_data = regs[regidx1];
+						next_cycle = WRITE_MEM;
+					end
+
+					3'b111: begin  // pop register
+						// transfer memory to register
+						unique case(subcycle)
+							0: begin  // request memory word pointed to by sp
+								next_regs[sp_idx] = regs[sp_idx] + 1'b1;
+								next_mem_addr = regs[sp_idx];
+								next_mem_ready = 1'b1;
+								next_subcycle = 1;
+						end
+							1: begin  // fetch memory word
+								if(in_mem_ready) begin
+									next_regs[regidx1] = in_mem_data;
+									next_cycle = FETCH;
+									next_subcycle = 0;
+								end
+							end
+						endcase
+					end
+`endif
+				endcase
 			end  // is_1addr && !has_immval
 			// -------------------------------------------------------------------------
 
@@ -475,36 +480,64 @@ always_comb begin
 			// 0-register instructions without immediate value
 			// -------------------------------------------------------------------------
 			else if(!is_1addr && !is_2addr && !has_immval) begin
-				if(instr[WORD_BITS - 3 : 0] == 5'b00000) begin
-					// halt
-					next_cycle = HALT;
-				end
+				unique case(instr[WORD_BITS - 3 : 0])
+					5'b00000: begin  // halt
+						next_cycle = HALT;
+					end
 
-				else if(instr[WORD_BITS - 3 : 0] == 5'b00001) begin
-					// nop
-					next_cycle = FETCH;
-				end
+					5'b00001: begin  // nop
+						next_cycle = FETCH;
+					end
 
 `ifndef CPU_DISABLE_FUNCS
-				else if(instr[WORD_BITS - 3 : 0] == 5'b00010) begin
-					// return
-					unique case(subcycle)
-						0: begin  // request return address pointed to by sp
-							next_regs[sp_idx] = regs[sp_idx] + 1'b1;
-							next_mem_addr = regs[sp_idx];
-							next_mem_ready = 1'b1;
-							next_subcycle = 1;
-					end
-						1: begin  // fetch return address and jump to it
-							if(in_mem_ready) begin
-								next_pc = in_mem_data;
-								next_cycle = FETCH;
-								next_subcycle = 0;
-							end
+					5'b00010: begin  // return
+						unique case(subcycle)
+							0: begin  // request return address pointed to by sp
+								next_regs[sp_idx] = regs[sp_idx] + 1'b1;
+								next_mem_addr = regs[sp_idx];
+								next_mem_ready = 1'b1;
+								next_subcycle = 1;
 						end
-					endcase
-				end
+							1: begin  // fetch return address and jump to it
+								if(in_mem_ready) begin
+									next_pc = in_mem_data;
+									next_cycle = FETCH;
+									next_subcycle = 0;
+								end
+							end
+						endcase
+					end
 `endif
+
+					5'b00100: begin  // not equal?
+						next_regs[status_idx][0] = regs[status_idx][1];
+						next_cycle = FETCH;
+					end
+
+					5'b00101: begin  // greater?
+						next_regs[status_idx][0] = regs[status_idx][2];
+						next_cycle = FETCH;
+					end
+
+					5'b00110: begin  // greater or equal?
+						next_regs[status_idx][0] = regs[status_idx][3];
+						next_cycle = FETCH;
+					end
+
+					5'b00111: begin  // less?
+						next_regs[status_idx][0] = regs[status_idx][4];
+						next_cycle = FETCH;
+					end
+
+					5'b01000: begin  // less or equal?
+						next_regs[status_idx][0] = regs[status_idx][5];
+						next_cycle = FETCH;
+					end
+
+					default: begin  // unknown instruction
+						next_cycle = HALT;
+					end
+				endcase
 			end  // !is_1addr && !is_2addr && !has_immval
 			// -------------------------------------------------------------------------
 
