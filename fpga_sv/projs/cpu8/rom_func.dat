@@ -1,0 +1,13 @@
+60 ff   # 0: ff -> sp
+61 55   # 2: 55 -> reg[1]
+
+62 a    # 4: b -> reg[2]
+4e      # 6: call reg[2]
+
+62 4    # 7: 4 -> reg[2]
+46      # 9: jump to address in reg[2]
+
+# func
+69 ff   # a: reg[1] -> mem[ff]
+51      # c: reg[1] ~= reg[1]
+02      # d: return

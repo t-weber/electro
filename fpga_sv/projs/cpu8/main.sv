@@ -44,15 +44,15 @@ clk_slow (.in_clk(clk27), .in_rst(1'b0), .out_clk(clock));
 // ----------------------------------------------------------------------------
 // keys
 // ----------------------------------------------------------------------------
-logic rst, btn;
+logic rst; //, btn;
 
 // active-low button
 debounce_switch debounce_key0(.in_clk(clk27), .in_rst(1'b0),
 	.in_signal(~key[0]), .out_debounced(rst));
 
 // active-low button
-debounce_button debounce_key1(.in_clk(clock), .in_rst(1'b0),
-	.in_signal(~key[1]), .out_debounced(btn));
+//debounce_button debounce_key1(.in_clk(clock), .in_rst(1'b0),
+//	.in_signal(~key[1]), .out_debounced(btn));
 // ----------------------------------------------------------------------------
 
 
@@ -137,7 +137,7 @@ ram_mod(.in_rst(reset),
 // ---------------------------------------------------------------------------
 // instantiate rom
 // ---------------------------------------------------------------------------
-localparam ROM_ADDR_BITS = 3; //rom.ADDR_BITS;  // use value from generated rom.sv
+localparam ROM_ADDR_BITS = 4; //rom.ADDR_BITS;  // use value from generated rom.sv
 
 logic [DATA_BITS - 1 : 0] out_rom_data;
 rom rom_mod(

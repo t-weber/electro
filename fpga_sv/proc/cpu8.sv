@@ -5,31 +5,43 @@
  * @license see 'LICENSE' file
  */
 
+//`define CPU_DISABLE_FUNCS
+
+
 /**
  * special registers
  * -----------------
- * - register 0 is the program counter
+ * - register 0 is the stack pointer
  * - register 3 doubles as status register
  *
  * 0-register opcodes with immediate value
  * ---------------------------------------
- * 00_1_00000
+ * 00_1_00000       TODO
  *
  * 0-register opcodes without immediate value
  * ------------------------------------------
  * 00_0_00000        halt
  * 00_0_00001        nop
+ * 00_0_00010        return from function
+ * 00_0_00011        TODO: return from interrupt
  *
  * 1-register opcodes with immediate value
  * ---------------------------------------
- * 01_1_000_aa val   transfer immediate val to register aa
+ * 01_1_000_aa val   transfer immediate value to register aa
  * 01_1_001_aa addr  transfer mem[addr] to register aa
  * 01_1_010_aa addr  transfer register aa to mem[addr]
  *
  * 1-register opcodes without immediate value
  * ------------------------------------------
+ * 01_0_001_aa       jump to absolute address in register aa
+ * 01_0_010_aa       jump to relative address in register aa
+ * 01_0_011_aa       call function at absolute address in register aa
+ *
  * 01_0_100_aa       bit-wise not of register aa
  * 01_0_101_aa       logical not of register aa
+ *
+ * 01_0_110_aa       push register aa on stack
+ * 01_0_111_aa       pop register aa from stack
  *
  * 2-register opcodes
  * ------------------
@@ -45,8 +57,11 @@
 
 module cpu8
 #(
-	parameter ADDR_BITS = 8,
-	parameter WORD_BITS = 8
+	parameter ADDR_BITS  = 8,
+	parameter WORD_BITS  = 8,
+
+	parameter ENTRY_ADDR = 0,
+	parameter ISR_ADDR   = 128
 )
 (
 	input wire in_clk, in_rst,
@@ -71,7 +86,7 @@ localparam NUM_REGS = WORD_BITS/2;
 localparam REG_BITS = $clog2(NUM_REGS);
 
 // special register indices
-localparam pc_idx     = 0;
+localparam sp_idx     = 0;
 localparam status_idx = 3;
 
 localparam immval_bit = WORD_BITS - 3;
@@ -83,6 +98,7 @@ reg mem_ready, next_mem_ready;                   // request memory read or write
 reg mem_write, next_mem_write;                   // request memory write
 reg [WORD_BITS - 1 : 0] mem_data, next_mem_data; // data to write to memory
 
+reg [ADDR_BITS - 1 : 0] pc = ENTRY_ADDR, next_pc = ENTRY_ADDR;  // program counter
 reg [0 : NUM_REGS - 1][WORD_BITS - 1 : 0] regs, next_regs;  // registers
 reg [REG_BITS - 1 : 0] regidx1, next_regidx1;    // register index 1
 reg [REG_BITS - 1 : 0] regidx2, next_regidx2;    // register index 2
@@ -119,7 +135,7 @@ typedef enum bit[2 : 0]
 } t_cycle;
 
 t_cycle cycle = FETCH, next_cycle = FETCH;
-bit [1 : 0] subcycle = 1'b0, next_subcycle = 1'b0;
+bit [0 : 0] subcycle = 1'b0, next_subcycle = 1'b0;
 
 
 always_ff@(posedge in_clk) begin
@@ -133,6 +149,7 @@ always_ff@(posedge in_clk) begin
 		mem_write <= 1'b0;
 		mem_data <= 1'b0;
 
+		pc <= ENTRY_ADDR;
 		regs <= 1'b0;
 		regidx1 <= 1'b0;
 		regidx2 <= 1'b0;
@@ -151,6 +168,7 @@ always_ff@(posedge in_clk) begin
 		mem_write <= next_mem_write;
 		mem_data <= next_mem_data;
 
+		pc <= next_pc;
 		regs <= next_regs;
 		regidx1 <= next_regidx1;
 		regidx2 <= next_regidx2;
@@ -173,6 +191,7 @@ always_comb begin
 	next_mem_write = mem_write;
 	next_mem_data = mem_data;
 
+	next_pc = pc;
 	next_regs = regs;
 	next_regidx1 = regidx1;
 	next_regidx2 = regidx2;
@@ -186,8 +205,8 @@ always_comb begin
 		FETCH: begin
 			unique case(subcycle)
 				0: begin  // request new instruction at pc
-					next_mem_addr = regs[pc_idx];
-					next_regs[pc_idx] = regs[pc_idx] + 1'b1;
+					next_mem_addr = pc;
+					next_pc = pc + 1'b1;
 					next_mem_ready = 1'b1;
 					next_subcycle = 1;
 				end
@@ -238,8 +257,8 @@ always_comb begin
 			// load immediate word following pc
 			unique case(subcycle)
 				0: begin  // request immediate value
-					next_mem_addr = regs[pc_idx];
-					next_regs[pc_idx] = regs[pc_idx] + 1'b1;
+					next_mem_addr = pc;
+					next_pc = pc + 1'b1;
 					next_mem_ready = 1'b1;
 					next_subcycle = 1;
 				end
@@ -283,26 +302,31 @@ always_comb begin
 					next_regs[regidx2] = regs[regidx1];
 					next_cycle = FETCH;
 				end
+
 				else if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b001) begin
 					// reg1 += reg2
 					next_regs[regidx1] = regs[regidx1] + regs[regidx2];
 					next_cycle = FETCH;
 				end
+
 				else if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b010) begin
 					// reg1 -= reg2
 					next_regs[regidx1] = regs[regidx1] - regs[regidx2];
 					next_cycle = FETCH;
 				end
+
 				else if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b011) begin
 					// reg1 <<= reg2
 					next_regs[regidx1] = regs[regidx1] << regs[regidx2];
 					next_cycle = FETCH;
 				end
+
 				else if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b100) begin
 					// reg1 >>= reg2
 					next_regs[regidx1] = regs[regidx1] >> regs[regidx2];
 					next_cycle = FETCH;
 				end
+
 				else if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b101) begin
 					// compare(reg1, reg2)
 					next_regs[status_idx] = {
@@ -316,11 +340,13 @@ always_comb begin
 					};
 					next_cycle = FETCH;
 				end
+
 				else if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b110) begin
 					// reg1 &= reg2
 					next_regs[regidx1] = regs[regidx1] & regs[regidx2];
 					next_cycle = FETCH;
 				end
+
 				else if(instr[WORD_BITS - 2 : WORD_BITS/2] == 3'b111) begin
 					// reg1 |= reg2
 					next_regs[regidx1] = regs[regidx1] | regs[regidx2];
@@ -370,7 +396,31 @@ always_comb begin
 			// 1-register instructions without immediate value
 			// -------------------------------------------------------------------------
 			else if(is_1addr && !has_immval) begin
-				if(instr[WORD_BITS - 4 : REG_BITS] == 3'b100) begin
+				if(instr[WORD_BITS - 4 : REG_BITS] == 3'b001) begin
+					// jump to absolute address in register
+					next_pc = regs[regidx1];
+					next_cycle = FETCH;
+				end
+
+				else if(instr[WORD_BITS - 4 : REG_BITS] == 3'b010) begin
+					// jump to relative address in register
+					next_pc = pc + regs[regidx1];
+					next_cycle = FETCH;
+				end
+
+`ifndef CPU_DISABLE_FUNCS
+				else if(instr[WORD_BITS - 4 : REG_BITS] == 3'b011) begin
+					// call absolute address in register
+					next_pc = regs[regidx1];
+					// push return address
+					next_regs[sp_idx] = regs[sp_idx] - 1'b1;
+					next_mem_addr = regs[sp_idx] - 1'b1;
+					next_mem_data = pc;
+					next_cycle = WRITE_MEM;
+				end
+`endif
+
+				else if(instr[WORD_BITS - 4 : REG_BITS] == 3'b100) begin
 					// bit-wise not of register
 					next_regs[regidx1] = ~regs[regidx1];
 					next_cycle = FETCH;
@@ -381,6 +431,36 @@ always_comb begin
 					next_regs[regidx1] = !regs[regidx1];
 					next_cycle = FETCH;
 				end
+
+`ifndef CPU_DISABLE_FUNCS
+				else if(instr[WORD_BITS - 4 : REG_BITS] == 3'b110) begin
+					// push register
+					next_regs[sp_idx] = regs[sp_idx] - 1'b1;
+					next_mem_addr = regs[sp_idx] - 1'b1;
+					next_mem_data = regs[regidx1];
+					next_cycle = WRITE_MEM;
+				end
+
+				else if(instr[WORD_BITS - 4 : REG_BITS] == 3'b111) begin
+					// pop register
+					// transfer memory to register
+					unique case(subcycle)
+						0: begin  // request memory word pointed to by sp
+							next_regs[sp_idx] = regs[sp_idx] + 1'b1;
+							next_mem_addr = regs[sp_idx];
+							next_mem_ready = 1'b1;
+							next_subcycle = 1;
+					end
+						1: begin  // fetch memory word
+							if(in_mem_ready) begin
+								next_regs[regidx1] = in_mem_data;
+								next_cycle = FETCH;
+								next_subcycle = 0;
+							end
+						end
+					endcase
+				end
+`endif
 			end  // is_1addr && !has_immval
 			// -------------------------------------------------------------------------
 
@@ -399,16 +479,41 @@ always_comb begin
 					// halt
 					next_cycle = HALT;
 				end
+
 				else if(instr[WORD_BITS - 3 : 0] == 5'b00001) begin
 					// nop
 					next_cycle = FETCH;
 				end
+
+`ifndef CPU_DISABLE_FUNCS
+				else if(instr[WORD_BITS - 3 : 0] == 5'b00010) begin
+					// return
+					unique case(subcycle)
+						0: begin  // request return address pointed to by sp
+							next_regs[sp_idx] = regs[sp_idx] + 1'b1;
+							next_mem_addr = regs[sp_idx];
+							next_mem_ready = 1'b1;
+							next_subcycle = 1;
+					end
+						1: begin  // fetch return address and jump to it
+							if(in_mem_ready) begin
+								next_pc = in_mem_data;
+								next_cycle = FETCH;
+								next_subcycle = 0;
+							end
+						end
+					endcase
+				end
+`endif
 			end  // !is_1addr && !is_2addr && !has_immval
 			// -------------------------------------------------------------------------
 
 		end  // EXEC
 		
 		HALT: begin
+		end
+
+		default: begin
 		end
 	endcase
 end

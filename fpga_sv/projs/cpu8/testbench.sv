@@ -1,12 +1,8 @@
 /**
  * cpu testbench
  * @author Tobias Weber (0000-0002-7230-1932)
- * @date 24-aug-2025, 13-sep-2025
+ * @date August/Sepember-2025
  * @license see 'LICENSE' file
- *
- * References:
- *   - https://github.com/YosysHQ/picorv32/tree/main/picosoc
- *   - https://github.com/grughuhler/picorv32_tang_nano_unified/tree/main
  */
 
 
@@ -17,7 +13,7 @@
 //`define USE_INTERRUPTS
 
 
-module rv_tb();
+module cpu_tb();
 
 // ---------------------------------------------------------------------------
 // create clock
@@ -33,13 +29,13 @@ initial begin
 	if($value$plusargs("iter=%d", maxiter)) begin
 		$display("Maximum number of clock cycles: %d", maxiter);
 	end else begin
-		maxiter = 3000;
+		maxiter = 256;
 		$display("Maximum number of clock cycles: %d. Set using +iter=<num> argument.", maxiter);
 	end
 
 `ifdef WRITE_DUMP
-	$dumpfile("rv_tb.vcd");
-	$dumpvars(0, rv_tb);
+	$dumpfile("cpu_tb.vcd");
+	$dumpvars(0, cpu_tb);
 `endif
 
 	for(iter = 0; iter < maxiter; ++iter) begin
@@ -51,9 +47,9 @@ initial begin
 `ifdef USE_INTERRUPTS
 		// TODO: generate a test interrupt (when enabled)
 //		if(iter >= 1650 && iter < 1660)
-//			main_mod.cpu_irq <= 4'b1000;
+//			cpuctrl_mod.cpu_irq <= 4'b1000;
 //		else
-//			main_mod.cpu_irq <= 4'b0000;
+//			cpuctrl_mod.cpu_irq <= 4'b0000;
 `endif
 	end
 
@@ -68,10 +64,10 @@ end
 // ---------------------------------------------------------------------------
 // main module
 // ---------------------------------------------------------------------------
-rv_main #(
+cpuctrl #(
 	.MAIN_CLK(1), .SYS_CLK(1)
 )
-main_mod(
+cpuctrl_mod(
 	.clk27(clock)
 );
 // ---------------------------------------------------------------------------
@@ -83,16 +79,19 @@ main_mod(
 // ---------------------------------------------------------------------------
 `ifdef DEBUG
 always@(posedge clock) begin
-	if(main_mod.state == main_mod.RUN_CPU) begin
+	if(cpuctrl_mod.state == cpuctrl_mod.RUN_CPU) begin
 		$display("clk=%b, ", clock, "iter=%4d, ", iter,
+			"instr=%h, ", cpuctrl_mod.cpu_instr,
 `ifdef USE_INTERRUPTS
-			"irq=%h, ", main_mod.cpu_irq, "irq_end=%h, ", main_mod.cpu_irq_ended,
+			"irq=%h, ", cpuctrl_mod.cpu_irq, "irq_end=%h, ", cpuctrl_mod.cpu_irq_ended,
 `endif
-			"addr=%h, ", main_mod.addr_1, /*"fulladdr=%h, ", main_mod.cpu_addr,*/
-			"byte=%h, ", main_mod.cpu_bytesel,
-			"mem->cpu=%h, ", main_mod.out_data_1, "cpu->mem=%h, ", main_mod.in_data_1,
-			"valid=%b, ", main_mod.cpu_mem_valid,
-			"mem[%h]=%h.", main_mod.addr_2, main_mod.out_data_2);
+			"addr=%h, ", cpuctrl_mod.addr_1, /*"fulladdr=%h, ", cpuctrl_mod.cpu_addr,*/
+			"mem->cpu=%h, ", cpuctrl_mod.out_data_1, "cpu->mem=%h, ", cpuctrl_mod.in_data_1,
+			"valid=%b", cpuctrl_mod.cpu_mem_valid
+`ifndef RAM_DISABLE_PORT2
+			, ", mem[%h]=%h.", cpuctrl_mod.addr_2, cpuctrl_mod.out_data_2
+`endif
+		);
 	end
 end
 `endif

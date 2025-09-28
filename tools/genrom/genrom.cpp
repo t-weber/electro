@@ -19,6 +19,7 @@ namespace args = boost::program_options;
 #include "v.h"
 #include "hex.h"
 #include "img.h"
+#include "text.h"
 
 
 int main(int argc, char** argv)
@@ -36,6 +37,7 @@ int main(int argc, char** argv)
 
 		std::string rom_type = "vhdl";
 		std::string in_filename, out_rom;
+		bool convert_text = false;
 
 		std::string repeat_data;
 		std::size_t repeat_times = 0;
@@ -76,6 +78,8 @@ int main(int argc, char** argv)
 			("word_bits,w", args::value<decltype(word_bits)>(&word_bits),
 				("number of bits per word, default: "
 					+ std::to_string(word_bits)).c_str())
+			("convert_text", args::value<decltype(convert_text)>(&convert_text),
+				("convert a text input file, default: " + std::to_string(convert_text)).c_str())
 			("input,i", args::value<decltype(in_filename)>(&in_filename),
 				"input data file")
 			("output,o", args::value<decltype(out_rom)>(&out_rom),
@@ -137,7 +141,24 @@ int main(int argc, char** argv)
 
 				cfg.print_chars = false;
 			}
-			else  // read raw file
+			else if(convert_text)  // read text file
+			{
+				bool ok = false;
+				std::tie(ok, cfg.data) = ::convert_text(in_file);
+
+				if(ok)
+				{
+					std::cerr << "Info: Converted " << cfg.data.size()
+						<< " bytes of data."
+						<< std::endl;
+				}
+				else
+				{
+					std::cerr << "Error reading \"" << in_file << "\"."
+						<< std::endl;
+				}
+			}
+			else  // read raw binary file
 			{
 				cfg.data.reserve(std::filesystem::file_size(in_file));
 

@@ -38,6 +38,7 @@ add_executable(genrom
 	v.cpp v.h
 	hex.cpp hex.h
 	img.cpp img.h
+	text.cpp text.h
 )
 
 

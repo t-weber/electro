@@ -14,11 +14,18 @@
 run_synth=1
 run_pnr=1
 run_pack=1
+build_testbench=1
+create_source_archive=0
 num_threads=$(($(nproc)/2+1))
+
+USE_INTERRUPTS=0
+TESTBENCH_DEFS="-DDEBUG -DIS_TESTBENCH"
+TESTBENCH_DEFS+=" -DRAM_DISABLE_PORT2"
 
 top_module=cpuctrl
 
-rom_file=rom.dat
+rom_file=rom_loop.dat
+#rom_file=rom_func.dat
 rom_svfile=output/rom.sv
 
 synth_file=output/synth.json
@@ -34,7 +41,7 @@ src_files="../../clock/clkgen.sv \
 	../../mem/memcpy.sv \
 	../../mem/ram_2port.sv \
 	../../proc/cpu8.sv \
-	${rom_svfile}
+	${rom_svfile} \
 	main.sv"
 
 # 9k board
@@ -49,16 +56,18 @@ target_board=GW1NZ-LV1QN48C6/I5
 target_fpga=GW1NZ-1
 target_freq=27
 target_pins_file=pins1k.cst
-target_defines="-DUSE_1K -DRAM_DISABLE_PORT2 -DRAM_UNPACKED -DRAM_INIT"
+target_defines="-DUSE_1K -DRAM_DISABLE_PORT2 -DCPU_DISABLE_FUNCS -DRAM_UNPACKED -DRAM_INIT"
 
 # tools
 YOSYS=yosys
 NEXTPNR=nextpnr-himbaechel
 PACK=gowin_pack
+SIM=iverilog
 
 echo -e "Using tool: $(which $YOSYS)"
 echo -e "Using tool: $(which $NEXTPNR)"
 echo -e "Using tool: $(which $PACK)"
+echo -e "Using simulation tool: $(which $SIM)"
 
 
 if [ ! -e output ]; then
@@ -67,9 +76,9 @@ fi
 
 
 # create sv rom
-echo -e "Creating ROM: ${rom_file} -> ${rom_svfile}..."
+echo -e "\nCreating ROM: ${rom_file} -> ${rom_svfile}..."
 if [ -e genrom ]; then
-	if ! ./genrom -t sv -c 0 -p 1 -d 1 -w 8 -o ${rom_svfile} ${rom_file}; then
+	if ! ./genrom -t sv -c 0 -p 1 -d 1 -w 8 --convert_text 1 -o ${rom_svfile} ${rom_file}; then
 		exit -1
 	fi
 else
@@ -78,8 +87,19 @@ else
 fi
 
 
+if [ $create_source_archive -ne 0 ]; then
+	echo -e "\nCreating a source archive -> output/src.txz..."
+	mkdir -p output/src
+	for file in $src_files; do
+		cp -v $file output/src
+	done
+	cp -v $target_pins_file output/src
+	tar -Jvcf output/src.txz output/src
+fi
+
+
 if [ $run_synth -ne 0 ]; then
-	echo -e "Running Synthesis: sv -> $synth_file..."
+	echo -e "\nRunning Synthesis: sv -> $synth_file..."
 	if ! ${YOSYS} -q -d -t -l $synth_log \
 		-p "synth_gowin -top $top_module -json $synth_file" \
 		$target_defines \
@@ -92,7 +112,7 @@ fi
 
 
 if [ $run_pnr -ne 0 ]; then
-	echo -e "Running P&R Fitter for $target_fpga: $synth_file & $target_pins_file -> $pnr_file..."
+	echo -e "\nRunning P&R Fitter for $target_fpga: $synth_file & $target_pins_file -> $pnr_file..."
 	if ! ${NEXTPNR} --threads $num_threads -q --detailed-timing-report -l $pnr_log \
 		--vopt family=$target_fpga --device $target_board --freq $target_freq \
 		--placer-heap-cell-placement-timeout 8 \
@@ -106,11 +126,27 @@ fi
 
 
 if [ $run_pack -ne 0 ]; then
-	echo -e "Generating bit stream for $target_fpga: $pnr_file -> $pack_file..."
+	echo -e "\nGenerating bit stream for $target_fpga: $pnr_file -> $pack_file..."
 	if ! ${PACK} -d $target_fpga \
 		-o $pack_file --cst $pack_cst_file $pnr_file #--png $pack_png_file
 	then
 		echo -e "Bit stream generation failed!"
 		exit -1
 	fi
+fi
+
+
+if [ $build_testbench -ne 0 ]; then
+	if [ "$USE_INTERRUPTS" != 0 ]; then
+		TESTBENCH_DEFS+=" -DUSE_INTERRUPTS"
+	fi
+
+	echo -e "\nBuilding simulation testbench..."
+	if ! ${SIM} -g2012 ${TESTBENCH_DEFS} \
+		\-o testbench $src_files testbench.sv; then
+		echo -e "Building testbench failed!"
+		exit -1
+	fi
+
+	echo -e "\nRun testbench via, e.g.: ./testbench +iter=250\n"
 fi
