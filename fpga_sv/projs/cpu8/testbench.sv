@@ -10,7 +10,7 @@
 `default_nettype /*wire*/ none
 
 //`define WRITE_DUMP
-//`define USE_INTERRUPTS
+//`define SIM_INTERRUPT
 
 
 module cpu_tb();
@@ -19,13 +19,9 @@ module cpu_tb();
 // create clock
 // ---------------------------------------------------------------------------
 logic clock = 1'b0;
-integer iter, maxiter/*, iter_freq*/;
+integer iter, maxiter;
 
 initial begin
-`ifndef USE_INTERRUPTS
-	$display("Disabling interrupts.");
-`endif
-
 	if($value$plusargs("iter=%d", maxiter)) begin
 		$display("Maximum number of clock cycles: %d", maxiter);
 	end else begin
@@ -39,17 +35,15 @@ initial begin
 `endif
 
 	for(iter = 0; iter < maxiter; ++iter) begin
-		//for(iter_freq = 0; iter_freq < 1000; ++iter_freq) begin
-			clock <= ~clock;
-			#1;
-		//end
+		clock <= ~clock;
+		#1;
 
-`ifdef USE_INTERRUPTS
-		// TODO: generate a test interrupt (when enabled)
-//		if(iter >= 1650 && iter < 1660)
-//			cpuctrl_mod.cpu_irq <= 4'b1000;
-//		else
-//			cpuctrl_mod.cpu_irq <= 4'b0000;
+`ifdef SIM_INTERRUPT
+		// generate a test interrupt
+		if(iter >= 450 && iter < 470)
+			cpuctrl_mod.cpu_irq <= 1'b1;
+		else
+			cpuctrl_mod.cpu_irq <= 1'b0;
 `endif
 	end
 
@@ -81,9 +75,10 @@ cpuctrl_mod(
 always@(posedge clock) begin
 	if(cpuctrl_mod.state == cpuctrl_mod.RUN_CPU) begin
 		$display("clk=%b, ", clock, "iter=%4d, ", iter,
+			"pc=%h, ", cpuctrl_mod.cpu_pc,
 			"instr=%h, ", cpuctrl_mod.cpu_instr,
-`ifdef USE_INTERRUPTS
-			"irq=%h, ", cpuctrl_mod.cpu_irq, "irq_end=%h, ", cpuctrl_mod.cpu_irq_ended,
+`ifdef SIM_INTERRUPT
+			"irq=%h, ", cpuctrl_mod.cpu_irq,
 `endif
 			"addr=%h, ", cpuctrl_mod.addr_1, /*"fulladdr=%h, ", cpuctrl_mod.cpu_addr,*/
 			"mem->cpu=%h, ", cpuctrl_mod.out_data_1, "cpu->mem=%h, ", cpuctrl_mod.in_data_1,

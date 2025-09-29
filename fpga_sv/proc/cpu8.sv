@@ -5,6 +5,7 @@
  * @license see 'LICENSE' file
  */
 
+// disables functions, stack and interrupts
 //`define CPU_DISABLE_FUNCS
 
 
@@ -23,13 +24,15 @@
  * 00_0_00000        halt
  * 00_0_00001        nop
  * 00_0_00010        return from function
- * 00_0_00011        TODO: return from interrupt
+ * 00_0_00011        return from interrupt service routine
  *
  * 00_0_00100        not equal? (call compare before)
  * 00_0_00101        greater? (call compare before)
  * 00_0_00110        greater or equal? (call compare before)
  * 00_0_00111        less? (call compare before)
  * 00_0_01000        less or equal? (call compare before)
+ *
+ * 00_0_10000        write active irq number into status register
  *
  * 1-register opcodes with immediate value
  * ---------------------------------------
@@ -81,8 +84,14 @@ module cpu8
 	output wire [WORD_BITS - 1 : 0] out_mem_data,
 	output wire [ADDR_BITS - 1 : 0] out_mem_addr,
 
+`ifndef CPU_DISABLE_FUNCS
+	// interrupt lines
+	input wire [WORD_BITS - 1 : 0] in_irq,
+`endif
+
 	// debugging
-	output wire [WORD_BITS - 1 : 0] out_instr
+	output wire [WORD_BITS - 1 : 0] out_instr,  // current instruction
+	output wire [ADDR_BITS - 1 : 0] out_pc      // current instruction pointer
 );
 
 
@@ -97,7 +106,6 @@ localparam sp_idx     = 0;
 localparam status_idx = 3;
 
 localparam immval_bit = WORD_BITS - 3;
-
 
 reg [WORD_BITS - 1 : 0] instr, next_instr;       // current instruction
 reg [ADDR_BITS - 1 : 0] mem_addr, next_mem_addr; // current address
@@ -118,10 +126,22 @@ reg has_immval, next_has_immval;
 
 
 // ----------------------------------------------------------------------------
+// interrupt handling
+// ----------------------------------------------------------------------------
+`ifndef CPU_DISABLE_FUNCS
+	wire irq_active = |in_irq;
+`endif
+reg irq_handling, next_irq_handling;             // is an irq currently being handled?
+reg [WORD_BITS - 1 : 0] irq, next_irq;           // number of active irq
+// ----------------------------------------------------------------------------
+
+
+// ----------------------------------------------------------------------------
 // outputs
 // ----------------------------------------------------------------------------
 assign out_mem_addr = mem_addr;
 assign out_instr = instr;
+assign out_pc = pc;
 
 assign out_mem_ready = mem_ready;
 assign out_mem_write = mem_write;
@@ -138,16 +158,21 @@ typedef enum bit[2 : 0]
 {
 	FETCH, DECODE, EXEC,
 	LOAD_IMMVAL, WRITE_MEM,
+`ifndef CPU_DISABLE_FUNCS
+	IRQ_SAVE_PC, IRQ_EXEC,
+`endif
 	HALT
 } t_cycle;
 
 t_cycle cycle = FETCH, next_cycle = FETCH;
+t_cycle cycle_after_write = FETCH, next_cycle_after_write = FETCH;
 bit [0 : 0] subcycle = 1'b0, next_subcycle = 1'b0;
 
 
 always_ff@(posedge in_clk) begin
 	if(in_rst) begin
 		cycle <= FETCH;
+		cycle_after_write <= FETCH;
 		subcycle <= 1'b0;
 
 		instr <= 1'b0;
@@ -165,8 +190,13 @@ always_ff@(posedge in_clk) begin
 		is_1addr <= 1'b0;
 		is_2addr <= 1'b0;
 		has_immval <= 1'b0;
+
+		irq_handling <= 1'b0;
+		irq <= 1'b0;
+
 	end else begin
 		cycle <= next_cycle;
+		cycle_after_write <= next_cycle_after_write;
 		subcycle <= next_subcycle;
 
 		instr <= next_instr;
@@ -184,12 +214,16 @@ always_ff@(posedge in_clk) begin
 		is_1addr <= next_is_1addr;
 		is_2addr <= next_is_2addr;
 		has_immval <= next_has_immval;
+
+		irq_handling <= next_irq_handling;
+		irq <= next_irq;
 	end
 end
 
 
 always_comb begin
 	next_cycle = cycle;
+	next_cycle_after_write = cycle_after_write;
 	next_subcycle = subcycle;
 
 	next_instr = instr;
@@ -208,8 +242,21 @@ always_comb begin
 	next_is_2addr = is_2addr;
 	next_has_immval = has_immval;
 
+	next_irq_handling = irq_handling;
+	next_irq = irq;
+
 	unique case(cycle)
 		FETCH: begin
+`ifndef CPU_DISABLE_FUNCS
+			// handle interrupt requests
+			if(irq_active == 1'b1 && irq_handling == 1'b0) begin
+				next_irq_handling = 1'b1;
+				next_irq = in_irq;
+				next_cycle = IRQ_SAVE_PC;
+			end else begin
+`endif
+
+			// get instructions
 			unique case(subcycle)
 				0: begin  // request new instruction at pc
 					next_mem_addr = pc;
@@ -225,6 +272,11 @@ always_comb begin
 					end
 				end
 			endcase
+
+`ifndef CPU_DISABLE_FUNCS
+			end
+`endif
+
 		end
 
 		DECODE: begin
@@ -292,7 +344,7 @@ always_comb begin
 					if(in_mem_ready) begin
 						next_mem_ready = 1'b0;
 						next_mem_write = 1'b0;
-						next_cycle = FETCH;
+						next_cycle = cycle_after_write;
 						next_subcycle = 0;
 					end
 				end
@@ -387,6 +439,7 @@ always_comb begin
 						next_mem_addr = immval;
 						next_mem_data = regs[regidx1];
 						next_cycle = WRITE_MEM;
+						next_cycle_after_write = FETCH;
 					end
 
 					default: begin  // unknown instruction
@@ -425,6 +478,7 @@ always_comb begin
 						next_mem_addr = regs[sp_idx] - 1'b1;
 						next_mem_data = pc;
 						next_cycle = WRITE_MEM;
+						next_cycle_after_write = FETCH;
 					end
 `endif
 
@@ -444,6 +498,7 @@ always_comb begin
 						next_mem_addr = regs[sp_idx] - 1'b1;
 						next_mem_data = regs[regidx1];
 						next_cycle = WRITE_MEM;
+						next_cycle_after_write = FETCH;
 					end
 
 					3'b111: begin  // pop register
@@ -507,6 +562,27 @@ always_comb begin
 							end
 						endcase
 					end
+
+					5'b00011: begin  // return from isr
+						// TODO: restore reg[3]
+
+						unique case(subcycle)
+							0: begin  // request return address pointed to by sp
+								next_regs[sp_idx] = regs[sp_idx] + 1'b1;
+								next_mem_addr = regs[sp_idx];
+								next_mem_ready = 1'b1;
+								next_subcycle = 1;
+						end
+							1: begin  // fetch return address and jump to it
+								if(in_mem_ready) begin
+									next_pc = in_mem_data;
+									next_cycle = FETCH;
+									next_subcycle = 0;
+									next_irq_handling = 1'b0;
+								end
+							end
+						endcase
+					end
 `endif
 
 					5'b00100: begin  // not equal?
@@ -534,6 +610,13 @@ always_comb begin
 						next_cycle = FETCH;
 					end
 
+`ifndef CPU_DISABLE_FUNCS
+					5'b10000: begin  // active irq -> status reg
+						next_regs[status_idx] = irq;
+						next_cycle = FETCH;
+					end
+`endif
+
 					default: begin  // unknown instruction
 						next_cycle = HALT;
 					end
@@ -545,6 +628,25 @@ always_comb begin
 		
 		HALT: begin
 		end
+
+`ifndef CPU_DISABLE_FUNCS
+		IRQ_SAVE_PC: begin
+			// push pc onto the stack
+			next_regs[sp_idx] = regs[sp_idx] - 1'b1;
+			next_mem_addr = regs[sp_idx] - 1'b1;
+			next_mem_data = pc;
+			next_cycle = WRITE_MEM;
+			next_cycle_after_write = IRQ_EXEC;
+		end
+
+		// TODO: save reg[3] and put interrupt number in it
+
+		IRQ_EXEC: begin
+			// jump to interrupt service routine
+			next_pc = ISR_ADDR;
+			next_cycle = FETCH;
+		end
+`endif
 
 		default: begin
 		end

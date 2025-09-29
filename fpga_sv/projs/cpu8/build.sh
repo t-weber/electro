@@ -11,23 +11,34 @@
 #   - https://learn.lushaylabs.com/os-toolchain-manual-installation
 #
 
+# which tools to run?
 run_synth=1
 run_pnr=1
 run_pack=1
 build_testbench=1
 create_source_archive=0
+
 num_threads=$(($(nproc)/2+1))
 
-USE_INTERRUPTS=0
+
+# choose program in rom
+rom_file=rom_loop.dat
+rom_addr_bits=4
+
+#rom_file=rom_func.dat
+#rom_addr_bits=5
+
+
+# testbench options
 TESTBENCH_DEFS="-DDEBUG -DIS_TESTBENCH"
 TESTBENCH_DEFS+=" -DRAM_DISABLE_PORT2"
+TESTBENCH_DEFS+=" -DROM_ADDR_BITS=${rom_addr_bits}"
+#TESTBENCH_DEFS+=" -DSIM_INTERRUPT"
 
+
+# files
 top_module=cpuctrl
-
-rom_file=rom_loop.dat
-#rom_file=rom_func.dat
 rom_svfile=output/rom.sv
-
 synth_file=output/synth.json
 pnr_file=output/pnr.json
 pack_file=output/${top_module}.fs
@@ -44,6 +55,7 @@ src_files="../../clock/clkgen.sv \
 	${rom_svfile} \
 	main.sv"
 
+
 # 9k board
 #target_board=GW1NR-LV9QN88PC6/I5
 #target_fpga=GW1N-9C
@@ -57,7 +69,8 @@ target_fpga=GW1NZ-1
 target_freq=27
 target_pins_file=pins1k.cst
 target_defines="-DUSE_1K -DRAM_DISABLE_PORT2 -DRAM_UNPACKED -DRAM_INIT"
-target_defines+=" -DCPU_DISABLE_FUNCS"
+target_defines+=" -DCPU_DISABLE_FUNCS -DROM_ADDR_BITS=$rom_addr_bits"
+
 
 # tools
 YOSYS=yosys
@@ -138,10 +151,6 @@ fi
 
 
 if [ $build_testbench -ne 0 ]; then
-	if [ "$USE_INTERRUPTS" != 0 ]; then
-		TESTBENCH_DEFS+=" -DUSE_INTERRUPTS"
-	fi
-
 	echo -e "\nBuilding simulation testbench..."
 	if ! ${SIM} -g2012 ${TESTBENCH_DEFS} \
 		\-o testbench $src_files testbench.sv; then

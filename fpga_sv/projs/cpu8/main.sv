@@ -1,5 +1,5 @@
 /**
- * simple cpu test
+ * simple 8-bit cpu test
  * @author Tobias Weber (0000-0002-7230-1932)
  * @date september-2025
  * @license see 'LICENSE' file
@@ -26,8 +26,8 @@ module cpuctrl
 // ----------------------------------------------------------------------------
 // parameters
 // ----------------------------------------------------------------------------
-localparam ADDR_BITS = 8;
-localparam DATA_BITS = 8;
+localparam ADDR_BITS     = 8;
+localparam DATA_BITS     = 8;
 // ----------------------------------------------------------------------------
 
 
@@ -44,15 +44,15 @@ clk_slow (.in_clk(clk27), .in_rst(1'b0), .out_clk(clock));
 // ----------------------------------------------------------------------------
 // keys
 // ----------------------------------------------------------------------------
-logic rst; //, btn;
+logic rst, btn;
 
 // active-low button
 debounce_switch debounce_key0(.in_clk(clk27), .in_rst(1'b0),
 	.in_signal(~key[0]), .out_debounced(rst));
 
 // active-low button
-//debounce_button debounce_key1(.in_clk(clock), .in_rst(1'b0),
-//	.in_signal(~key[1]), .out_debounced(btn));
+debounce_button debounce_key1(.in_clk(clock), .in_rst(1'b0),
+	.in_signal(~key[1]), .out_debounced(btn));
 // ----------------------------------------------------------------------------
 
 
@@ -137,7 +137,13 @@ ram_mod(.in_rst(reset),
 // ---------------------------------------------------------------------------
 // instantiate rom
 // ---------------------------------------------------------------------------
-localparam ROM_ADDR_BITS = 4; //rom.ADDR_BITS;  // use value from generated rom.sv
+`ifdef ROM_ADDR_BITS
+	// use value from define
+	localparam ROM_ADDR_BITS = `ROM_ADDR_BITS;
+`else
+	// use value from generated rom.sv
+	localparam ROM_ADDR_BITS = rom.ADDR_BITS;
+`endif
 
 logic [DATA_BITS - 1 : 0] out_rom_data;
 rom rom_mod(
@@ -188,9 +194,20 @@ wire [ADDR_BITS - 1 : 0] cpu_addr;
 wire [DATA_BITS - 1 : 0] cpu_data;
 logic [DATA_BITS - 1 : 0] write_data, next_write_data;
 wire [DATA_BITS - 1 : 0] cpu_instr;
+wire [ADDR_BITS - 1 : 0] cpu_pc;
+
+logic [DATA_BITS - 1 : 0] cpu_irq;
+`ifndef SIM_INTERRUPT
+	assign cpu_irq = { {(DATA_BITS - 1){1'b0}}, btn };
+`endif
+
 
 // instantiate cpu
-cpu8 #(.ADDR_BITS(ADDR_BITS), .WORD_BITS(DATA_BITS))
+cpu8 #(
+	.ADDR_BITS(ADDR_BITS),
+	.WORD_BITS(DATA_BITS),
+	.ISR_ADDR(8'h10)
+)
 cpu_mod(
 	.in_clk(clock_cpu), .in_rst(reset),
 
@@ -202,7 +219,14 @@ cpu_mod(
 	.out_mem_data(cpu_data),
 	.out_mem_write(cpu_mem_dowrite),
 
-	.out_instr(cpu_instr)
+`ifndef CPU_DISABLE_FUNCS
+	// interrupt lines
+	.in_irq(cpu_irq),
+`endif
+
+	// debugging
+	.out_instr(cpu_instr),
+	.out_pc(cpu_pc)
 );
 // ---------------------------------------------------------------------------
 
@@ -316,6 +340,7 @@ assign led[2] = ~(state_memaccess == CPU_MEM_WRITE);
 assign addr_watch = 8'hff;
 assign ledr[DATA_BITS - 1 : 0] = data_watch;
 //assign ledr[DATA_BITS - 1 : 0] = cpu_instr;
+//assign ledr[ADDR_BITS - 1 : 0] = cpu_pc;
 assign ledr[9 : DATA_BITS] = 1'b0;
 // ---------------------------------------------------------------------------
 
