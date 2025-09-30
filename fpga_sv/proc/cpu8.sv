@@ -128,11 +128,52 @@ reg has_immval, next_has_immval;
 // ----------------------------------------------------------------------------
 // interrupt handling
 // ----------------------------------------------------------------------------
+reg irq_handling, next_irq_handling;    // is an irq` currently being handled?
+reg [WORD_BITS - 1 : 0] irq, next_irq;  // number of active irq
+
+
 `ifndef CPU_DISABLE_FUNCS
 	wire irq_active = |in_irq;
+	logic irq_active_edge;
+
+	logic irq_needs_handling, next_irq_needs_handling;
+
+
+	// get the rising edge of the interrupt signal
+	edgedet #(.POS_EDGE(1'b1))
+		edgedet_mod(
+		.in_clk(in_clk), .in_rst(in_rst),
+		.in_signal(irq_active), .out_edge(irq_active_edge)
+	);
+
+
+	always_ff@(posedge in_clk) begin
+		if(in_rst) begin
+			irq <= 1'b0;
+			irq_needs_handling <= 1'b0;
+
+		end else begin
+			irq <= next_irq;
+			irq_needs_handling <= next_irq_needs_handling;
+		end
+	end
+
+
+	always_comb begin
+		next_irq = irq;
+		next_irq_needs_handling = irq_needs_handling;
+
+		// accept irq on rising edge if not already handling another
+		if(irq_active_edge == 1'b1 && irq_handling == 1'b0) begin
+			next_irq = in_irq;
+			next_irq_needs_handling = 1'b1;
+		end
+
+		else if(irq_handling == 1'b1)
+			next_irq_needs_handling = 1'b0;
+end
+
 `endif
-reg irq_handling, next_irq_handling;             // is an irq currently being handled?
-reg [WORD_BITS - 1 : 0] irq, next_irq;           // number of active irq
 // ----------------------------------------------------------------------------
 
 
@@ -192,7 +233,6 @@ always_ff@(posedge in_clk) begin
 		has_immval <= 1'b0;
 
 		irq_handling <= 1'b0;
-		irq <= 1'b0;
 
 	end else begin
 		cycle <= next_cycle;
@@ -216,7 +256,6 @@ always_ff@(posedge in_clk) begin
 		has_immval <= next_has_immval;
 
 		irq_handling <= next_irq_handling;
-		irq <= next_irq;
 	end
 end
 
@@ -243,15 +282,13 @@ always_comb begin
 	next_has_immval = has_immval;
 
 	next_irq_handling = irq_handling;
-	next_irq = irq;
 
 	unique case(cycle)
 		FETCH: begin
 `ifndef CPU_DISABLE_FUNCS
 			// handle interrupt requests
-			if(irq_active == 1'b1 && irq_handling == 1'b0) begin
+			if(irq_needs_handling == 1'b1 && irq_handling == 1'b0) begin
 				next_irq_handling = 1'b1;
-				next_irq = in_irq;
 				next_cycle = IRQ_SAVE_PC;
 			end else begin
 `endif

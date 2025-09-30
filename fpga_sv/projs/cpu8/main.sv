@@ -250,7 +250,7 @@ logic [ADDR_BITS - 1 : 0] addr_watch;
 logic [DATA_BITS - 1 : 0] data_watch, next_data_watch;
 
 localparam READ_CYCLES = 1;
-localparam WRITE_CYCLES = 1;
+localparam WRITE_CYCLES = 2;
 logic [1 : 0] read_cycle = 1'b0, write_cycle = 1'b0;
 
 typedef enum bit [3 : 0]

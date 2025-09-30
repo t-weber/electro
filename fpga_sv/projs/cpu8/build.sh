@@ -33,7 +33,7 @@ rom_addr_bits=4
 TESTBENCH_DEFS="-DDEBUG -DIS_TESTBENCH"
 TESTBENCH_DEFS+=" -DRAM_DISABLE_PORT2"
 TESTBENCH_DEFS+=" -DROM_ADDR_BITS=${rom_addr_bits}"
-#TESTBENCH_DEFS+=" -DSIM_INTERRUPT"
+TESTBENCH_DEFS+=" -DSIM_INTERRUPT"
 
 
 # files
@@ -49,6 +49,7 @@ pnr_log=output/pnr.log
 src_files="../../clock/clkgen.sv \
 	../../sync/debounce_switch.sv \
 	../../sync/debounce_button.sv \
+	../../sync/edge.sv \
 	../../mem/memcpy.sv \
 	../../mem/ram_2port.sv \
 	../../proc/cpu8.sv \
