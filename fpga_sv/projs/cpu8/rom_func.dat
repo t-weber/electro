@@ -7,13 +7,16 @@
 62 4    # 7: 4 -> reg[2]
 46      # 9: jump to address in reg[2]
 
+
 # func
 69 ff   # a: reg[1] -> mem[ff]
 51      # c: reg[1] ~= reg[1]
 02      # d: return
 
-00 00   # e
+
+00 00   # e: halt
 
 
 # isr
-03      # 10: return from isr
+61 f    # 10: f -> reg[1]
+03      # 13: return from isr
