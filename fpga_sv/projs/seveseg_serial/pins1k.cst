@@ -33,14 +33,6 @@ IO_PORT "key[1]"    PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 IO_PORT "clk27"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 
 
-// oled
-IO_LOC "oled_scl"   20;
-IO_LOC "oled_sda"   34;
-
-IO_PORT "oled_scl"  PULL_MODE=UP  IO_TYPE=LVCMOS33;
-IO_PORT "oled_sda"  PULL_MODE=UP  IO_TYPE=LVCMOS33;
-
-
 // red leds
 IO_LOC "ledr[0]"    40;
 IO_LOC "ledr[1]"    41;
@@ -50,8 +42,7 @@ IO_LOC "ledr[4]"    42;
 IO_LOC "ledr[5]"    35;
 IO_LOC "ledr[6]"    23;
 IO_LOC "ledr[7]"    18;
-IO_LOC "ledr[8]"    17;
-IO_LOC "ledr[9]"    16;
+
 
 IO_PORT "ledr[0]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 IO_PORT "ledr[1]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
@@ -61,13 +52,12 @@ IO_PORT "ledr[4]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 IO_PORT "ledr[5]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 IO_PORT "ledr[6]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 IO_PORT "ledr[7]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "ledr[8]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "ledr[9]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 
 
 // serial seven segment display
-//IO_LOC "sevenseg_clk"    17;
-//IO_LOC "sevenseg_dat"    16;
+IO_LOC "sevenseg_clk"    17;
+IO_LOC "sevenseg_dat"    16;
 
-//IO_PORT "sevenseg_clk"   PULL_MODE=UP  IO_TYPE=LVCMOS33;
-//IO_PORT "sevenseg_dat"   PULL_MODE=UP  IO_TYPE=LVCMOS33;
+
+IO_PORT "sevenseg_clk"   PULL_MODE=UP  IO_TYPE=LVCMOS33;
+IO_PORT "sevenseg_dat"   PULL_MODE=UP  IO_TYPE=LVCMOS33;

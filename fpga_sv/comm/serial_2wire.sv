@@ -16,6 +16,9 @@ module serial_2wire
 	parameter BITS          = 8,
 	parameter LOWBIT_FIRST  = 1'b1,
 
+	// transmit target read/write addresses?
+	parameter TRANSMIT_ADDR = 1'b1,
+
 	// continue after errors
 	parameter IGNORE_ERROR  = 1'b0
  )
@@ -43,14 +46,14 @@ module serial_2wire
 	output wire out_word_finished,
 
 	// target addresses for writing and reading
-	input wire [ADDR_BITS-1 : 0] in_addr_write,
-	input wire [ADDR_BITS-1 : 0] in_addr_read,
+	input wire [ADDR_BITS - 1 : 0] in_addr_write,
+	input wire [ADDR_BITS - 1 : 0] in_addr_read,
 
 	// parallel input data (FPGA -> IC)
-	input wire [BITS-1 : 0] in_parallel,
+	input wire [BITS - 1 : 0] in_parallel,
 
 	// parallel output data (IC -> FPGA)
-	output wire [BITS-1 : 0] out_parallel
+	output wire [BITS - 1 : 0] out_parallel
 );
 
 
@@ -134,7 +137,7 @@ assign inout_serial_clk =
 // data transfer IC -> FPGA
 // ============================================================================
 // parallel output buffer (IC -> FPGA)
-reg [BITS-1 : 0] parallel_tofpga = 0, next_parallel_tofpga = 0;
+reg [BITS - 1 : 0] parallel_tofpga = 0, next_parallel_tofpga = 0;
 assign out_parallel = parallel_tofpga;
 
 
@@ -196,7 +199,7 @@ end
 // data transfer FPGA -> IC
 // ============================================================================
 // parallel input buffer (FPGA -> IC)
-reg [BITS-1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
+reg [BITS - 1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
 
 // input parallel data to register (FPGA -> IC)
 always_comb begin
@@ -218,17 +221,11 @@ always_comb begin
 		// write target address
 		// ------------------------------------------------------------
 		TransmitWriteAddress: begin
-			if(in_addr_write[actual_bit_ctr] == 1'b0)
-				serial_out = 1'b0;
-			else
-				serial_out = 1'b1;
+			serial_out = in_addr_write[actual_bit_ctr]; 
 		end
 
 		TransmitReadAddress: begin
-			if(in_addr_read[actual_bit_ctr] == 1'b0)
-				serial_out = 1'b0;
-			else
-				serial_out = 1'b1;
+			serial_out = in_addr_read[actual_bit_ctr];
 		end
 		// ------------------------------------------------------------
 
@@ -236,10 +233,7 @@ always_comb begin
 		// serialise parallel data and sent it to target
 		// ------------------------------------------------------------
 		Transmit: begin
-			if(parallel_fromfpga[actual_bit_ctr] == 1'b0)
-				serial_out = 1'b0;
-			else
-				serial_out = 1'b1;
+			serial_out = parallel_fromfpga[actual_bit_ctr];
 		end
 		// ------------------------------------------------------------
 
@@ -318,7 +312,10 @@ always_comb begin
 			next_bit_ctr = 0;
 			if(in_enable == 1'b1) begin
 				next_serial_state = SendStart;
-				next_state_afterstart = TransmitWriteAddress;
+				if(TRANSMIT_ADDR == 1'b1)
+					next_state_afterstart = TransmitWriteAddress;
+				else
+					next_state_afterstart = Transmit;
 			end else begin
 				ready = 1'b1;
 			end
@@ -372,7 +369,10 @@ always_comb begin
 					next_state_afterack = Transmit;
 				end else begin
 					next_state_afterack = SendRepeatedStart;
-					next_state_afterstart = TransmitReadAddress;
+					if(TRANSMIT_ADDR == 1'b1)
+						next_state_afterstart = TransmitReadAddress;
+					else
+						next_state_afterstart = Receive;
 				end
 			end else begin
 				// next bit of the word

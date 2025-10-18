@@ -11,13 +11,12 @@
 #   - https://learn.lushaylabs.com/os-toolchain-manual-installation
 #
 
-build_roms=1
 run_synth=1
 run_pnr=1
 run_pack=1
 num_threads=$(($(nproc)/2+1))
 
-top_module=oled
+top_module=sevenseg_test
 
 synth_file=output/synth.json
 pnr_file=output/pnr.json
@@ -30,9 +29,9 @@ src_files="../../sync/debounce_button.sv \
 	../../sync/debounce_switch.sv \
 	../../clock/clkgen.sv \
 	../../comm/serial_2wire.sv \
-	../../display/oled_serial.sv \
+	../../display/sevenseg.v \
+	../../display/sevenseg_serial.sv \
 	../../mem/ram_2port.sv \
-	output/textmem.sv output/font.sv \
 	main.sv"
 
 # 9k board
@@ -51,41 +50,11 @@ target_pins_file=pins1k.cst
 YOSYS=yosys
 NEXTPNR=nextpnr-himbaechel
 PACK=gowin_pack
-GENFONT=../../../tools/genfont/build/genfont
-GENROM=../../../tools/genrom/build/genrom
 gen_type=sv
 
 echo -e "Using tool: $(which $YOSYS)"
 echo -e "Using tool: $(which $NEXTPNR)"
 echo -e "Using tool: $(which $PACK)"
-echo -e "Using tool: $(which $GENFONT)"
-echo -e "Using tool: $(which $GENROM)"
-
-
-if [ $build_roms -ne 0 ]; then
-	echo -e "Creating font rom..."
-	${GENFONT} -f DejaVuSansMono.ttf \
-		-w 12 -h 9 \
-		--target_height 8 --target_pitch 1 --pitch_bits 8 \
-		--transpose --reverse_cols \
-		--target_top 0 --target_left 0 \
-		--sync 0 \
-		-t $gen_type -o output/font.sv
-
-	echo -e "Creating text buffer..."
-	 txt="----------------"
-	txt+="|    Line 1    |"
-	txt+="|    Line 2    |"
-	txt+="|    Line 3    |"
-	txt+="|    Line 4    |"
-	txt+="|    Line 5    |"
-	txt+="|    Line 6    |"
-	txt+="----------------"
-	echo -en "$txt" > textmem.txt
-	${GENROM} -l 16 -t $gen_type -p 1 -d 1 -f 0 \
-		--sync 0 -m textmem \
-		textmem.txt -o output/textmem.sv
-fi
 
 
 if [ ! -e output ]; then
