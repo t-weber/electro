@@ -1,6 +1,6 @@
 /**
  * display with serial interface
- * @author Tobias Weber
+ * @author Tobias Weber <tobias.weber@tum.de>
  * @date 4-may-2024
  * @license see 'LICENSE' file
  *

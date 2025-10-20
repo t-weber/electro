@@ -1,6 +1,6 @@
 /**
  * serial monochrome oled display
- * @author Tobias Weber
+ * @author Tobias Weber <tobias.weber@tum.de>
  * @date 19-may-2024
  * @license see 'LICENSE' file
  *

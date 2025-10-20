@@ -1,6 +1,6 @@
 /**
  * generates a (slower) clock
- * @author Tobias Weber
+ * @author Tobias Weber <tobias.weber@tum.de>
  * @date 22-dec-2023
  * @license see 'LICENSE' file
  */

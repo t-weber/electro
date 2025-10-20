@@ -1,26 +1,30 @@
 /**
- * serial seven segment display
+ * led matrix
  * @author Tobias Weber <tobias.weber@tum.de>
- * @date 18-oct-2025
+ * @date 19-oct-2025
  * @license see 'LICENSE' file
  *
  * references:
- *   - https://www.puntoflotante.net/TM1637-7-SEGMENT-DISPLAY-FOR-MICROCONTROLLER.htm
+ *   - [hw] https://www.analog.com/en/products/max7219.html
  */
 
 
-module sevenseg_serial
+module ledmatrix
 #(
-	parameter MAIN_CLK = 50_000_000,
-	parameter BUS_BITS = 8,
-	parameter NUM_SEGS = 6
+	parameter MAIN_CLK     = 50_000_000,
+	parameter BUS_BITS     = 16,
+
+	parameter NUM_SEGS     = 8,
+	parameter LEDS_PER_SEG = 8,
+
+	parameter TRANSPOSE    = 0
  )
 (
 	// clock and reset
 	input wire in_clk, in_rst,
 
 	input wire in_update,
-	input wire [4*NUM_SEGS - 1 : 0] in_digits,
+	input wire [LEDS_PER_SEG*NUM_SEGS - 1 : 0] in_bits,
 
 	// serial bus interface
 	input wire in_bus_ready,
@@ -33,8 +37,26 @@ module sevenseg_serial
 // --------------------------------------------------------------------
 // memory
 // --------------------------------------------------------------------
-reg [4*NUM_SEGS - 1 : 0] mem, next_mem;
+reg [LEDS_PER_SEG*NUM_SEGS - 1 : 0] mem, next_mem;
 logic update, next_update;
+
+logic [LEDS_PER_SEG - 1 : 0] leds;
+
+generate
+	if(TRANSPOSE == 1'b0)
+		assign leds = mem[(seg_ctr - 1'b1)*LEDS_PER_SEG +: LEDS_PER_SEG];
+	else
+		assign leds = {
+			mem[7*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
+			mem[6*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
+			mem[5*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
+			mem[4*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
+			mem[3*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
+			mem[2*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
+			mem[1*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
+			mem[0*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)]
+		};
+endgenerate
 
 
 always_ff@(posedge in_clk, posedge in_rst) begin
@@ -57,30 +79,9 @@ always_comb begin
 
 	if(in_update == 1'b1) begin
 		next_update = 1'b1;
-		next_mem = in_digits;
+		next_mem = in_bits;
 	end
 end
-// --------------------------------------------------------------------
-
-
-// --------------------------------------------------------------------
-// decoder module
-// --------------------------------------------------------------------
-logic [3 : 0] digit;
-logic [6 : 0] leds;
-
-assign digit = mem[seg_ctr*4 +: 4];
-
-
-sevenseg #(
-	.ZERO_IS_ON(0),
-	.INVERSE_NUMBERING(1),
-	.ROTATED(1)
-)
-sevenseg_mod(
-	.in_digit(digit),
-	.out_leds(leds)
-);
 // --------------------------------------------------------------------
 
 
@@ -92,7 +93,7 @@ sevenseg_mod(
 	localparam WAIT_UPDATE = 1;
 `else
 	localparam WAIT_RESET  = MAIN_CLK/1000*100;  // 100 ms
-	localparam WAIT_UPDATE = MAIN_CLK/1000*100;  // 100 ms, 10 Hz
+	localparam WAIT_UPDATE = MAIN_CLK/1000*50;   // 50 ms, 20 Hz
 `endif
 
 logic [$clog2(WAIT_UPDATE /*largest value*/) : 0]
@@ -103,42 +104,40 @@ logic [$clog2(WAIT_UPDATE /*largest value*/) : 0]
 // --------------------------------------------------------------------
 // init data
 // --------------------------------------------------------------------
-// basic command types
-localparam [3 : 0] cmd_data   = 4'b0100;
-localparam [3 : 0] cmd_disp   = 4'b1000;
-localparam [3 : 0] cmd_addr   = 4'b1100;
-
-// constant (1) or incrementing (0) address
-localparam [0 : 0] const_addr = 1'b1;
-// led brightness
-localparam [3 : 0] brightness = 4'hf;
+// basic command types, [hw, p. 7]
+localparam [7 : 0] cmd_decode     = 8'b0000_1001;
+localparam [7 : 0] cmd_brightness = 8'b0000_1010;
+localparam [7 : 0] cmd_limit      = 8'b0000_1011;
+localparam [7 : 0] cmd_power      = 8'b0000_1100;
+localparam [7 : 0] cmd_test       = 8'b0000_1111;
 
 
-// init sequence
-localparam INIT_BYTES = 1;
-logic [0 : INIT_BYTES - 1][BUS_BITS - 1 : 0] init_cmds;
+// init sequence, [hw, pp. 7 - 10]
+localparam INIT_WORDS = 5;
+logic [0 : INIT_WORDS - 1][BUS_BITS - 1 : 0] init_cmds;
 assign init_cmds =
 {
-	{ cmd_disp, brightness }
+	{ cmd_power,      8'b0000_0001 },
+	{ cmd_decode,     8'b0000_0000 },
+	{ cmd_brightness, 8'b0000_1111 },
+	{ cmd_limit,      8'(NUM_SEGS - 1'b1) },
+	{ cmd_test,       8'b0000_0000 }/*,
+	{ 8'b0000_0001,   8'b0000_0001 },
+	{ 8'b0000_0010,   8'b0000_0011 },
+	{ 8'b0000_0011,   8'b0000_0111 },
+	{ 8'b0000_0100,   8'b0000_1111 },
+	{ 8'b0000_0101,   8'b0001_1111 },
+	{ 8'b0000_0110,   8'b0011_1111 },
+	{ 8'b0000_0111,   8'b0111_1111 },
+	{ 8'b0000_1000,   8'b1111_1111 }*/
 };
 
 // init command byte counter
-reg [$clog2(INIT_BYTES) : 0] init_ctr = 0, next_init_ctr = 0;
+reg [$clog2(INIT_WORDS) : 0] init_ctr = 0, next_init_ctr = 0;
 
 
-// data transmission sequence
-localparam DATA_BYTES = 2;
-logic [0 : DATA_BYTES - 1][BUS_BITS - 1 : 0] data_cmds;
-assign data_cmds =
-{
-	{ cmd_data, 1'b0, ~const_addr, 1'b0, 1'b0 },
-	{ cmd_addr, 4'b0000 }  // start with address 0
-};
-
-// data init command byte counter
-reg [$clog2(DATA_BYTES) : 0] data_ctr = 0, next_data_ctr = 0;
 // data byte counter
-reg [$clog2(NUM_SEGS) : 0] seg_ctr = 0, next_seg_ctr = 0;
+reg [$clog2(NUM_SEGS + 1'b1) : 0] seg_ctr = 1'b1, next_seg_ctr = 1'b1;
 // --------------------------------------------------------------------
 
 
@@ -169,7 +168,6 @@ typedef enum {
 	Reset,
 	WriteInit, NextInit,
 	WaitUpdate, WaitUpdate2,
-	WriteDataInit, NextDataInit,
 	WriteData, NextData
 } t_state;
 
@@ -183,8 +181,7 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 		state <= Reset;
 
 		init_ctr <= 1'b0;
-		data_ctr <= 1'b0;
-		seg_ctr <= 1'b0;
+		seg_ctr <= 1'b1;
 
 		// timer register
 		wait_ctr <= 1'b0;
@@ -197,7 +194,6 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 		state <= next_state;
 
 		init_ctr <= next_init_ctr;
-		data_ctr <= next_data_ctr;
 		seg_ctr <= next_seg_ctr;
 
 		// timer register
@@ -219,12 +215,11 @@ always_comb begin
 	// defaults
 	next_state = state;
 	next_init_ctr = init_ctr;
-	next_data_ctr = data_ctr;
 	next_seg_ctr = seg_ctr;
 
 	wait_ctr_max = WAIT_RESET;
 	bus_enable = 1'b0;
-	bus_data = 0;
+	bus_data = 1'b0;
 
 	unique case(state)
 		Reset: begin
@@ -245,15 +240,11 @@ always_comb begin
 		end
 
 		NextInit: begin
-			if(init_ctr + 1 == INIT_BYTES) begin
-				if(in_bus_ready == 1'b1)
+			bus_data = init_cmds[init_ctr];
+			if(in_bus_ready == 1'b1) begin
+				if(init_ctr + 1'b1 == INIT_WORDS) begin
 					next_state = WaitUpdate;
-			end else begin
-				bus_data = init_cmds[init_ctr];
-
-				// send stop signal
-				//bus_enable = 1'b1;
-				if(in_bus_ready == 1'b1) begin
+				end else begin
 					next_init_ctr = $size(init_ctr)'(init_ctr + 1'b1);
 					next_state = WriteInit;
 				end
@@ -272,35 +263,7 @@ always_comb begin
 
 		WaitUpdate2: begin
 			if(update == 1'b1) begin
-				next_state = WriteDataInit;
-			end
-		end
-		// ----------------------------------------------------
-
-
-		// ----------------------------------------------------
-		// write data transfer commands
-		WriteDataInit: begin
-			bus_data = data_cmds[data_ctr];
-			bus_enable = 1'b1;
-
-			if(bus_cycle == 1'b1)
-				next_state = NextDataInit;
-		end
-
-		NextDataInit: begin
-			if(data_ctr + 1 == DATA_BYTES) begin
-				// keep enabled, don't send stop signal
-				bus_enable = 1'b1;
-				//if(in_bus_ready == 1'b1)
-					next_state = WriteData;
-			end else begin
-				bus_data = data_cmds[data_ctr];
-				//bus_enable = 1'b1;
-				if(in_bus_ready == 1'b1) begin
-					next_data_ctr = $size(data_ctr)'(data_ctr + 1'b1);
-					next_state = WriteDataInit;
-				end
+				next_state = WriteData;
 			end
 		end
 		// ----------------------------------------------------
@@ -309,7 +272,7 @@ always_comb begin
 		// ----------------------------------------------------
 		// write segment byte
 		WriteData: begin
-			bus_data = {1'b0, leds};
+			bus_data = { (BUS_BITS/2)'(seg_ctr), leds };
 			bus_enable = 1'b1;
 
 			if(bus_cycle == 1'b1)
@@ -318,19 +281,16 @@ always_comb begin
 
 		// next segment byte
 		NextData: begin
-			bus_data = {1'b0, leds};
-
-			if(seg_ctr + 1 == NUM_SEGS) begin
-				// at last segment
-				if(in_bus_ready == 1'b1) begin
-					// all finished
-					next_seg_ctr = 1'b0;
+			bus_data = { (BUS_BITS/2)'(seg_ctr), leds };
+			if(in_bus_ready == 1'b1) begin
+				if(seg_ctr == NUM_SEGS) begin
+					// at last segment
+					next_seg_ctr = 1'b1;
 					next_state = WaitUpdate;
+				end else begin
+					next_seg_ctr = $size(seg_ctr)'(seg_ctr + 1'b1);
+					next_state = WriteData;
 				end
-			end else begin
-				next_seg_ctr = $size(seg_ctr)'(seg_ctr + 1'b1);
-				next_state = WriteData;
-				bus_enable = 1'b1;
 			end
 		end
 		// ----------------------------------------------------
@@ -338,7 +298,7 @@ always_comb begin
 	endcase
 
 `ifdef __IN_SIMULATION__
-	$display("*** sevenseg_serial: %s, seg=%d, init=%d, dat=%x. ***",
+	$display("*** ledmatrix: %s, seg=%d, init=%d, dat=%x. ***",
 		state.name(), seg_ctr, init_ctr, init_cmds[init_ctr]);
 `endif
 

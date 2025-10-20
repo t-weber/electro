@@ -34,7 +34,10 @@ module serial_duplex
 	output wire out_clk,
 	output wire out_clk_raw,
 
-	// enable reception of transmission
+	// not currently transmitting
+	output wire out_ready_fromfpga,
+
+	// enable reception or transmission
 	input wire in_enable_tofpga,
 	input wire in_enable_fromfpga,
 
@@ -67,6 +70,8 @@ typedef enum bit [0 : 0] { ReadyTx, Transmit } t_serial_fromfpga_state;
 
 t_serial_fromfpga_state serial_fromfpga_state = ReadyTx;
 t_serial_fromfpga_state next_serial_fromfpga_state = ReadyTx;
+
+assign out_ready_fromfpga = serial_fromfpga_state == ReadyTx;
 // ----------------------------------------------------------------------------
 
 

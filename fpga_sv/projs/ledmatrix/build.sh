@@ -16,7 +16,7 @@ run_pnr=1
 run_pack=1
 num_threads=$(($(nproc)/2+1))
 
-top_module=sevenseg_test
+top_module=ledmatrix_test
 
 synth_file=output/synth.json
 pnr_file=output/pnr.json
@@ -28,22 +28,21 @@ pnr_log=output/pnr.log
 src_files="../../sync/debounce_button.sv \
 	../../sync/debounce_switch.sv \
 	../../clock/clkgen.sv \
-	../../comm/serial_2wire.sv \
-	../../display/sevenseg.v \
-	../../display/sevenseg_serial.sv \
+	../../comm/serial_tx.sv \
+	../../display/ledmatrix.sv \
 	main.sv"
 
 # 9k board
-#target_board=GW1NR-LV9QN88PC6/I5
-#target_fpga=GW1N-9C
-#target_freq=27
-#target_pins_file=pins9k.cst
+target_board=GW1NR-LV9QN88PC6/I5
+target_fpga=GW1N-9C
+target_freq=27
+target_pins_file=pins9k.cst
 
 # 1k board
-target_board=GW1NZ-LV1QN48C6/I5
-target_fpga=GW1NZ-1
-target_freq=27
-target_pins_file=pins1k.cst
+#target_board=GW1NZ-LV1QN48C6/I5
+#target_fpga=GW1NZ-1
+#target_freq=27
+#target_pins_file=pins1k.cst
 
 # tools
 YOSYS=yosys
