@@ -63,7 +63,8 @@ fpga_sv/projs/oled_serial/font.?v
 fpga_sv/projs/oled_serial/textmem*.?v
 fpga_sv/projs/oled_serial/textmem*.txt
 fpga_sv/projs/oled_serial/output/**
-fpga_sv/projs/seveseg_serial/output/**
+fpga_sv/projs/sevenseg_serial/output/**
+fpga_sv/projs/sevenseg_serial2/output/**
 fpga_sv/projs/ledmatrix/output/**
 
 tools/cpu/build/**

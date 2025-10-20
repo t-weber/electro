@@ -8,6 +8,9 @@
  *   - [hw] https://www.analog.com/en/products/max7219.html
  */
 
+// use seven segment decoder (otherwise raw led matrix)
+//`define LEDMAT_SEVENSEG
+
 
 module ledmatrix
 #(
@@ -17,14 +20,21 @@ module ledmatrix
 	parameter NUM_SEGS     = 8,
 	parameter LEDS_PER_SEG = 8,
 
+	// transpose pixel matrix (or reverse segment order)
 	parameter TRANSPOSE    = 0
  )
 (
 	// clock and reset
 	input wire in_clk, in_rst,
-
 	input wire in_update,
+
+`ifdef LEDMAT_SEVENSEG
+	// input digits for seven segment displays
+	input wire [4*NUM_SEGS - 1 : 0] in_digits,
+`else
+	// input pixels for led matrix
 	input wire [LEDS_PER_SEG*NUM_SEGS - 1 : 0] in_bits,
+`endif
 
 	// serial bus interface
 	input wire in_bus_ready,
@@ -37,26 +47,13 @@ module ledmatrix
 // --------------------------------------------------------------------
 // memory
 // --------------------------------------------------------------------
-reg [LEDS_PER_SEG*NUM_SEGS - 1 : 0] mem, next_mem;
+`ifdef LEDMAT_SEVENSEG
+	reg [4*NUM_SEGS - 1 : 0] mem, next_mem;
+`else
+	reg [LEDS_PER_SEG*NUM_SEGS - 1 : 0] mem, next_mem;
+`endif
+
 logic update, next_update;
-
-logic [LEDS_PER_SEG - 1 : 0] leds;
-
-generate
-	if(TRANSPOSE == 1'b0)
-		assign leds = mem[(seg_ctr - 1'b1)*LEDS_PER_SEG +: LEDS_PER_SEG];
-	else
-		assign leds = {
-			mem[7*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
-			mem[6*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
-			mem[5*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
-			mem[4*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
-			mem[3*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
-			mem[2*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
-			mem[1*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
-			mem[0*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)]
-		};
-endgenerate
 
 
 always_ff@(posedge in_clk, posedge in_rst) begin
@@ -79,9 +76,57 @@ always_comb begin
 
 	if(in_update == 1'b1) begin
 		next_update = 1'b1;
+`ifdef LEDMAT_SEVENSEG
+		next_mem = in_digits;
+`else
 		next_mem = in_bits;
+`endif
 	end
 end
+// --------------------------------------------------------------------
+
+
+// --------------------------------------------------------------------
+// decoder module or pixel assignments
+// --------------------------------------------------------------------
+logic [LEDS_PER_SEG - 1 : 0] leds;
+
+
+`ifdef LEDMAT_SEVENSEG
+	logic [3 : 0] digit;
+
+	generate
+		if(TRANSPOSE == 1'b1)
+			assign digit = mem[(seg_ctr - 1'b1)*4 +: 4];
+		else
+			assign digit = mem[(NUM_SEGS - seg_ctr)*4 +: 4];
+	endgenerate
+
+	assign leds[7] = 1'b0;
+
+	// seven segment decoder
+	sevenseg #(.ZERO_IS_ON(0), .INVERSE_NUMBERING(1'b0), .ROTATED(1'b1))
+	sevenseg_mod(.in_digit(digit), .out_leds(leds[6 : 0]));
+
+`else
+
+	// pixel matrix assignments
+	generate
+		if(TRANSPOSE == 1'b0)
+			assign leds = mem[(seg_ctr - 1'b1)*LEDS_PER_SEG +: LEDS_PER_SEG];
+		else
+			assign leds = {
+				mem[7*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
+				mem[6*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
+				mem[5*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
+				mem[4*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
+				mem[3*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
+				mem[2*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
+				mem[1*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)],
+				mem[0*LEDS_PER_SEG + (NUM_SEGS - seg_ctr)]
+			};
+	endgenerate
+`endif
 // --------------------------------------------------------------------
 
 
