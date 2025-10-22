@@ -19,10 +19,10 @@ find_package(Boost)
 add_compile_options(${Boost_CXX_FLAGS})
 
 
-find_package(Qt5Core REQUIRED)
-find_package(Qt5Gui REQUIRED)
-find_package(Qt5Widgets REQUIRED)
-find_package(Qt5Svg REQUIRED)
+find_package(Qt6Core REQUIRED)
+find_package(Qt6Gui REQUIRED)
+find_package(Qt6Widgets REQUIRED)
+find_package(Qt6Svg REQUIRED)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)

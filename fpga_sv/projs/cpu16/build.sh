@@ -31,7 +31,7 @@ rom_addr_bits=5
 
 # testbench options
 TESTBENCH_DEFS="-DDEBUG -DIS_TESTBENCH"
-TESTBENCH_DEFS+=" -DRAM_DISABLE_PORT2"
+#TESTBENCH_DEFS+=" -DRAM_DISABLE_PORT2"
 TESTBENCH_DEFS+=" -DROM_ADDR_BITS=${rom_addr_bits}"
 TESTBENCH_DEFS+=" -DSIM_INTERRUPT"
 TESTBENCH_DEFS+=" -DLEDMAT_SEVENSEG"
@@ -73,11 +73,12 @@ target_defines="-DUSE_9K"
 #target_fpga=GW1NZ-1
 #target_freq=27
 #target_pins_file=pins1k.cst
-#target_defines="-DUSE_1K -DRAM_DISABLE_PORT2"
+#target_defines="-DUSE_1K"
 
 
 # options
 #target_defines+=" -DCPU16_DEDICATED_IP"
+#target_defines+="-DRAM_DISABLE_PORT2"
 target_defines+=" -DRAM_UNPACKED -DRAM_INIT"
 target_defines+=" -DLEDMAT_SEVENSEG"
 target_defines+=" -DROM_ADDR_BITS=$rom_addr_bits"
@@ -169,5 +170,5 @@ if [ $build_testbench -ne 0 ]; then
 		exit -1
 	fi
 
-	echo -e "\nRun testbench via, e.g.: ./testbench +iter=250\n"
+	echo -e "\nRun testbench via, e.g.: ./testbench +iter=1000\n"
 fi

@@ -1,4 +1,4 @@
-60 0d  00 ff   # 0: 00ff -> sp
+60 0d  03 ff   # 0: 03ff -> sp
 60 01  55 55   # 2: 55 55 -> reg[1]
 
 60 02  00 0a   # 4: a -> reg[2]
@@ -9,7 +9,7 @@
 
 
 # func
-60 21  00 ff   # a: reg[1] -> mem[ff]
+60 21  03 ff   # a: reg[1] -> mem[3ff]
 40 41          # c: reg[1] ~= reg[1]
 00 02          # d: return
 

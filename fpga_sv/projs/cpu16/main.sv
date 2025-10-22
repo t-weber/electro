@@ -33,7 +33,7 @@ module cpuctrl
 // ----------------------------------------------------------------------------
 localparam ADDR_BITS       = 16;
 localparam DATA_BITS       = 16;
-localparam RAM_ADDR_BITS   = 8;
+localparam RAM_ADDR_BITS   = 9;
 
 localparam SEG_SERIAL_BITS = 16;
 localparam SEG_SERIAL_CLK  = 10_000;
@@ -138,7 +138,7 @@ ram_mod(.in_rst(reset),
 	// port 2 (reading)
 	.in_clk_2(clock),
 	.in_read_ena_2(1'b1), .in_write_ena_2(1'b0),
-	.in_addr_2(addr_2[RAM_ADDR_BITS - 1]),
+	.in_addr_2(addr_2[RAM_ADDR_BITS - 1 : 0]),
 	.in_data_2(DATA_BITS'('b0)), .out_data_2(out_data_2)
 `endif
 );
@@ -387,7 +387,8 @@ assign led[2] = ~(state_memaccess == CPU_MEM_WRITE);
 assign led[3] = ~btn;
 assign led[5 : 4] = 1'b1;
 
-assign addr_watch = 16'hff;
+assign addr_watch = 16'h3ff;
+assign addr_2 = 16'h3ff;
 assign ledg = data_watch[7 : 0];
 //assign ledg[DATA_BITS - 1 : 0] = cpu_instr;
 //assign ledg[ADDR_BITS - 1 : 0] = cpu_pc;

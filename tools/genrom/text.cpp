@@ -36,7 +36,7 @@ static t_words convert_line(std::string& line, int word_bits = 8)
 
 			if(byte != 0)
 				dat <<= 8;
-			dat |= t_word(8, i);
+			dat |= t_word(word_bits, i);
 		}
 
 		if(!istr)
