@@ -1,0 +1,23 @@
+60 0d  00 ff   # 0: 00ff -> sp
+60 01  55 55   # 2: 55 55 -> reg[1]
+
+60 02  00 0a   # 4: a -> reg[2]
+40 32          # 6: call reg[2]
+
+60 02  00 04   # 7: 4 -> reg[2]
+40 12          # 9: jump to address in reg[2]
+
+
+# func
+60 21  00 ff   # a: reg[1] -> mem[ff]
+40 41          # c: reg[1] ~= reg[1]
+00 02          # d: return
+
+
+00 00          # e: halt
+00 00          # f: halt
+
+
+# isr
+60 01  00 0f   # 10: f -> reg[1]
+00 03          # 13: return from isr

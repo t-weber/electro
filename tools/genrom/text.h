@@ -15,7 +15,7 @@
 
 
 extern std::tuple<bool, t_words>
-	convert_text(const std::filesystem::path& path);
+	convert_text(const std::filesystem::path& path, int word_bits = 8);
 
 
 #endif

@@ -21,7 +21,7 @@ module ledmatrix
 	parameter LEDS_PER_SEG = 8,
 
 	// transpose pixel matrix (or reverse segment order)
-	parameter TRANSPOSE    = 0
+	parameter TRANSPOSE    = 1'b0
  )
 (
 	// clock and reset
@@ -105,7 +105,7 @@ logic [LEDS_PER_SEG - 1 : 0] leds;
 	assign leds[7] = 1'b0;
 
 	// seven segment decoder
-	sevenseg #(.ZERO_IS_ON(0), .INVERSE_NUMBERING(1'b0), .ROTATED(1'b1))
+	sevenseg #(.ZERO_IS_ON(0), .INVERSE_NUMBERING(1'b0), .ROTATED(~TRANSPOSE))
 	sevenseg_mod(.in_digit(digit), .out_leds(leds[6 : 0]));
 
 `else

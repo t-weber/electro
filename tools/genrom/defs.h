@@ -18,7 +18,7 @@ using t_words = std::vector<t_word>;
 
 struct Config
 {
-	t_words data;
+	t_words data{};
 
 	bool direct_ports = false;
 	std::size_t num_ports = 2;

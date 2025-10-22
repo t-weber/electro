@@ -13,7 +13,7 @@
 #include <sstream>
 
 
-static t_words convert_line(std::string& line)
+static t_words convert_line(std::string& line, int word_bits = 8)
 {
 	t_words words;
 
@@ -25,12 +25,24 @@ static t_words convert_line(std::string& line)
 	std::istringstream istr(line);
 	while(istr)
 	{
-		unsigned short i = 0;
-		istr >> std::hex >> i;
+		t_word dat(word_bits, 0);
+
+		for(int byte = 0; byte < word_bits/8; ++byte)
+		{
+			unsigned short i = 0;
+			istr >> std::hex >> i;
+			if(!istr)
+				break;
+
+			if(byte != 0)
+				dat <<= 8;
+			dat |= t_word(8, i);
+		}
+
 		if(!istr)
 			break;
 
-		t_word dat(8, i);
+		//std::cout << "read line: " << dat << std::endl;
 		words.emplace_back(std::move(dat));
 	}
 
@@ -38,7 +50,8 @@ static t_words convert_line(std::string& line)
 }
 
 
-std::tuple<bool, t_words> convert_text(const std::filesystem::path& path)
+std::tuple<bool, t_words> convert_text(
+	const std::filesystem::path& path, int word_bits)
 {
 	t_words words;
 
@@ -56,7 +69,7 @@ std::tuple<bool, t_words> convert_text(const std::filesystem::path& path)
 			break;
 		//std::cout << line << std::endl;
 
-		t_words converted = convert_line(line);
+		t_words converted = convert_line(line, word_bits);
 		//words.append_range(converted);
 		words.insert(words.end(), converted.cbegin(), converted.cend());
 	}

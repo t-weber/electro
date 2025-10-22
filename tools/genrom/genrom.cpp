@@ -76,8 +76,7 @@ int main(int argc, char** argv)
 			("sync,s", args::value<decltype(cfg.sync)>(&cfg.sync),
 				("produce synchronous design, default: " + std::to_string(cfg.sync)).c_str())
 			("word_bits,w", args::value<decltype(word_bits)>(&word_bits),
-				("number of bits per word, default: "
-					+ std::to_string(word_bits)).c_str())
+				("number of bits per word, default: " + std::to_string(word_bits)).c_str())
 			("convert_text", args::value<decltype(convert_text)>(&convert_text),
 				("convert a text input file, default: " + std::to_string(convert_text)).c_str())
 			("input,i", args::value<decltype(in_filename)>(&in_filename),
@@ -144,13 +143,12 @@ int main(int argc, char** argv)
 			else if(convert_text)  // read text file
 			{
 				bool ok = false;
-				std::tie(ok, cfg.data) = ::convert_text(in_file);
+				std::tie(ok, cfg.data) = ::convert_text(in_file, word_bits);
 
 				if(ok)
 				{
 					std::cerr << "Info: Converted " << cfg.data.size()
-						<< " bytes of data."
-						<< std::endl;
+						<< " data words." << std::endl;
 				}
 				else
 				{
