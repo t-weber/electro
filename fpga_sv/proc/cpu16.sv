@@ -589,7 +589,8 @@ always_comb begin
 								next_subcycle2 = 1;
 						end
 							1: begin  // push base pointer
-								next_regs[sp_idx] = regs[sp_idx] - 1'b1;
+								next_regs[sp_idx] = regs[sp_idx] - 1'b1;  // decrement sp
+								next_regs[bp_idx] = regs[sp_idx] - 1'b1;  // bp = sp
 								next_mem_addr = regs[sp_idx] - 1'b1;
 								next_mem_data = regs[bp_idx];
 								next_cycle = WRITE_MEM;
@@ -691,9 +692,9 @@ always_comb begin
 
 					5'b00010: begin  // return
 						unique case(subcycle)
-							0: begin  // request base pointer pointed to by sp
-								next_regs[sp_idx] = regs[sp_idx] + 1'b1;
-								next_mem_addr = regs[sp_idx];
+							0: begin  // request base pointer pointed to by former sp (i.e. bp)
+								next_regs[sp_idx] = regs[bp_idx] + 1'b1;  // sp = bp, increment sp
+								next_mem_addr = regs[bp_idx];
 								next_mem_ready = 1'b1;
 								next_subcycle = 1;
 							end
@@ -701,7 +702,7 @@ always_comb begin
 								if(in_mem_ready) begin
 									next_regs[bp_idx] = in_mem_data;  // restore base pointer
 
-									next_regs[sp_idx] = regs[sp_idx] + 1'b1;
+									next_regs[sp_idx] = regs[sp_idx] + 1'b1;  // increment sp
 									next_mem_addr = regs[sp_idx];
 									next_mem_ready = 1'b1;
 									next_subcycle = 2;
@@ -709,7 +710,8 @@ always_comb begin
 							end
 							2: begin  // fetch return address and jump to it
 								if(in_mem_ready) begin
-									`ASSIGN_NEXT_PC(in_mem_data);
+									`ASSIGN_NEXT_PC(in_mem_data);  // restore program counter
+
 									next_cycle = FETCH;
 									next_subcycle = 0;
 								end
@@ -722,8 +724,8 @@ always_comb begin
 
 						unique case(subcycle)
 							0: begin  // request base pointer pointed to by sp
-								next_regs[sp_idx] = regs[sp_idx] + 1'b1;
-								next_mem_addr = regs[sp_idx];
+								next_regs[sp_idx] = regs[bp_idx] + 1'b1;  // sp = bp, increment sp
+								next_mem_addr = regs[bp_idx];
 								next_mem_ready = 1'b1;
 								next_subcycle = 1;
 							end
@@ -731,7 +733,7 @@ always_comb begin
 								if(in_mem_ready) begin
 									next_regs[bp_idx] = in_mem_data;  // restore base pointer
 
-									next_regs[sp_idx] = regs[sp_idx] + 1'b1;
+									next_regs[sp_idx] = regs[sp_idx] + 1'b1;  // increment sp
 									next_mem_addr = regs[sp_idx];
 									next_mem_ready = 1'b1;
 									next_subcycle = 2;
@@ -739,7 +741,8 @@ always_comb begin
 							end
 							2: begin  // fetch return address and jump to it
 								if(in_mem_ready) begin
-									`ASSIGN_NEXT_PC(in_mem_data);
+									`ASSIGN_NEXT_PC(in_mem_data);  // restore program counter
+
 									next_cycle = FETCH;
 									next_subcycle = 0;
 									next_irq_handling = 1'b0;
