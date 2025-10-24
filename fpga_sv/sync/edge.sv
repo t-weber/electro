@@ -35,7 +35,7 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 		shiftreg <= 0;
 	end
 
-	else if(in_clk == 1) begin
+	else /*if(in_clk == 1)*/ begin
 		shiftreg[0] <= in_signal;
 
 		for(shift_idx = 1; shift_idx < NUM_STEPS; ++shift_idx) begin

@@ -5,10 +5,13 @@
  * @license see 'LICENSE' file
  */
 
+//`define RAM_DISABLE_PORT2
+
+
 module cpuctrl
 #(
 	parameter MAIN_CLK = 27_000_000,
-	parameter SYS_CLK  =         50
+	parameter SYS_CLK  =        100
 )
 (
 	// main clock
@@ -62,7 +65,7 @@ debounce_switch debounce_key0(.in_clk(clk27), .in_rst(1'b0),
 
 // active-low button
 debounce_button debounce_key1(.in_clk(clock), .in_rst(1'b0),
-	.in_signal(~key[1]), .out_debounced(btn));
+	.in_signal(~key[1]), .out_debounced(btn), .out_toggled());
 // ----------------------------------------------------------------------------
 
 
@@ -355,6 +358,7 @@ serial_mod(
 	.in_clk(clk27), .in_rst(rst),
 	.in_enable(seg_serial_enable), .out_ready(seg_serial_ready),
 	.out_clk(seg_clk), .out_serial(seg_dat),
+	.out_clk_raw(), .out_word_finished(),
 	.in_parallel(seg_serial_in_parallel), .out_next_word(seg_serial_next_word)
 );
 // --------------------------------------------------------------------
@@ -388,11 +392,13 @@ assign led[3] = ~btn;
 assign led[5 : 4] = 1'b1;
 
 assign addr_watch = 16'h3ff;
-assign addr_2 = 16'h3ff;
 assign ledg = data_watch[7 : 0];
 //assign ledg[DATA_BITS - 1 : 0] = cpu_instr;
 //assign ledg[ADDR_BITS - 1 : 0] = cpu_pc;
 
+`ifndef RAM_DISABLE_PORT2
+	assign addr_2 = 16'h3ff;
+`endif
 // ---------------------------------------------------------------------------
 
 

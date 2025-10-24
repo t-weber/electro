@@ -12,25 +12,36 @@
 #
 
 # which tools to run?
-run_synth=1
-run_pnr=1
-run_pack=1
+build_fs=1
 build_testbench=1
-create_source_archive=0
+create_source_archive=1
 
 num_threads=$(($(nproc)/2+1))
 
 
-# choose program in rom
-#rom_file=rom_loop.dat
-#rom_addr_bits=4
+if [ $build_fs -ne 0 ]; then
+	run_synth=1
+	run_pnr=1
+	run_pack=1
+else
+	run_synth=0
+	run_pnr=0
+	run_pack=0
+fi
 
-rom_file=rom_func.dat
+
+# choose program in rom
+rom_file=programs/rom_func.dat
 rom_addr_bits=5
+
+#rom_file=programs/rom_mult.dat
+#rom_file=programs/rom_div.dat
+#rom_addr_bits=4
 
 
 # testbench options
 TESTBENCH_DEFS="-DDEBUG -DIS_TESTBENCH"
+#TESTBENCH_DEFS+="-D__IN_SIMULATION__"
 #TESTBENCH_DEFS+=" -DRAM_DISABLE_PORT2"
 TESTBENCH_DEFS+=" -DROM_ADDR_BITS=${rom_addr_bits}"
 TESTBENCH_DEFS+=" -DSIM_INTERRUPT"
@@ -54,6 +65,8 @@ src_files="../../clock/clkgen.sv \
 	../../mem/memcpy.sv \
 	../../mem/ram_2port.sv \
 	../../proc/cpu16.sv \
+	../../arithmetics/multiplier.sv \
+	../../arithmetics/divider.sv \
 	../../comm/serial_tx.sv \
 	../../display/ledmatrix.sv \
 	../../display/sevenseg.v \
@@ -82,6 +95,7 @@ target_defines="-DUSE_9K"
 target_defines+=" -DRAM_UNPACKED -DRAM_INIT"
 target_defines+=" -DLEDMAT_SEVENSEG"
 target_defines+=" -DROM_ADDR_BITS=$rom_addr_bits"
+target_defines+=" -DCPU_NO_MULT_DIV"
 
 
 # tools
@@ -170,5 +184,5 @@ if [ $build_testbench -ne 0 ]; then
 		exit -1
 	fi
 
-	echo -e "\nRun testbench via, e.g.: ./testbench +iter=1000\n"
+	echo -e "\nRun testbench via, e.g.: ./testbench +iter=2000\n"
 fi

@@ -5,6 +5,9 @@
  * @license see 'LICENSE' file
  */
 
+//`define DIV_USE_OWN_ADDER
+
+
 module divider
 #(
 	parameter BITS = 8
@@ -17,10 +20,10 @@ module divider
 	input wire in_start,
 
 	// inputs: divider and divisor
-	input wire [BITS-1 : 0] in_a, in_b,
+	input wire [BITS - 1 : 0] in_a, in_b,
 
 	// outputs: quotient and remainder
-	output wire [BITS-1 : 0] out_quot, out_rem,
+	output wire [BITS - 1 : 0] out_quot, out_rem,
 
 	// calculation finished?
 	output wire out_finished
@@ -39,15 +42,17 @@ typedef enum
 t_state state = Reset, state_next = Reset;
 
 
-logic [BITS-1 : 0] quotient, quotient_next;   // current quotient value
-logic [BITS-1 : 0] remainder, remainder_next; // current remainder value
-logic [BITS-1 : 0] b_2scomp;                  // 2s complement of divisior, in_b
+logic [BITS - 1 : 0] quotient, quotient_next;    // current quotient value
+logic [BITS - 1 : 0] remainder, remainder_next;  // current remainder value
 
+`ifdef MULT_USE_OWN_ADDER
+	logic [BITS - 1 : 0] b_2scomp;                 // 2s complement of divisior, in_b
 
-// use adder module to subtract the divisor from the remainder
-logic [BITS-1 : 0] remainder_sub;
-ripplecarryadder #(.BITS(BITS)) sum(
-	.in_a(remainder), .in_b(b_2scomp), .out_sum(remainder_sub));
+	// use adder module to subtract the divisor from the remainder
+	logic [BITS-1 : 0] remainder_sub;
+	ripplecarryadder #(.BITS(BITS)) sum(
+		.in_a(remainder), .in_b(b_2scomp), .out_sum(remainder_sub));
+`endif
 
 
 // output signals
@@ -55,18 +60,19 @@ assign out_quot = quotient;
 assign out_rem = remainder;
 assign out_finished = (state==Finished ? 1'b1 : 1'b0);
 
-assign b_2scomp = ~in_b + 1'b1;
+`ifdef MULT_USE_OWN_ADDER
+	assign b_2scomp = ~in_b + 1'b1;
+`endif
 
 
 // clock process
-always_ff@(posedge in_clk, posedge in_rst) begin
+always_ff@(posedge in_clk/*, posedge in_rst*/) begin
 	if(in_rst) begin
 		state <= Reset;
-		quotient <= 0;
-		remainder <= 0;
+		quotient <= 1'b0;
+		remainder <= 1'b0;
 	end
-
-	else if(in_clk) begin
+	else /*if(in_clk)*/ begin
 		state <= state_next;
 		quotient <= quotient_next;
 		remainder <= remainder_next;
@@ -85,9 +91,10 @@ always_comb begin
 		// set remainder := dividend
 		Reset:
 			begin
-				quotient_next = 0;
+				quotient_next = 1'b0;
 				remainder_next = in_a;
-				state_next = CheckSub;
+				if(in_start)  // wait for start signal
+					state_next = CheckSub;
 			end
 
 		// check if the divisor can be subtracted from the remainder
@@ -103,22 +110,30 @@ always_comb begin
 		// subtract the divisor from the remainder
 		Sub:
 			begin
+`ifdef MULT_USE_OWN_ADDER
+				// alternatively use adder module
+				remainder_next = remainder_sub;
+`else
 				// use internal adder
 				//remainder_next = remainder + b_2scomp;
 
 				// alternatively use internal subtractor
-				//remainder_next = remainder - in_b;
-
-				// alternatively use adder module
-				remainder_next = remainder_sub;
+				remainder_next = remainder - in_b;
+`endif
 
 				quotient_next = quotient + 1;
 				state_next = CheckSub; 
 			end
 
 		Finished:
-			// wait for start signal
-			if(in_start) begin
+			begin
+				// wait for next start signal
+				if(in_start)
+					state_next = Reset;
+			end
+
+		default:
+			begin
 				state_next = Reset;
 			end
 	endcase

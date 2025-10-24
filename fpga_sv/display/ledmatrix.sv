@@ -340,6 +340,9 @@ always_comb begin
 		end
 		// ----------------------------------------------------
 
+		default: begin
+			next_state = Reset;
+		end
 	endcase
 
 `ifdef __IN_SIMULATION__

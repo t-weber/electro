@@ -6,6 +6,7 @@
  */
 
 //`define CPU16_DEDICATED_IP  // use dedicated register for program counter
+//define CPU_NO_MULT_DIV  // don't use arithmetics modules
 
 
 /**
@@ -73,10 +74,11 @@
  * 1_0000101 aaaa_bbbb        reg[3] = compare(aaaa, bbbb)
  * 1_0000110 aaaa_bbbb        aaaa &= bbbb
  * 1_0000111 aaaa_bbbb        aaaa |= bbbb
- * 1_0001000 aaaa_bbbb        aaaa *= bbbb TODO
- * 1_0001001 aaaa_bbbb        aaaa /= bbbb TODO
- * 1_0001010 aaaa_bbbb        aaaa = rol(aaaa, bbbb) TODO
- * 1_0001011 aaaa_bbbb        aaaa = ror(aaaa, bbbb) TODO
+ * 1_0001000 aaaa_bbbb        aaaa *= bbbb
+ * 1_0001001 aaaa_bbbb        aaaa /= bbbb
+ * 1_0001010 aaaa_bbbb        aaaa %= bbbb
+ * 1_0001011 aaaa_bbbb        aaaa = rol(aaaa, bbbb) TODO
+ * 1_0001100 aaaa_bbbb        aaaa = ror(aaaa, bbbb) TODO
  */
 
 module cpu16
@@ -107,6 +109,35 @@ module cpu16
 	output wire [WORD_BITS - 1 : 0] out_instr,  // current instruction
 	output wire [ADDR_BITS - 1 : 0] out_pc      // current instruction pointer
 );
+
+
+// ----------------------------------------------------------------------------
+// arithmetics
+// ----------------------------------------------------------------------------
+logic mult_start, next_mult_start = 1'b0;
+logic div_start, next_div_start = 1'b0;
+wire mult_finished, div_finished;
+logic [WORD_BITS - 1 : 0] calc_a, calc_b, next_calc_a, next_calc_b;
+wire [WORD_BITS - 1 : 0] mult_prod, div_quot, div_rem;
+
+
+`ifndef CPU_NO_MULT_DIV
+
+multiplier #(.IN_BITS(WORD_BITS), .OUT_BITS(WORD_BITS))
+	mult_mod(.in_clk(in_clk), .in_rst(in_rst),
+		.in_a(calc_a), .in_b(calc_b), .in_start(mult_start),
+		.out_finished(mult_finished), .out_prod(mult_prod)
+);
+
+divider #(.BITS(WORD_BITS))
+	div_mod(.in_clk(in_clk), .in_rst(in_rst),
+		.in_a(calc_a), .in_b(calc_b), .in_start(div_start),
+		.out_finished(div_finished),
+		.out_quot(div_quot), .out_rem(div_rem)
+);
+
+`endif
+// ----------------------------------------------------------------------------
 
 
 // ----------------------------------------------------------------------------
@@ -241,8 +272,8 @@ typedef enum bit[2 : 0]
 
 t_cycle cycle = FETCH, next_cycle = FETCH;
 t_cycle cycle_after_write = FETCH, next_cycle_after_write = FETCH;
-bit [1 : 0] subcycle = 1'b0, next_subcycle = 1'b0;
-bit [0 : 0] subcycle2 = 1'b0, next_subcycle2 = 1'b0;
+bit [0 : 0] subcycle = 1'b0, next_subcycle = 1'b0;
+bit [1 : 0] subcycle2 = 1'b0, next_subcycle2 = 1'b0;
 
 
 always_ff@(posedge in_clk) begin
@@ -270,6 +301,11 @@ always_ff@(posedge in_clk) begin
 
 		irq_handling <= 1'b0;
 
+		mult_start <= 1'b0;
+		div_start <= 1'b0;
+		calc_a <= 1'b0;
+		calc_b <= 1'b0;
+
 	end else begin
 		cycle <= next_cycle;
 		cycle_after_write <= next_cycle_after_write;
@@ -295,6 +331,11 @@ always_ff@(posedge in_clk) begin
 		has_immval <= next_has_immval;
 
 		irq_handling <= next_irq_handling;
+
+		mult_start <= next_mult_start;
+		div_start <= next_div_start;
+		calc_a <= next_calc_a;
+		calc_b <= next_calc_b;
 	end
 end
 
@@ -324,6 +365,11 @@ always_comb begin
 	next_has_immval = has_immval;
 
 	next_irq_handling = irq_handling;
+
+	next_mult_start = mult_start;
+	next_div_start = div_start;
+	next_calc_a = calc_a;
+	next_calc_b = calc_b;
 
 	unique case(cycle)
 		FETCH: begin
@@ -479,19 +525,67 @@ always_comb begin
 						next_cycle = FETCH;
 					end
 
-					// TODO
-					/*4'b1000: begin  // reg1 *= reg2
-						next_regs[regidx1] = reg1 * reg2;
-						next_cycle = FETCH;
+`ifndef CPU_NO_MULT_DIV
+					4'b1000: begin  // reg1 *= reg2
+						unique case(subcycle)
+							0: begin
+								next_calc_a = reg1;
+								next_calc_b = reg2;
+								next_mult_start = 1'b1;
+								next_subcycle = 1'b1;
+							end
+							1: begin  // fetch memory word
+								next_mult_start = 1'b0;
+								if(mult_finished) begin
+									next_regs[regidx1] = mult_prod;
+									next_cycle = FETCH;
+									next_subcycle = 1'b0;
+								end
+							end
+						endcase
 					end
 
 					4'b1001: begin  // reg1 /= reg2
-						next_regs[regidx1] = reg1 / reg2;
-						next_cycle = FETCH;
-					end*/
+						unique case(subcycle)
+							0: begin
+								next_calc_a = reg1;
+								next_calc_b = reg2;
+								next_div_start = 1'b1;
+								next_subcycle = 1'b1;
+							end
+							1: begin  // fetch memory word
+								next_div_start = 1'b0;
+								if(div_finished) begin
+									next_regs[regidx1] = div_quot;
+									next_cycle = FETCH;
+									next_subcycle = 1'b0;
+								end
+							end
+						endcase
+					end
+
+					4'b1010: begin  // reg1 %= reg2
+						unique case(subcycle)
+							0: begin
+								next_calc_a = reg1;
+								next_calc_b = reg2;
+								next_div_start = 1'b1;
+								next_subcycle = 1'b1;
+							end
+							1: begin  // fetch memory word
+								next_div_start = 1'b0;
+								if(div_finished) begin
+									next_regs[regidx1] = div_rem;
+									next_cycle = FETCH;
+									next_subcycle = 1'b0;
+								end
+							end
+						endcase
+					end
+`endif
 
 					// TODO
-					/*4'b1010: begin  // reg1 = rol(reg1, reg2)
+					/*4'b1011: begin  // reg1 = rol(reg1, reg2)
 						next_regs[regidx1] = {
 							reg1[WORD_BITS - 1 - reg2 : 0],
 							reg1[WORD_BITS - 1 -: reg2]
@@ -499,7 +593,7 @@ always_comb begin
 						next_cycle = FETCH;
 					end
 
-					4'b1011: begin  // reg1 = ror(reg1, reg2)
+					4'b1100: begin  // reg1 = ror(reg1, reg2)
 						next_regs[regidx1] = {
 							reg1[0 +: reg2],
 							reg1[WORD_BITS - 1 : reg2]
@@ -530,7 +624,7 @@ always_comb begin
 								next_mem_addr = immval;
 								next_mem_ready = 1'b1;
 								next_subcycle = 1;
-						end
+              end
 							1: begin   // fetch memory word
 								if(in_mem_ready) begin
 									next_regs[regidx1] = in_mem_data;
@@ -597,6 +691,9 @@ always_comb begin
 								next_cycle_after_write = FETCH;
 								next_subcycle2 = 0;
 							end
+						default: begin
+								next_subcycle2 = 0;
+						end
 						endcase
 					end
 
@@ -626,7 +723,7 @@ always_comb begin
 								next_mem_addr = regs[sp_idx];
 								next_mem_ready = 1'b1;
 								next_subcycle = 1;
-						end
+              end
 							1: begin  // fetch memory word
 								if(in_mem_ready) begin
 									next_regs[regidx1] = in_mem_data;
@@ -691,12 +788,12 @@ always_comb begin
 					end
 
 					5'b00010: begin  // return
-						unique case(subcycle)
+						unique case(subcycle2)
 							0: begin  // request base pointer pointed to by former sp (i.e. bp)
 								next_regs[sp_idx] = regs[bp_idx] + 1'b1;  // sp = bp, increment sp
 								next_mem_addr = regs[bp_idx];
 								next_mem_ready = 1'b1;
-								next_subcycle = 1;
+								next_subcycle2 = 1;
 							end
 							1: begin  // request return address pointed to by sp
 								if(in_mem_ready) begin
@@ -705,7 +802,7 @@ always_comb begin
 									next_regs[sp_idx] = regs[sp_idx] + 1'b1;  // increment sp
 									next_mem_addr = regs[sp_idx];
 									next_mem_ready = 1'b1;
-									next_subcycle = 2;
+									next_subcycle2 = 2;
 								end
 							end
 							2: begin  // fetch return address and jump to it
@@ -713,8 +810,11 @@ always_comb begin
 									`ASSIGN_NEXT_PC(in_mem_data);  // restore program counter
 
 									next_cycle = FETCH;
-									next_subcycle = 0;
+									next_subcycle2 = 0;
 								end
+							end
+							default: begin
+								next_subcycle2 = 0;
 							end
 						endcase
 					end
@@ -722,12 +822,12 @@ always_comb begin
 					5'b00011: begin  // return from isr
 						// TODO: restore reg[status_idx]
 
-						unique case(subcycle)
+						unique case(subcycle2)
 							0: begin  // request base pointer pointed to by sp
 								next_regs[sp_idx] = regs[bp_idx] + 1'b1;  // sp = bp, increment sp
 								next_mem_addr = regs[bp_idx];
 								next_mem_ready = 1'b1;
-								next_subcycle = 1;
+								next_subcycle2 = 1;
 							end
 							1: begin  // request return address pointed to by sp
 								if(in_mem_ready) begin
@@ -736,7 +836,7 @@ always_comb begin
 									next_regs[sp_idx] = regs[sp_idx] + 1'b1;  // increment sp
 									next_mem_addr = regs[sp_idx];
 									next_mem_ready = 1'b1;
-									next_subcycle = 2;
+									next_subcycle2 = 2;
 								end
 							end
 							2: begin  // fetch return address and jump to it
@@ -744,9 +844,12 @@ always_comb begin
 									`ASSIGN_NEXT_PC(in_mem_data);  // restore program counter
 
 									next_cycle = FETCH;
-									next_subcycle = 0;
+									next_subcycle2 = 0;
 									next_irq_handling = 1'b0;
 								end
+							end
+							default: begin
+								next_subcycle2 = 0;
 							end
 						endcase
 					end
@@ -807,13 +910,16 @@ always_comb begin
 					next_cycle = WRITE_MEM;
 					next_cycle_after_write = IRQ_SAVE_REGS;
 					next_subcycle2 = 1;
-			end
+				end
 				1: begin  // push base pointer
 					next_regs[sp_idx] = regs[sp_idx] - 1'b1;
 					next_mem_addr = regs[sp_idx] - 1'b1;
 					next_mem_data = regs[bp_idx];
 					next_cycle = WRITE_MEM;
 					next_cycle_after_write = IRQ_EXEC;
+					next_subcycle2 = 0;
+				end
+				default: begin
 					next_subcycle2 = 0;
 				end
 			endcase

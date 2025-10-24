@@ -9,6 +9,10 @@
  *   - Chapter 7 in: https://docs.xilinx.com/v/u/en-US/xst_v6s6
  */
 
+//`define RAM_UNPACKED
+//`define RAM_INIT
+//`define RAM_DISABLE_PORT2
+
 
 /**
  * pins for a port

@@ -40,7 +40,7 @@ initial begin
 
 `ifdef SIM_INTERRUPT
 		// generate a test interrupt
-		if(iter >= 450 && iter < 470)
+		if(iter >= 1000 && iter < 1010)
 			cpuctrl_mod.cpu_irq <= 1'b1;
 		else
 			cpuctrl_mod.cpu_irq <= 1'b0;
