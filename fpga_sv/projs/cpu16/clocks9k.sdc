@@ -1,0 +1,1 @@
+../pins/clocks9k.sdc

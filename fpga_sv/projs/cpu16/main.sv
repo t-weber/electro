@@ -39,7 +39,7 @@ localparam DATA_BITS       = 16;
 localparam RAM_ADDR_BITS   = 9;
 
 localparam SEG_SERIAL_BITS = 16;
-localparam SEG_SERIAL_CLK  = 100_000;
+localparam SEG_SERIAL_CLK  = 500_000;
 
 // ----------------------------------------------------------------------------
 

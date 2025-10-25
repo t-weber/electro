@@ -82,6 +82,7 @@ target_board=GW1NR-LV9QN88PC6/I5
 target_fpga=GW1N-9C
 target_freq=27
 target_pins_file=pins9k.cst
+target_clocks_file=clocks9k.sdc
 target_defines="-DUSE_9K"
 
 # 1k board (define RAM_UNPACKED for it to be recognised as BSRAM)
@@ -89,6 +90,7 @@ target_defines="-DUSE_9K"
 #target_fpga=GW1NZ-1
 #target_freq=27
 #target_pins_file=pins1k.cst
+#target_clocks_file=clocks1k.sdc
 #target_defines="-DUSE_1K"
 
 
@@ -137,6 +139,7 @@ if [ $create_source_archive -ne 0 ]; then
 		cp -v $file output/src
 	done
 	cp -v $target_pins_file output/src
+	cp -v $target_clocks_file output/src
 	tar -Jvcf output/src.txz output/src
 fi
 
