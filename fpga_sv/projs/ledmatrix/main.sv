@@ -23,7 +23,7 @@ module ledmatrix_test
 
 
 localparam MAIN_CLK      = 27_000_000;
-localparam SERIAL_CLK    =     10_000;
+localparam SERIAL_CLK    =  1_000_000;
 localparam SLOW_CLK      =         10;
 
 localparam SERIAL_BITS   = 16;
@@ -51,8 +51,9 @@ wire serial_next_word;
 
 // instantiate serial module
 serial_tx #(
-	.BITS(SERIAL_BITS), .LOWBIT_FIRST(1'b0), .FALLING_EDGE(1'b1),
-	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SERIAL_CLK)
+	.BITS(SERIAL_BITS), .LOWBIT_FIRST(1'b0), .FALLING_EDGE(1'b0),
+	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SERIAL_CLK),
+	.SERIAL_CLK_INACTIVE(1'b0), .SERIAL_DATA_INACTIVE(1'b0)
 )
 serial_mod(
 	.in_clk(clk27), .in_rst(rst),
@@ -67,14 +68,15 @@ serial_mod(
 // serial interface
 // ----------------------------------------------------------------------------
 ledmatrix #(.MAIN_CLK(MAIN_CLK), .BUS_BITS(SERIAL_BITS),
-	.NUM_SEGS(8), .LEDS_PER_SEG(8), .TRANSPOSE(1'b0))
+	.NUM_SEGS(8), .LEDS_PER_SEG(8), .TRANSPOSE(1'b1))
 ledmatrix_mod (.in_clk(clk27), .in_rst(rst),
 	.in_update(~stop_update), .in_bits(ctr /*64'h0807060504030201*/),
 	.in_bus_ready(serial_ready), .in_bus_next_word(serial_next_word),
-	.out_bus_enable(serial_enable), .out_bus_data(serial_in_parallel)
+	.out_bus_enable(serial_enable), .out_bus_data(serial_in_parallel),
+	.out_seg_enable(mat_sel)
 );
 
-assign mat_sel = serial_enable;
+//assign mat_sel = serial_enable;
 // ----------------------------------------------------------------------------
 
 

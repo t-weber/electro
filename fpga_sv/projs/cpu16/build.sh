@@ -73,6 +73,9 @@ src_files="../../clock/clkgen.sv \
 	${rom_svfile} \
 	main.sv"
 
+#	../../sync/syncbit.sv \
+#	../../sync/syncdata.sv \
+
 
 # 9k board
 target_board=GW1NR-LV9QN88PC6/I5

@@ -40,6 +40,7 @@ module ledmatrix
 	input wire in_bus_ready,
 	input wire in_bus_next_word,
 	output wire out_bus_enable,
+	output wire out_seg_enable,
 	output wire [BUS_BITS - 1 : 0] out_bus_data
 );
 
@@ -139,9 +140,10 @@ logic [LEDS_PER_SEG - 1 : 0] leds;
 `else
 	localparam WAIT_RESET  = MAIN_CLK/1000*100;  // 100 ms
 	localparam WAIT_UPDATE = MAIN_CLK/1000*50;   // 50 ms, 20 Hz
+	localparam WAIT_INIT   = MAIN_CLK/1000_000;  // 1 mus
 `endif
 
-logic [$clog2(WAIT_UPDATE /*largest value*/) : 0]
+logic [$clog2(WAIT_RESET /*largest value*/) : 0]
 	wait_ctr = 1'b0, wait_ctr_max = 1'b0;
 // --------------------------------------------------------------------
 
@@ -193,6 +195,7 @@ logic last_byte_finished = 1'b0;
 wire bus_cycle = in_bus_next_word && ~last_byte_finished;
 //wire bus_cycle_next = ~in_bus_next_word && last_byte_finished;
 
+logic seg_enable = 1'b0;
 logic bus_enable = 1'b0;
 logic [BUS_BITS - 1 : 0] bus_data = BUS_BITS'(1'b0);
 // --------------------------------------------------------------------
@@ -201,6 +204,7 @@ logic [BUS_BITS - 1 : 0] bus_data = BUS_BITS'(1'b0);
 // --------------------------------------------------------------------
 // outputs
 // --------------------------------------------------------------------
+assign out_seg_enable = seg_enable;
 assign out_bus_enable = bus_enable;
 assign out_bus_data = bus_data;
 // --------------------------------------------------------------------
@@ -211,9 +215,9 @@ assign out_bus_data = bus_data;
 // --------------------------------------------------------------------
 typedef enum {
 	Reset,
-	WriteInit, NextInit,
+	EnableInit, WriteInit, NextInit,
 	WaitUpdate, WaitUpdate2,
-	WriteData, NextData
+	EnableData, WriteData, NextData
 } t_state;
 
 t_state state = Reset, next_state = Reset;
@@ -263,6 +267,7 @@ always_comb begin
 	next_seg_ctr = seg_ctr;
 
 	wait_ctr_max = WAIT_RESET;
+	seg_enable = 1'b0;
 	bus_enable = 1'b0;
 	bus_data = 1'b0;
 
@@ -270,15 +275,24 @@ always_comb begin
 		Reset: begin
 			wait_ctr_max = WAIT_RESET;
 			if(wait_ctr == wait_ctr_max)
-				next_state = WriteInit;
+				next_state = EnableInit;
 		end
 
 
 		// ----------------------------------------------------
+		// assert chip select signal before transmitting the init commands
+		EnableInit: begin
+			seg_enable = 1'b1;
+			wait_ctr_max = WAIT_INIT;
+			if(wait_ctr == wait_ctr_max)
+				next_state = WriteInit;
+		end
+
 		// write init commands
 		WriteInit: begin
-			bus_data = init_cmds[init_ctr];
+			seg_enable = 1'b1;
 			bus_enable = 1'b1;
+			bus_data = init_cmds[init_ctr];
 
 			if(bus_cycle == 1'b1)
 				next_state = NextInit;
@@ -308,17 +322,26 @@ always_comb begin
 
 		WaitUpdate2: begin
 			if(update == 1'b1) begin
-				next_state = WriteData;
+				next_state = EnableData;
 			end
 		end
 		// ----------------------------------------------------
 
 
 		// ----------------------------------------------------
+		// assert chip select signal before transmitting the data
+		EnableData: begin
+			seg_enable = 1'b1;
+			wait_ctr_max = WAIT_INIT;
+			if(wait_ctr == wait_ctr_max)
+				next_state = WriteData;
+		end
+
 		// write segment byte
 		WriteData: begin
-			bus_data = { (BUS_BITS/2)'(seg_ctr), leds };
+			seg_enable = 1'b1;
 			bus_enable = 1'b1;
+			bus_data = { (BUS_BITS/2)'(seg_ctr), leds };
 
 			if(bus_cycle == 1'b1)
 				next_state = NextData;

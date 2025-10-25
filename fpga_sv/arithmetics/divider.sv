@@ -121,7 +121,7 @@ always_comb begin
 				remainder_next = remainder - in_b;
 `endif
 
-				quotient_next = quotient + 1;
+				quotient_next = quotient + 1'b1;
 				state_next = CheckSub; 
 			end
 

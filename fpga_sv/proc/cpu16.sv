@@ -378,25 +378,23 @@ always_comb begin
 				next_irq_handling = 1'b1;
 				next_cycle = IRQ_SAVE_REGS;
 			end else begin
-
 			// get instructions
-			unique case(subcycle)
-				0: begin  // request new instruction at pc
-					next_mem_addr = pc;
-					`ASSIGN_NEXT_PC(pc + 1'b1);
-					next_mem_ready = 1'b1;
-					next_subcycle = 1;
-				end
-				1: begin  // fetch new instruction
-					if(in_mem_ready) begin
-						next_instr = in_mem_data;
-						next_cycle = DECODE;
-						next_subcycle = 0;
+				unique case(subcycle)
+					0: begin  // request new instruction at pc
+						next_mem_addr = pc;
+						`ASSIGN_NEXT_PC(pc + 1'b1);
+							next_mem_ready = 1'b1;
+						next_subcycle = 1;
 					end
-				end
-			endcase
-		end
-
+					1: begin  // fetch new instruction
+						if(in_mem_ready) begin
+							next_instr = in_mem_data;
+							next_cycle = DECODE;
+							next_subcycle = 0;
+						end
+					end
+				endcase
+			end
 		end
 
 		DECODE: begin

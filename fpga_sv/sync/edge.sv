@@ -17,22 +17,22 @@ module edgedet
 );
 
 
-logic [0 : NUM_STEPS-1] shiftreg;
+logic [0 : NUM_STEPS - 1] shiftreg;
 /*bit [$clog2(NUM_STEPS) : 0]*/ int shift_idx;
 
 
 // output edge
 generate if(POS_EDGE == 1)
-	assign out_edge = shiftreg[NUM_STEPS-2] & (~shiftreg[NUM_STEPS-1]);
+	assign out_edge = shiftreg[NUM_STEPS - 2] & (~shiftreg[NUM_STEPS - 1]);
 else
-	assign out_edge = (~shiftreg[NUM_STEPS-2]) & shiftreg[NUM_STEPS-1];
+	assign out_edge = (~shiftreg[NUM_STEPS - 2]) & shiftreg[NUM_STEPS - 1];
 endgenerate
 
 
 // synchronise to clock
 always_ff@(posedge in_clk, posedge in_rst) begin
-	if(in_rst == 1) begin
-		shiftreg <= 0;
+	if(in_rst == 1'b1) begin
+		shiftreg <= 1'b0;
 	end
 
 	else /*if(in_clk == 1)*/ begin

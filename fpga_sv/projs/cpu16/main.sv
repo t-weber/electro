@@ -39,7 +39,7 @@ localparam DATA_BITS       = 16;
 localparam RAM_ADDR_BITS   = 9;
 
 localparam SEG_SERIAL_BITS = 16;
-localparam SEG_SERIAL_CLK  = 10_000;
+localparam SEG_SERIAL_CLK  = 100_000;
 
 // ----------------------------------------------------------------------------
 
@@ -129,7 +129,6 @@ ram_2port #(
 	.ALL_WRITE(1'b0)
 )
 ram_mod(.in_rst(reset),
-
 	// port 1 (reading and writing)
 	.in_clk_1(clock),
 	.in_read_ena_1(1'b1), .in_write_ena_1(write_enable_1),
@@ -351,10 +350,11 @@ wire seg_serial_next_word;
 
 // instantiate serial module
 serial_tx #(
-	.BITS(SEG_SERIAL_BITS), .LOWBIT_FIRST(1'b0), .FALLING_EDGE(1'b1),
-	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SEG_SERIAL_CLK)
+	.BITS(SEG_SERIAL_BITS), .LOWBIT_FIRST(1'b0), .FALLING_EDGE(1'b0),
+	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SEG_SERIAL_CLK),
+	.SERIAL_CLK_INACTIVE(1'b0), .SERIAL_DATA_INACTIVE(1'b0)
 )
-serial_mod(
+seg_serial_mod(
 	.in_clk(clk27), .in_rst(rst),
 	.in_enable(seg_serial_enable), .out_ready(seg_serial_ready),
 	.out_clk(seg_clk), .out_serial(seg_dat),
@@ -374,10 +374,18 @@ ledmatrix #(.MAIN_CLK(MAIN_CLK), .BUS_BITS(SEG_SERIAL_BITS),
 seg_mod (.in_clk(clk27), .in_rst(rst),
 	.in_update(1'b1), .in_digits(seg_digits),
 	.in_bus_ready(seg_serial_ready), .in_bus_next_word(seg_serial_next_word),
-	.out_bus_enable(seg_serial_enable), .out_bus_data(seg_serial_in_parallel)
+	.out_bus_enable(seg_serial_enable), .out_bus_data(seg_serial_in_parallel),
+	.out_seg_enable(seg_sel)
 );
 
-assign seg_sel = seg_serial_enable;
+/*syncbit seg_syncbit_mod(.in_clk(clk27), .in_rst(rst),
+	.in_bit(seg_serial_enable), .out_bit(seg_sel));
+
+syncdata #(.BITS(4*8))
+seg_syncdata_mod(.in_clk(clk27), .in_rst(rst),
+	.in_data({cpu_pc, cpu_instr}), .out_data(seg_digits));*/
+
+//assign seg_sel = seg_serial_enable;
 assign seg_digits = { cpu_pc, cpu_instr };
 // ----------------------------------------------------------------------------
 

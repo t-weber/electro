@@ -60,7 +60,7 @@ typedef enum bit [0 : 0] { Ready, Transmit } t_serial_state;
 t_serial_state serial_state = Ready;
 t_serial_state next_serial_state = Ready;
 
-assign out_ready = serial_state == Ready;
+assign out_ready = (serial_state == Ready);
 // ----------------------------------------------------------------------------
 
 
