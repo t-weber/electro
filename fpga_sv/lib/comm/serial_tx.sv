@@ -231,8 +231,7 @@ always_comb begin
 				next_request_word = 1'b1;
 				next_bit_ctr = 1'b0;
 			end else begin
-				next_bit_ctr =
-					$size(bit_ctr)'(bit_ctr + 1'b1);
+				next_bit_ctr = $size(bit_ctr)'(bit_ctr + 1'b1);
 			end
 
 			// enable signal not active any more?

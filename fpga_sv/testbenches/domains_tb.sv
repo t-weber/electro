@@ -4,7 +4,7 @@
  * @date aug-2024
  * @license see 'LICENSE' file
  *
- * iverilog -g2012 -o domains_tb domains_tb.sv ../mem/fifo.sv ../clock/clkgen.sv
+ * iverilog -g2012 -o domains_tb domains_tb.sv ../lib/mem/fifo.sv ../lib/clock/clkgen.sv
  * ./domains_tb
  */
 

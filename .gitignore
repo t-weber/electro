@@ -51,13 +51,3 @@
 *.svg
 *.png
 *.ttf
-
-# generated files
-micro_ctrl/lib/characters.c
-fpga/projs/video/font.vhdl
-
-# build files
-tools/cpu/build/**
-tools/float/build/**
-tools/genrom/build/**
-tools/genfont/build/**

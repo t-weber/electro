@@ -4,7 +4,7 @@
 -- @date 7 September 2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../mem/dram_ctrl.vhdl dram_ctrl_tb.vhdl  &&  ghdl -e --std=08 dram_ctrl_tb dram_ctrl_tb_impl
+-- ghdl -a --std=08 ../lib/mem/dram_ctrl.vhdl dram_ctrl_tb.vhdl  &&  ghdl -e --std=08 dram_ctrl_tb dram_ctrl_tb_impl
 -- ghdl -r --std=08 dram_ctrl_tb dram_ctrl_tb_impl --vcd=dram_ctrl_tb.vcd --stop-time=500ns
 -- gtkwave dram_ctrl_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --

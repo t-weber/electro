@@ -4,7 +4,7 @@
  * @date 13-april-2025
  * @license see 'LICENSE' file
  *
- * iverilog -g2012 -o sipo_tb ../mem/sipo.sv sipo_tb.sv
+ * iverilog -g2012 -o sipo_tb ../lib/mem/sipo.sv sipo_tb.sv
  * ./sipo_tb
  * gtkwave sipo_tb.vcd --rcvar "do_initial_zoom_fit yes"
  */

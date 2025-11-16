@@ -4,7 +4,7 @@
 -- @date 15-jun-2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../conv/conv.vhdl  &&  ghdl -a --std=08 ../clock/clkgen.vhdl  &&  ghdl -a --std=08 ../comm/serial_async_tx.vhdl  &&  ghdl -a --std=08 serial_async_tx_tb.vhdl  &&  ghdl -e --std=08 serial_async_tx_tb serial_async_tx_tb_arch
+-- ghdl -a --std=08 ../lib/conv/conv.vhdl  &&  ghdl -a --std=08 ../lib/clock/clkgen.vhdl  &&  ghdl -a --std=08 ../lib/comm/serial_async_tx.vhdl  &&  ghdl -a --std=08 serial_async_tx_tb.vhdl  &&  ghdl -e --std=08 serial_async_tx_tb serial_async_tx_tb_arch
 -- ghdl -r --std=08 serial_async_tx_tb serial_async_tx_tb_arch --vcd=serial_async_tx_tb.vcd --stop-time=5000ns
 -- gtkwave serial_async_tx_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --

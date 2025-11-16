@@ -26,12 +26,12 @@ pack_cst_file=output/${top_module}.cst
 pack_png_file=output/${top_module}.png
 synth_log=output/synth.log
 pnr_log=output/pnr.log
-src_files="../../sync/debounce_button.sv \
-	../../sync/debounce_switch.sv \
-	../../clock/clkgen.sv \
-	../../comm/serial_2wire.sv \
-	../../display/oled_serial.sv \
-	../../mem/ram_2port.sv \
+src_files="../../lib/sync/debounce_button.sv \
+	../../lib/sync/debounce_switch.sv \
+	../../lib/clock/clkgen.sv \
+	../../lib/comm/serial_2wire.sv \
+	../../lib/display/oled_serial.sv \
+	../../lib/mem/ram_2port.sv \
 	output/textmem.sv output/font.sv \
 	main.sv"
 

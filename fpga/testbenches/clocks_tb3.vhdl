@@ -4,7 +4,7 @@
 -- @date 17-may-2025
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../conv/conv.vhdl ../clock/clkgen.vhdl ../clock/clkdiv.vhdl ../clock/clkctr.vhdl clocks_tb3.vhdl  &&  ghdl -e --std=08 clocks_tb3 clocks_tb3_arch
+-- ghdl -a --std=08 ../lib/conv/conv.vhdl ../lib/clock/clkgen.vhdl ../lib/clock/clkdiv.vhdl ../lib/clock/clkctr.vhdl clocks_tb3.vhdl  &&  ghdl -e --std=08 clocks_tb3 clocks_tb3_arch
 -- ghdl -r --std=08 clocks_tb3 clocks_tb3_arch --vcd=clocks_tb3.vcd --stop-time=500ns
 -- gtkwave clocks_tb3.vcd --rcvar "do_initial_zoom_fit yes"
 --

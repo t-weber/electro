@@ -4,7 +4,7 @@
 -- @date 28-apr-2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../conv/conv.vhdl ../clock/clkgen.vhdl ../comm/serial.vhdl serial_tb2.vhdl  &&  ghdl -e --std=08 serial_tb2 serial_tb2_arch
+-- ghdl -a --std=08 ../lib/conv/conv.vhdl ../lib/clock/clkgen.vhdl ../lib/comm/serial.vhdl serial_tb2.vhdl  &&  ghdl -e --std=08 serial_tb2 serial_tb2_arch
 -- ghdl -r --std=08 serial_tb2 serial_tb2_arch --vcd=serial_tb2.vcd --stop-time=5000ns
 -- gtkwave serial_tb2.vcd --rcvar "do_initial_zoom_fit yes"
 --

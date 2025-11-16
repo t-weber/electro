@@ -14,7 +14,7 @@ use work.conv.all;
 entity debounce is
 	generic(
 		-- number of clock ticks to consider the signal stable
-		constant STABLE_TICKS : natural := 50;
+		constant STABLE_TICKS      : natural := 50;
 		constant STABLE_TICKS_BITS : natural := 7  -- ceil(log2(STABLE_TICKS)) + 1
 	);
 
@@ -43,11 +43,11 @@ architecture debounce_switch_impl of debounce is
 	-- number of steps to sample in shift register
 	constant NUM_STEPS : natural := 3;
 
-	signal shiftreg : std_logic_vector(0 to NUM_STEPS-1);
+	signal shiftreg : std_logic_vector(0 to NUM_STEPS - 1);
 	signal signal_changed : std_logic := '0';
 	signal debounced, debounced_next : std_logic;
 	signal stable_counter, stable_counter_next
-		: std_logic_vector(STABLE_TICKS_BITS-1 downto 0) := (others => '0');
+		: std_logic_vector(STABLE_TICKS_BITS - 1 downto 0) := (others => '0');
 begin
 
 	-- has the signal toggled?
@@ -71,7 +71,7 @@ begin
 		elsif rising_edge(in_clk) then
 			-- write signal in shift register
 			shiftreg(0) <= in_signal;
-			shiftloop: for i in 1 to NUM_STEPS-1 loop
+			shiftloop: for i in 1 to NUM_STEPS - 1 loop
 				shiftreg(i) <= shiftreg(i-1);
 			end loop;
 
@@ -113,7 +113,7 @@ architecture debounce_button_impl of debounce is
 	signal toggled, toggled_next : std_logic := '0';
 
 	signal stable_counter, stable_counter_next
-		: std_logic_vector(STABLE_TICKS_BITS-1 downto 0) := (others => '0');
+		: std_logic_vector(STABLE_TICKS_BITS - 1 downto 0) := (others => '0');
 begin
 
 	-- output the debounced single pulse
@@ -142,7 +142,7 @@ begin
 
 
 	-- debouncing process
-	debounce_proc : process(btnstate, stable_counter, in_signal)
+	debounce_proc : process(btnstate, stable_counter, toggled, in_signal)
 	begin
 		btnstate_next <= btnstate;
 		debounced_next <= '0';

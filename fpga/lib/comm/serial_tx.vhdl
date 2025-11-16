@@ -1,0 +1,228 @@
+--
+-- serial controller for 3-wire interface, only transmission
+-- @author Tobias Weber <tobias.weber@tum.de>
+-- @date 25-nov-2023
+-- @license see 'LICENSE' file
+--
+
+library ieee;
+use ieee.std_logic_1164.all;
+use work.conv.all;
+
+
+entity serial_tx is
+	generic(
+		-- clocks
+		constant MAIN_HZ   : natural := 50_000_000;
+		constant SERIAL_HZ : natural := 10_000;
+
+		-- inactive signals
+		constant SERIAL_CLK_INACTIVE  : std_logic := '1';
+		constant SERIAL_DATA_INACTIVE : std_logic := '1';
+
+		-- word length
+		constant BITS             : natural   := 8;
+		constant LOWBIT_FIRST     : std_logic := '1';
+
+		-- signal triggers
+		constant USE_FALLING_EDGE : std_logic := '1'
+	);
+
+	port(
+		-- main clock and reset
+		in_clk, in_reset : in std_logic;
+
+		-- serial clock
+		out_clk, out_ready : out std_logic;
+
+		-- request next word (one cycle before current word is finished)
+		out_next_word : out std_logic;
+
+		-- enable transmission
+		in_enable : in std_logic;
+
+		-- parallel input data (FPGA -> IC)
+		in_parallel : in std_logic_vector(BITS - 1 downto 0);
+
+		-- serial output data (FPGA -> IC)
+		out_serial : out std_logic
+	);
+end entity;
+
+
+
+architecture serial_tx_impl of serial_tx is
+	-- states and next state logic
+	type t_serial_state is ( Ready, Transmit );
+	signal serial_state, next_serial_state : t_serial_state := Ready;
+
+	-- serial clock
+	signal serial_clk : std_logic := SERIAL_CLK_INACTIVE;
+
+	-- bit counter
+	signal bit_ctr, next_bit_ctr : natural range 0 to BITS - 1 := 0;
+
+	-- bit counter with correct ordering
+	signal actual_bit_ctr : natural range 0 to BITS - 1 := 0;
+
+	-- parallel input buffer (FPGA -> IC)
+	signal parallel_fromfpga, next_parallel_fromfpga
+		: std_logic_vector(BITS - 1 downto 0) := (others => '0');
+
+	-- serial output buffer (FPGA -> IC)
+	signal serial_fromfpga : std_logic := SERIAL_DATA_INACTIVE;
+
+begin
+	-----------------------------------------------------------------------
+	-- generate serial clock
+	-----------------------------------------------------------------------
+	serial_clkgen : entity work.clkgen
+		generic map(MAIN_HZ => MAIN_HZ, CLK_HZ => SERIAL_HZ, CLK_INIT => '1')
+		port map(in_clk => in_clk, in_reset => in_reset, out_clk => serial_clk);
+
+
+	--
+	-- output serial clock
+	--
+	gen_outclk : if SERIAL_CLK_INACTIVE = '1' generate
+		-- inactive '1' and trigger on rising edge
+		out_clk <= serial_clk when serial_state = Transmit else '1';
+	else generate
+		-- inactive '0' and trigger on falling edge
+		out_clk <= not serial_clk when serial_state = Transmit else '0';
+	end generate;
+	-----------------------------------------------------------------------
+
+
+	-----------------------------------------------------------------------
+	-- get bit counter with correct ordering
+	-----------------------------------------------------------------------
+	gen_ctr_1 : if LOWBIT_FIRST = '1' generate
+		actual_bit_ctr <= bit_ctr;
+	else generate
+		actual_bit_ctr <= BITS - bit_ctr - 1;
+	end generate;
+	-----------------------------------------------------------------------
+
+
+	-----------------------------------------------------------------------
+	-- register input parallel data (FPGA -> IC)
+	-----------------------------------------------------------------------
+	gen_from_fpga_ff : if USE_FALLING_EDGE = '1' generate
+		fpga_to_ic_ff : process(serial_clk, in_reset) begin
+			if in_reset = '1' then
+				parallel_fromfpga <= (others => '0');
+			elsif falling_edge(serial_clk) then
+				parallel_fromfpga <= next_parallel_fromfpga;
+			end if;
+		end process;
+	else generate
+		fpga_to_ic_ff : process(serial_clk, in_reset) begin
+			if in_reset = '1' then
+				parallel_fromfpga <= (others => '0');
+			elsif rising_edge(serial_clk) then
+				parallel_fromfpga <= next_parallel_fromfpga;
+			end if;
+		end process;
+	end generate;
+
+
+	proc_input : process(in_enable,
+		in_parallel, parallel_fromfpga)
+	begin
+		next_parallel_fromfpga <= parallel_fromfpga;
+
+		if in_enable = '1' then
+			next_parallel_fromfpga <= in_parallel;
+		end if;
+	end process;
+
+
+	--
+	-- buffer output with the chosen bit ordering (FPGA -> IC)
+	--
+	serial_fromfpga <= parallel_fromfpga(actual_bit_ctr);
+
+
+	--
+	-- output serial data (FPGA -> IC)
+	--
+	out_serial <= serial_fromfpga
+		when serial_state = Transmit
+		else SERIAL_DATA_INACTIVE;
+	-----------------------------------------------------------------------
+
+
+	-----------------------------------------------------------------------
+	-- state machine
+	-----------------------------------------------------------------------
+	--
+	-- state and data flip-flops for serial clock
+	--
+	serial_ff : process(serial_clk, in_reset) begin
+		-- reset
+		if in_reset = '1' then
+			-- state register
+			serial_state <= Ready;
+
+			-- counter register
+			bit_ctr <= 0;
+
+		-- clock
+		elsif falling_edge(serial_clk) then
+		--elsif rising_edge(serial_clk) then
+			-- state register
+			serial_state <= next_serial_state;
+
+			-- counter register
+			bit_ctr <= next_bit_ctr;
+		end if;
+	end process;
+
+
+	--
+	-- state combinatorics
+	--
+	proc_comb : process(in_enable, serial_state, bit_ctr)
+	begin
+		-- defaults
+		next_serial_state <= serial_state;
+		next_bit_ctr <= bit_ctr;
+
+		out_next_word <= '0';
+		out_ready <= '0';
+
+		-- state machine
+		case serial_state is
+			-- wait for enable signal
+			when Ready =>
+				out_ready <= '1';
+				next_bit_ctr <= 0;
+				if in_enable = '1' then
+					next_serial_state <= Transmit;
+				end if;
+
+			-- serialise parallel data
+			when Transmit =>
+				-- end of word?
+				if bit_ctr = BITS - 1 then
+					out_next_word <= '1';
+					next_bit_ctr <= 0;
+				else
+					-- next bit of the word
+					next_bit_ctr <= bit_ctr + 1;
+				end if;
+
+				-- enable signal not active anymore?
+				if in_enable = '0' then
+					next_serial_state <= Ready;
+				end if;
+
+			-- default state
+			when others =>
+				next_serial_state <= Ready;
+		end case;
+	end process;
+	-----------------------------------------------------------------------
+
+end architecture;

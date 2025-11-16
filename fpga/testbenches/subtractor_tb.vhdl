@@ -4,7 +4,7 @@
 -- @date 13-May-2023
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../conv/conv.vhdl  &&  ghdl -a --std=08 ../arithmetics/subtractor.vhdl  &&  ghdl -a --std=08 subtractor_tb.vhdl  &&  ghdl -e --std=08 subtractor_tb subtractor_tb_arch
+-- ghdl -a --std=08 ../lib/conv/conv.vhdl  &&  ghdl -a --std=08 ../lib/arithmetics/subtractor.vhdl  &&  ghdl -a --std=08 subtractor_tb.vhdl  &&  ghdl -e --std=08 subtractor_tb subtractor_tb_arch
 -- ghdl -r --std=08 subtractor_tb subtractor_tb_arch --vcd=subtractor_tb.vcd --stop-time=50ns
 -- gtkwave subtractor_tb.vcd
 --

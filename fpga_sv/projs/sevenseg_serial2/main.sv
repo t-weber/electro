@@ -13,6 +13,7 @@ module sevenseg_test
 
 	// keys and leds
 	input  [1:0] key,
+	input  [3:0] btn,
 	output [5:0] led,
 
 	// led matrix
@@ -32,13 +33,17 @@ localparam SERIAL_BITS   = 16;
 // ----------------------------------------------------------------------------
 // keys
 // ----------------------------------------------------------------------------
-wire rst, stop_update;
+wire rst, stop_update, show_hex;
 
 debounce_switch debounce_key0(.in_clk(clk27), .in_rst(1'b0),
 	.in_signal(~key[0]), .out_debounced(rst));
 
 debounce_button debounce_key1(.in_clk(clk27), .in_rst(rst),
 	.in_signal(~key[1]), .out_toggled(stop_update), .out_debounced());
+
+debounce_button #(.STABLE_TICKS(128))
+	debounce_btn0(.in_clk(clk27), .in_rst(rst),
+		.in_signal(~btn[0]), .out_toggled(show_hex), .out_debounced());
 // ----------------------------------------------------------------------------
 
 
@@ -65,12 +70,15 @@ serial_mod(
 
 
 // ----------------------------------------------------------------------------
-// serial interface
+// led matrix interface
 // ----------------------------------------------------------------------------
+wire update_leds = show_hex ? !stop_update : bcd_finished && !stop_update;
+wire [31 : 0] displayed_ctr = show_hex ? ctr : bcd_ctr;
+
 ledmatrix #(.MAIN_CLK(MAIN_CLK), .BUS_BITS(SERIAL_BITS),
 	.NUM_SEGS(8), .LEDS_PER_SEG(8), .TRANSPOSE(1'b1))
 ledmatrix_mod (.in_clk(clk27), .in_rst(rst),
-	.in_update(~stop_update), .in_digits(ctr),
+	.in_update(update_leds), .in_digits(displayed_ctr),
 	.in_bus_ready(serial_ready), .in_bus_next_word(serial_next_word),
 	.out_bus_enable(serial_enable), .out_bus_data(serial_in_parallel),
 	.out_seg_enable(seg_sel)
@@ -93,7 +101,8 @@ clk_slow (.in_clk(clk27), .in_rst(rst), .out_clk(slow_clk));
 // ----------------------------------------------------------------------------
 // counter
 // ----------------------------------------------------------------------------
-reg [31 : 0] ctr;
+localparam CTR_BITS = 24;
+reg [CTR_BITS - 1 : 0] ctr;
 
 always_ff@(posedge slow_clk, posedge rst) begin
 	if(rst == 1'b1)
@@ -105,11 +114,28 @@ end
 
 
 // ----------------------------------------------------------------------------
+// bcd conversion
+// ----------------------------------------------------------------------------
+logic bcd_finished;
+reg [8*4 - 1 : 0] bcd_ctr;
+
+bcd #(.IN_BITS(CTR_BITS), .OUT_BITS(8*4), .NUM_BCD_DIGITS(8))
+bcd_mod(.in_clk(clk27), .in_rst(rst),
+	.in_num(ctr), .out_bcd(bcd_ctr),
+	.in_start(1'b1), .out_finished(bcd_finished));
+// ----------------------------------------------------------------------------
+
+
+
+// ----------------------------------------------------------------------------
 // status outputs
 // ----------------------------------------------------------------------------
 assign led[0] = ~serial_ready;
 assign led[1] = ~stop_update;
-assign led[5:2] = 4'b1111;
+assign led[2] = ~show_hex;
+assign led[3] = btn[0];
+assign led[4] = slow_clk;
+assign led[5] = 1'b1;
 // ----------------------------------------------------------------------------
 
 

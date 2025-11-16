@@ -26,13 +26,13 @@ pack_png_file=output/${top_module}.png
 synth_log=output/synth.log
 pnr_log=output/pnr.log
 src_files="main.sv \
-	../../conv/hexchar.sv \
-	../../sync/debounce_button.sv \
-	../../sync/debounce_switch.sv \
-	../../clock/clkgen.sv \
-	../../comm/serial_async_tx.sv \
-	../../comm/serial_duplex.sv \
-	../../mem/flash_serial.sv"
+	../../lib/conv/hexchar.sv \
+	../../lib/sync/debounce_button.sv \
+	../../lib/sync/debounce_switch.sv \
+	../../lib/clock/clkgen.sv \
+	../../lib/comm/serial_async_tx.sv \
+	../../lib/comm/serial_duplex.sv \
+	../../lib/mem/flash_serial.sv"
 
 # 9k board
 target_board=GW1NR-LV9QN88PC6/I5

@@ -26,12 +26,13 @@ pack_cst_file=output/${top_module}.cst
 pack_png_file=output/${top_module}.png
 synth_log=output/synth.log
 pnr_log=output/pnr.log
-src_files="../../sync/debounce_button.sv \
-	../../sync/debounce_switch.sv \
-	../../clock/clkgen.sv \
-	../../comm/serial_tx.sv \
-	../../display/ledmatrix.sv \
-	../../display/sevenseg.v \
+src_files="../../lib/sync/debounce_button.sv \
+	../../lib/sync/debounce_switch.sv \
+	../../lib/conv/bcd.sv \
+	../../lib/clock/clkgen.sv \
+	../../lib/comm/serial_tx.sv \
+	../../lib/display/ledmatrix.sv \
+	../../lib/display/sevenseg.v \
 	main.sv"
 
 # 9k board

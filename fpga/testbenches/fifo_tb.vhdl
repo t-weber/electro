@@ -4,7 +4,7 @@
 -- @date 25-aug-2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../conv/conv.vhdl ../mem/fifo.vhdl fifo_tb.vhdl  &&  ghdl -e --std=08 fifo_tb fifo_tb_impl
+-- ghdl -a --std=08 ../lib/conv/conv.vhdl ../lib/mem/fifo.vhdl fifo_tb.vhdl  &&  ghdl -e --std=08 fifo_tb fifo_tb_impl
 -- ghdl -r --std=08 fifo_tb fifo_tb_impl --vcd=fifo_tb.vcd --stop-time=100ns
 -- gtkwave fifo_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --

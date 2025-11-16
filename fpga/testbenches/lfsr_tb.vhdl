@@ -4,7 +4,7 @@
 -- @date jan-2021
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../lib/lfsr.vhdl lfsr_tb.vhdl  &&  ghdl -e --std=08 lfsr_tb lfsr_tb_impl
+-- ghdl -a --std=08 ../lib/misc/lfsr.vhdl lfsr_tb.vhdl  &&  ghdl -e --std=08 lfsr_tb lfsr_tb_impl
 -- ghdl -r --std=08 lfsr_tb lfsr_tb_impl --vcd=lfsr_tb.vcd --stop-time=1us
 -- gtkwave lfsr_tb.vcd
 --

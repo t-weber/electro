@@ -4,7 +4,7 @@
  * @date 1-may-2024
  * @license see 'LICENSE' file
  *
- * iverilog -g2012 -o serial_tb2 ../comm/serial.sv ../clock/clkgen.sv serial_tb2.sv
+ * iverilog -g2012 -o serial_tb2 ../lib/comm/serial.sv ../lib/clock/clkgen.sv serial_tb2.sv
  * ./serial_tb2
  * gtkwave serial_tb2.vcd --rcvar "do_initial_zoom_fit yes"
  */

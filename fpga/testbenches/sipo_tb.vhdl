@@ -4,7 +4,7 @@
 -- @date 12-apr-2025
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../mem/sipo.vhdl sipo_tb.vhdl  &&  ghdl -e --std=08 sipo_tb sipo_tb_impl
+-- ghdl -a --std=08 ../lib/mem/sipo.vhdl sipo_tb.vhdl  &&  ghdl -e --std=08 sipo_tb sipo_tb_impl
 -- ghdl -r --std=08 sipo_tb sipo_tb_impl --vcd=sipo_tb.vcd --stop-time=100ns
 -- gtkwave sipo_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --

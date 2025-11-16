@@ -25,8 +25,8 @@ pack_cst_file=output/${top_module}.cst
 pack_png_file=output/${top_module}.png
 synth_log=output/synth.log
 pnr_log=output/pnr.log
-src_files="../../clock/clkgen.sv \
-	../../sync/debounce_switch.sv \
+src_files="../../lib/clock/clkgen.sv \
+	../../lib/sync/debounce_switch.sv \
 	main.sv"
 
 # 9k board

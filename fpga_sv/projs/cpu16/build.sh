@@ -58,18 +58,18 @@ pack_cst_file=output/${top_module}.cst
 pack_png_file=output/${top_module}.png
 synth_log=output/synth.log
 pnr_log=output/pnr.log
-src_files="../../clock/clkgen.sv \
-	../../sync/debounce_switch.sv \
-	../../sync/debounce_button.sv \
-	../../sync/edge.sv \
-	../../mem/memcpy.sv \
-	../../mem/ram_2port.sv \
-	../../proc/cpu16.sv \
-	../../arithmetics/multiplier.sv \
-	../../arithmetics/divider.sv \
-	../../comm/serial_tx.sv \
-	../../display/ledmatrix.sv \
-	../../display/sevenseg.v \
+src_files="../../lib/clock/clkgen.sv \
+	../../lib/sync/debounce_switch.sv \
+	../../lib/sync/debounce_button.sv \
+	../../lib/sync/edge.sv \
+	../../lib/mem/memcpy.sv \
+	../../lib/mem/ram_2port.sv \
+	../../lib/proc/cpu16.sv \
+	../../lib/arithmetics/multiplier.sv \
+	../../lib/arithmetics/divider.sv \
+	../../lib/comm/serial_tx.sv \
+	../../lib/display/ledmatrix.sv \
+	../../lib/display/sevenseg.v \
 	${rom_svfile} \
 	main.sv"
 

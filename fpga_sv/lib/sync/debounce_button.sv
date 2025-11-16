@@ -13,7 +13,7 @@
  */
 module debounce_button
 #(
-	parameter STABLE_TICKS = 50,
+	parameter STABLE_TICKS      = 50,
 	parameter STABLE_TICKS_BITS = $clog2(STABLE_TICKS) + 1
 )
 (
@@ -30,7 +30,7 @@ typedef enum bit [1:0] { NotPressed, Pressed, Released } t_btnstate;
 t_btnstate btnstate = NotPressed, btnstate_next = NotPressed;
 
 // cycle counter
-logic [STABLE_TICKS_BITS-1 : 0] stable_counter = 0, stable_counter_next = 0;
+logic [STABLE_TICKS_BITS - 1 : 0] stable_counter = 0, stable_counter_next = 0;
 
 // output the debounced signal
 logic debounced = 1'b0, debounced_next = 1'b0;
@@ -47,7 +47,7 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 		btnstate <= NotPressed;
 		debounced <= 1'b0;
 		toggled <= 1'b0;
-		stable_counter <= 0;
+		stable_counter <= 1'b0;
 	end
 	else begin
 		btnstate <= btnstate_next;
@@ -73,10 +73,10 @@ always_comb begin
 				if(in_signal)
 					stable_counter_next = stable_counter + 1'b1;
 				else
-					stable_counter_next = 0;
+					stable_counter_next = 1'b0;
 
 				if(stable_counter == STABLE_TICKS) begin
-					stable_counter_next = 0;
+					stable_counter_next = 1'b0;
 					btnstate_next = Pressed;
 				end
 			end
@@ -87,17 +87,17 @@ always_comb begin
 				if(!in_signal)
 					stable_counter_next = stable_counter + 1'b1;
 				else
-					stable_counter_next = 0;
+					stable_counter_next = 1'b0;
 
 				if(stable_counter == STABLE_TICKS) begin
-					stable_counter_next = 0;
+					stable_counter_next = 1'b0;
 					btnstate_next = Released;
 				end
 			end
 
 		Released:
 			begin
-				stable_counter_next = 0;
+				stable_counter_next = 1'b0;
 				btnstate_next = NotPressed;
 				debounced_next = 1'b1;
 				toggled_next = ~toggled;

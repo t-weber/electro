@@ -4,7 +4,7 @@
  * @date 25-aug-2024
  * @license see 'LICENSE' file
  *
- * iverilog -g2012 -D__IN_SIMULATION__ -o stack_tb stack_tb.sv ../mem/stack.sv
+ * iverilog -g2012 -D__IN_SIMULATION__ -o stack_tb stack_tb.sv ../lib/mem/stack.sv
  * ./stack_tb
  * gtkwave stack_tb.vcd --rcvar "do_initial_zoom_fit yes"
  */

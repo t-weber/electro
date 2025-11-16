@@ -4,7 +4,7 @@
  * @date 19-may-2024
  * @license see 'LICENSE' file
  *
- * iverilog -g2012 -D__IN_SIMULATION__ -o oled_serial_tb ../comm/serial_2wire.sv ../clock/clkgen.sv ../display/oled_serial.sv oled_serial_tb.sv
+ * iverilog -g2012 -D__IN_SIMULATION__ -o oled_serial_tb ../lib/comm/serial_2wire.sv ../lib/clock/clkgen.sv ../lib/display/oled_serial.sv oled_serial_tb.sv
  * ./oled_serial_tb
  * gtkwave oled_serial_tb.vcd --rcvar "do_initial_zoom_fit yes"
  */

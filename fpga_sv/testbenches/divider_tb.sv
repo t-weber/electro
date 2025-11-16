@@ -4,7 +4,7 @@
 // @date 7-January-2024
 // @license see 'LICENSE' file
 //
-// iverilog -g2012 -o divider_tb ../arithmetics/divider.sv ../arithmetics/adder.sv divider_tb.sv
+// iverilog -g2012 -o divider_tb ../lib/arithmetics/divider.sv ../lib/arithmetics/adder.sv divider_tb.sv
 // ./divider_tb
 //
 

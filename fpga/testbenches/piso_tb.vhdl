@@ -5,7 +5,7 @@
 -- @date 12-apr-2025
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../mem/piso.vhdl piso_tb.vhdl  &&  ghdl -e --std=08 piso_tb piso_tb_impl
+-- ghdl -a --std=08 ../lib/mem/piso.vhdl piso_tb.vhdl  &&  ghdl -e --std=08 piso_tb piso_tb_impl
 -- ghdl -r --std=08 piso_tb piso_tb_impl --vcd=piso_tb.vcd --stop-time=100ns
 -- gtkwave piso_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --

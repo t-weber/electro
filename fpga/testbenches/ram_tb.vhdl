@@ -4,7 +4,7 @@
 -- @date 20-feb-2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../conv/conv.vhdl  ../mem/ram.vhdl ram_tb.vhdl  &&  ghdl -e --std=08 ram_tb ram_tb_impl
+-- ghdl -a --std=08 ../lib/conv/conv.vhdl  ../lib/mem/ram.vhdl ram_tb.vhdl  &&  ghdl -e --std=08 ram_tb ram_tb_impl
 -- ghdl -r --std=08 ram_tb ram_tb_impl --vcd=ram_tb.vcd --stop-time=25ns
 -- gtkwave ram_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --

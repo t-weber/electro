@@ -46,13 +46,13 @@ pack_cst_file=output/${top_module}.cst
 pack_png_file=output/${top_module}.png
 synth_log=output/synth.log
 pnr_log=output/pnr.log
-src_files="../../clock/clkgen.sv \
-	../../sync/debounce_switch.sv \
-	../../sync/debounce_button.sv \
-	../../sync/edge.sv \
-	../../mem/memcpy.sv \
-	../../mem/ram_2port.sv \
-	../../proc/cpu8.sv \
+src_files="../../lib/clock/clkgen.sv \
+	../../lib/sync/debounce_switch.sv \
+	../../lib/sync/debounce_button.sv \
+	../../lib/sync/edge.sv \
+	../../lib/mem/memcpy.sv \
+	../../lib/mem/ram_2port.sv \
+	../../lib/proc/cpu8.sv \
 	${rom_svfile} \
 	main.sv"
 

@@ -25,9 +25,9 @@ pack_cst_file=output/${top_module}.cst
 pack_png_file=output/${top_module}.png
 synth_log=output/synth.log
 pnr_log=output/pnr.log
-src_files="serial.sv \
-	txtlcd_3wire.sv \
-	clkgen.sv \
+src_files="../../lib/comm/serial.sv \
+	../../lib/display/txtlcd_3wire.sv \
+	../../lib/clock/clkgen.sv \
 	main9k.sv"
 
 # 9k board

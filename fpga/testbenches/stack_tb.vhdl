@@ -4,7 +4,7 @@
 -- @date 25-aug-2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../conv/conv.vhdl ../mem/stack.vhdl stack_tb.vhdl  &&  ghdl -e --std=08 stack_tb stack_tb_impl
+-- ghdl -a --std=08 ../lib/conv/conv.vhdl ../lib/mem/stack.vhdl stack_tb.vhdl  &&  ghdl -e --std=08 stack_tb stack_tb_impl
 -- ghdl -r --std=08 stack_tb stack_tb_impl --vcd=stack_tb.vcd --stop-time=100ns
 -- gtkwave stack_tb.vcd --rcvar "do_initial_zoom_fit yes"
 --

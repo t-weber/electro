@@ -4,7 +4,7 @@
  * @date 29-july-2024
  * @license see 'LICENSE' file
  *
- * iverilog -D __IN_SIMULATION__ -g2012 -o lfsr_tb ../lib/lfsr.sv lfsr_tb.sv
+ * iverilog -D __IN_SIMULATION__ -g2012 -o lfsr_tb ../lib/misc/lfsr.sv lfsr_tb.sv
  * ./lfsr_tb
  * gtkwave lfsr_tb.vcd --rcvar "do_initial_zoom_fit yes"
  */

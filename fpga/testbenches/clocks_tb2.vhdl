@@ -4,7 +4,7 @@
 -- @date aug-2024
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 ../conv/conv.vhdl ../mem/fifo.vhdl ../clock/clkgen.vhdl ../clock/clksync.vhdl clocks_tb2.vhdl  &&  ghdl -e --std=08 clocks_tb2 clocks_tb2_arch
+-- ghdl -a --std=08 ../lib/conv/conv.vhdl ../lib/mem/fifo.vhdl ../lib/clock/clkgen.vhdl ../lib/clock/clksync.vhdl clocks_tb2.vhdl  &&  ghdl -e --std=08 clocks_tb2 clocks_tb2_arch
 -- ghdl -r --std=08 clocks_tb2 clocks_tb2_arch --vcd=clocks_tb2.vcd --stop-time=500ns
 -- gtkwave clocks_tb2.vcd --rcvar "do_initial_zoom_fit yes"
 --

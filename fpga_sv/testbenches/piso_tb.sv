@@ -4,7 +4,7 @@
  * @date 13-april-2025
  * @license see 'LICENSE' file
  *
- * iverilog -g2012 -o piso_tb ../mem/piso.sv piso_tb.sv
+ * iverilog -g2012 -o piso_tb ../lib/mem/piso.sv piso_tb.sv
  * ./piso_tb
  * gtkwave piso_tb.vcd --rcvar "do_initial_zoom_fit yes"
  */

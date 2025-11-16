@@ -4,7 +4,7 @@
  * @date 14-july-2024
  * @license see 'LICENSE' file
  *
- * iverilog -D __IN_SIMULATION__ -g2012 -o clkgen_tb ../clock/clkgen.sv clkgen_tb.sv
+ * iverilog -D __IN_SIMULATION__ -g2012 -o clkgen_tb ../lib/clock/clkgen.sv clkgen_tb.sv
  * ./clkgen_tb
  * gtkwave clkgen_tb.vcd --rcvar "do_initial_zoom_fit yes"
  */
