@@ -55,6 +55,7 @@ always_comb begin
 	next_mem = mem;
 	next_update = update;
 
+	// get input data
 	if(in_update == 1'b1) begin
 		next_update = 1'b1;
 		next_mem = in_digits;
@@ -64,7 +65,7 @@ end
 
 
 // --------------------------------------------------------------------
-// decoder module
+// seven segment decoder module
 // --------------------------------------------------------------------
 logic [3 : 0] digit;
 logic [6 : 0] leds;

@@ -41,7 +41,7 @@ debounce_switch debounce_key0(.in_clk(clk27), .in_rst(1'b0),
 debounce_button debounce_key1(.in_clk(clk27), .in_rst(rst),
 	.in_signal(~key[1]), .out_toggled(stop_update), .out_debounced());
 
-debounce_button #(.STABLE_TICKS(128))
+debounce_button #(.STABLE_TICKS(64))
 	debounce_btn0(.in_clk(clk27), .in_rst(rst),
 		.in_signal(~btn[0]), .out_toggled(show_hex), .out_debounced());
 // ----------------------------------------------------------------------------
