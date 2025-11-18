@@ -1,22 +1,28 @@
 --
--- serial seven segment display
+-- led matrix
 -- @author Tobias Weber <tobias.weber@tum.de>
--- @date 18-oct-2025, 16-nov-2025
+-- @date 19-oct-2025, nov-2025
 -- @license see 'LICENSE' file
 --
 -- references:
---   - https://www.puntoflotante.net/TM1637-7-SEGMENT-DISPLAY-FOR-MICROCONTROLLER.htm
+--   - [hw] https://www.analog.com/en/products/max7219.html
 --
 
 library ieee;
 use ieee.std_logic_1164.all;
+use work.conv.all;
 
 
-entity sevenseg_serial is
+entity ledmatrix is
 	generic(
-		constant MAIN_CLK : natural := 50_000_000;
-		constant BUS_BITS : natural := 8;
-		constant NUM_SEGS : natural := 6
+		constant MAIN_CLK     : natural   := 50_000_000;
+		constant BUS_BITS     : natural   := 16;
+
+		constant NUM_SEGS     : natural   := 8;
+		constant LEDS_PER_SEG : natural   := 8;
+
+		-- transpose pixel matrix (or reverse segment order)
+		constant TRANSPOSE    : std_logic := '0'
 	);
 
 	port(
@@ -29,13 +35,13 @@ entity sevenseg_serial is
 
 		-- serial bus interface
 		in_bus_ready, in_bus_next_word : in std_logic;
-		out_bus_enable : out std_logic;
+		out_bus_enable, out_seg_enable : out std_logic;
 		out_bus_data : out std_logic_vector(BUS_BITS - 1 downto 0)
 	);
 end entity;
 
 
-architecture sevenseg_serial_impl of sevenseg_serial is
+architecture ledmatrix_impl of ledmatrix is
 
 	-- memory
 	signal mem, next_mem : std_logic_vector(4*NUM_SEGS - 1 downto 0);
@@ -43,62 +49,52 @@ architecture sevenseg_serial_impl of sevenseg_serial is
 
 	-- seven segment decoder module
 	signal digit : std_logic_vector(3 downto 0);
-	signal leds : std_logic_vector(6 downto 0);
+	signal leds : std_logic_vector(LEDS_PER_SEG - 1 downto 0);
 
 	-- wait timer
 	constant WAIT_RESET  : natural := MAIN_CLK / 1000 * 100;  -- 100 ms
-	constant WAIT_UPDATE : natural := MAIN_CLK / 1000 * 100;  -- 100 ms, 10 Hz
+	constant WAIT_UPDATE : natural := MAIN_CLK / 1000 * 50;   -- 50 ms, 20 Hz
+	constant WAIT_INIT   : natural := MAIN_CLK / 1000_000;    -- 1 mus
 
-	signal wait_ctr, wait_ctr_max : natural range 0 to WAIT_UPDATE := 0;
+	signal wait_ctr, wait_ctr_max : natural range 0 to WAIT_RESET := 0;
 
 	-- --------------------------------------------------------------------
 	-- init data
 	-- --------------------------------------------------------------------
-	-- basic command types
-	constant CMD_DATA : std_logic_vector(3 downto 0) := "0100";
-	constant CMD_DISP : std_logic_vector(3 downto 0) := "1000";
-	constant CMD_ADDR : std_logic_vector(3 downto 0) := "1100";
+	-- basic command types, [hw, p. 7]
+	constant CMD_DECODE : std_logic_vector(7 downto 0) := "00001001";
+	constant CMD_BRIGHT : std_logic_vector(7 downto 0) := "00001010";
+	constant CMD_LIMIT  : std_logic_vector(7 downto 0) := "00001011";
+	constant CMD_POWER  : std_logic_vector(7 downto 0) := "00001100";
+	constant CMD_TEST   : std_logic_vector(7 downto 0) := "00001111";
 
-	-- constant (1) or incrementing (0) address
-	constant CONST_ADDR : std_logic := '1';
-
-	-- led brightness
-	constant BRIGHTNESS : std_logic_vector(3 downto 0) := x"f";
-
-	constant START_ADDR : std_logic_vector(3 downto 0) := x"0";
-
-	-- init sequence
-	constant INIT_BYTES : natural := 1;
-	type t_init_bytes is array(0 to INIT_BYTES - 1) of std_logic_vector(BUS_BITS - 1 downto 0);
-	constant init_cmds : t_init_bytes := (
-		std_logic_vector'(CMD_DISP & BRIGHTNESS)
+	-- init sequence, [hw, pp. 7 - 10]
+	constant INIT_WORDS : natural := 5;
+	type t_init_words is array(0 to INIT_WORDS - 1)
+		of std_logic_vector(BUS_BITS - 1 downto 0);
+	constant init_cmds : t_init_words := (
+		std_logic_vector'(CMD_POWER  & "0000" & "0001"),
+		std_logic_vector'(CMD_DECODE & "0000" & "0000"),
+		std_logic_vector'(CMD_BRIGHT & "0000" & "1111"),
+		std_logic_vector'(CMD_LIMIT  &  nat_to_logvec(NUM_SEGS - 1, 8)),
+		std_logic_vector'(CMD_TEST   & "0000" & "0000")
 	);
-	signal init_ctr, next_init_ctr : natural range 0 to INIT_BYTES - 1 := 0;
+	signal init_ctr, next_init_ctr : natural range 0 to INIT_WORDS := 0;
 
-	-- data transmission sequence
-	constant DATA_BYTES : natural := 2;
-	type t_data_bytes is array(0 to DATA_BYTES - 1) of std_logic_vector(BUS_BITS - 1 downto 0);
-	constant data_cmds : t_data_bytes := (
-		std_logic_vector'(CMD_DATA & '0' & not CONST_ADDR & '0' & '0'),
-		std_logic_vector'(CMD_ADDR & START_ADDR)
-	);
-	signal data_ctr, next_data_ctr : natural range 0 to DATA_BYTES - 1 := 0;
-
-	signal seg_ctr, next_seg_ctr : natural range 0 to NUM_SEGS - 1 := 0;
+	signal seg_ctr, next_seg_ctr : natural range 1 to NUM_SEGS := 1;
 	-- --------------------------------------------------------------------
 
 	-- serial bus interface
-	signal last_byte_finished, bus_enable : std_logic := '0';
+	signal last_byte_finished, bus_enable, seg_enable : std_logic := '0';
 	signal bus_cycle : std_logic;
 	signal bus_data : std_logic_vector(BUS_BITS - 1 downto 0);
 
 	-- state machine
 	type t_state is (
 		Reset,
-		WriteInit, NextInit,
+		EnableInit, WriteInit, NextInit,
 		WaitUpdate, WaitUpdate2,
-		WriteDataInit, NextDataInit,
-		WriteData, NextData
+		EnableData, WriteData, NextData
 	);
 
 	signal state, next_state : t_state := Reset;
@@ -137,10 +133,15 @@ begin
 	-- seven segment decoder module
 	-- --------------------------------------------------------------------
 	sevenseg_mod : entity work.sevenseg
-		generic map(ZERO_IS_ON => '0', INVERSE_NUMBERING => '1', ROTATED => '1')
-		port map(in_digit => digit, out_leds => leds);
+		generic map(ZERO_IS_ON => '0', INVERSE_NUMBERING => '0', ROTATED => not TRANSPOSE)
+		port map(in_digit => digit, out_leds => leds(6 downto 0));
 
-	digit <= mem(seg_ctr*4 to seg_ctr*4 + 4);
+	gen_seg_if : if TRANSPOSE = '0' generate
+		digit <= mem((NUM_SEGS - seg_ctr)*4 to (NUM_SEGS - seg_ctr)*4 + 4);
+	end generate;
+	gen_seg_else : if TRANSPOSE = '1' generate
+		digit <= mem((seg_ctr - 1)*4 to (seg_ctr - 1)*4 + 4);
+	end generate;
 	-- --------------------------------------------------------------------
 
 
@@ -149,6 +150,7 @@ begin
 	-- --------------------------------------------------------------------
 	bus_cycle <= in_bus_next_word and not last_byte_finished;
 
+	out_seg_enable <= seg_enable;
 	out_bus_enable <= bus_enable;
 	out_bus_data <= bus_data;
 	-- --------------------------------------------------------------------
@@ -163,8 +165,7 @@ begin
 			last_byte_finished <= '0';
 
 			init_ctr <= 0;
-			data_ctr <= 0;
-			seg_ctr <= 0;
+			seg_ctr <= 1;
 			wait_ctr <= 0;
 
 		elsif rising_edge(in_clk) then
@@ -172,7 +173,6 @@ begin
 			last_byte_finished <= in_bus_next_word;
 
 			init_ctr <= next_init_ctr;
-			data_ctr <= next_data_ctr;
 			seg_ctr <= next_seg_ctr;
 
 			if wait_ctr = wait_ctr_max then
@@ -184,14 +184,14 @@ begin
 	end process;
 
 
-	state_comb : process(state, init_ctr, data_ctr, seg_ctr) begin
+	state_comb : process(state, init_ctr, seg_ctr) begin
 		next_state <= state;
 
 		next_init_ctr <= init_ctr;
-		next_data_ctr <= data_ctr;
 		next_seg_ctr <= seg_ctr;
 
 		wait_ctr_max <= WAIT_RESET;
+		seg_enable <= '0';
 		bus_enable <= '0';
 		bus_data <= (others => '0');
 
@@ -205,24 +205,28 @@ begin
 			---------------------------------------------------------------
 			-- write init commands
 			---------------------------------------------------------------
+			when EnableInit =>
+				seg_enable <= '1';
+				wait_ctr_max <= WAIT_INIT;
+				if wait_ctr = wait_ctr_max then
+					next_state <= WriteInit;
+				end if;
+
 			when WriteInit =>
 				bus_data <= init_cmds(init_ctr);
 				bus_enable <= '1';
+				seg_enable <= '1';
 
 				if bus_cycle = '1' then
 					next_state <= NextInit;
 				end if;
 
 			when NextInit =>
-				if init_ctr = INIT_BYTES - 1 then
-					if in_bus_ready = '1' then
+				bus_data <= init_cmds(init_ctr);
+				if in_bus_ready = '1' then
+					if init_ctr = INIT_WORDS - 1 then
 						next_state <= WaitUpdate;
-					end if;
-				else
-					bus_data <= init_cmds(init_ctr);
-
-					-- send stop command
-					if in_bus_ready = '1' then
+					else
 						next_init_ctr <= init_ctr + 1;
 						next_state <= WriteInit;
 					end if;
@@ -240,60 +244,40 @@ begin
 
 			when WaitUpdate2 =>
 				if update = '1' then
-					next_state <= WriteDataInit;
-				end if;
-			---------------------------------------------------------------
-
-			---------------------------------------------------------------
-			-- write data transfer commands
-			---------------------------------------------------------------
-			when WriteDataInit =>
-				bus_data <= data_cmds(init_ctr);
-				bus_enable <= '1';
-
-				if bus_cycle = '1' then
-					next_state <= NextDataInit;
-				end if;
-
-			when NextDataInit =>
-				if data_ctr = DATA_BYTES - 1 then
-					bus_enable <= '1';
-					next_state <= WriteData;
-				else
-					bus_data <= data_cmds(init_ctr);
-
-					-- send stop command
-					if in_bus_ready = '1' then
-						next_data_ctr <= data_ctr + 1;
-						next_state <= WriteDataInit;
-					end if;
+					next_state <= EnableData;
 				end if;
 			---------------------------------------------------------------
 
 			---------------------------------------------------------------
 			-- write segment byte
 			---------------------------------------------------------------
+			when EnableData =>
+				seg_enable <= '1';
+				wait_ctr_max <= WAIT_INIT;
+				if wait_ctr = wait_ctr_max then
+					next_state <= WriteData;
+				end if;
+
 			when WriteData =>
-				bus_data <= '0' & leds;
+				bus_data <= nat_to_logvec(seg_ctr, BUS_BITS/2) & leds;
 				bus_enable <= '1';
+				seg_enable <= '1';
 
 				if bus_cycle = '1' then
 					next_state <= NextData;
 				end if;
 
 			when NextData =>
-				bus_data <= '0' & leds;
-				if seg_ctr = NUM_SEGS - 1 then
-					-- at last segment
-					if in_bus_ready = '1' then
-						-- all finished
-						next_seg_ctr <= 0;
+				bus_data <= nat_to_logvec(seg_ctr, BUS_BITS/2) & leds;
+				if in_bus_ready = '1' then
+					if seg_ctr = NUM_SEGS then
+						-- at last segment
+						next_seg_ctr <= 1;
 						next_state <= WaitUpdate;
+					else
+						next_seg_ctr <= seg_ctr + 1;
+						next_state <= WriteData;
 					end if;
-				else
-					next_seg_ctr <= seg_ctr + 1;
-					next_state <= WriteData;
-					bus_enable <= '1';
 				end if;
 			---------------------------------------------------------------
 
