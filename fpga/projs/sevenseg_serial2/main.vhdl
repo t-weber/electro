@@ -46,7 +46,8 @@ architecture sevenseg_test_impl of sevenseg_test is
 	signal serial_in_parallel : std_logic_vector(SERIAL_BITS - 1 downto 0);
 
 	-- led matrix interface
-	-- TODO
+	signal update_leds : std_logic;
+	signal displayed_ctr : std_logic_vector(BCD_CTR_DIGITS*4 - 1 downto 0);
 
 	-- slow clock
 	signal slow_clk : std_logic;
@@ -69,7 +70,7 @@ begin
 		port map(in_clk => clk27, in_rst => rst, in_signal => not key(1), out_toggled => stop_update);
 
 	debounce_btn0 : entity work.debounce(debounce_button_impl)
-		generic map(STABLE_TICKS => 128)
+		generic map(STABLE_TICKS => 50)
 		port map(in_clk => clk27, in_rst => rst, in_signal => not btn(0), out_toggled => show_hex);
 	-- ---------------------------------------------------------------------------
 
@@ -91,7 +92,19 @@ begin
 	-- ---------------------------------------------------------------------------
 	-- led matrix interface
 	-- ---------------------------------------------------------------------------
-	-- TODO
+	ledmatrix_mod : entity work.ledmatrix
+		generic map(MAIN_CLK => MAIN_CLK_HZ, BUS_BITS => SERIAL_BITS,
+			NUM_SEGS => 8, LEDS_PER_SEG => 8, TRANSPOSE => '1')
+		port map(in_clk => clk27, in_rst => rst,
+			in_update => update_leds, in_digits => displayed_ctr,
+			in_bus_ready => serial_ready, in_bus_next_word => serial_next_word,
+			out_bus_enable => serial_enable, out_bus_data => serial_in_parallel,
+			out_seg_enable => seg_sel);
+
+	update_leds <= not stop_update when show_hex = '1' else bcd_finished and not stop_update;
+	displayed_ctr <= std_logic_vector'(
+		(displayed_ctr'length - ctr'length - 1 downto 0 => '0') & ctr)
+		when show_hex = '1' else bcd_ctr;
 	-- ---------------------------------------------------------------------------
 
 

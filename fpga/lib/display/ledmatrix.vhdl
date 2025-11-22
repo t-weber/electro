@@ -135,12 +135,13 @@ begin
 	sevenseg_mod : entity work.sevenseg
 		generic map(ZERO_IS_ON => '0', INVERSE_NUMBERING => '0', ROTATED => not TRANSPOSE)
 		port map(in_digit => digit, out_leds => leds(6 downto 0));
+	leds(7) <= '0';
 
 	gen_seg_if : if TRANSPOSE = '0' generate
-		digit <= mem((NUM_SEGS - seg_ctr)*4 to (NUM_SEGS - seg_ctr)*4 + 4);
+		digit <= mem((NUM_SEGS - seg_ctr)*4 + 4 - 1 downto (NUM_SEGS - seg_ctr)*4);
 	end generate;
 	gen_seg_else : if TRANSPOSE = '1' generate
-		digit <= mem((seg_ctr - 1)*4 to (seg_ctr - 1)*4 + 4);
+		digit <= mem(seg_ctr*4 - 1 downto (seg_ctr - 1)*4);
 	end generate;
 	-- --------------------------------------------------------------------
 
@@ -184,7 +185,8 @@ begin
 	end process;
 
 
-	state_comb : process(state, init_ctr, seg_ctr) begin
+	state_comb : process(state, init_ctr, seg_ctr, wait_ctr, wait_ctr_max,
+		bus_cycle, in_bus_ready, update, leds) begin
 		next_state <= state;
 
 		next_init_ctr <= init_ctr;
