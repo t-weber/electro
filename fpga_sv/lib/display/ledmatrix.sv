@@ -145,6 +145,25 @@ logic [LEDS_PER_SEG - 1 : 0] leds;
 
 logic [$clog2(WAIT_RESET /*largest value*/) : 0]
 	wait_ctr = 1'b0, wait_ctr_max = 1'b0;
+
+
+always_ff@(posedge in_clk, posedge in_rst) begin
+	// reset
+	if(in_rst == 1'b1) begin
+		wait_ctr <= 1'b0;
+	end
+
+	// clock
+	else begin
+		if(wait_ctr == wait_ctr_max) begin
+			// reset timer counter
+			wait_ctr <= $size(wait_ctr)'(1'b0);
+		end else begin
+			// next timer counter
+			wait_ctr <= $size(wait_ctr)'(wait_ctr + 1'b1);
+		end
+	end
+end
 // --------------------------------------------------------------------
 
 
@@ -232,9 +251,6 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 		init_ctr <= 1'b0;
 		seg_ctr <= 1'b1;
 
-		// timer register
-		wait_ctr <= 1'b0;
-
 		last_byte_finished <= 1'b0;
 	end
 
@@ -244,15 +260,6 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 
 		init_ctr <= next_init_ctr;
 		seg_ctr <= next_seg_ctr;
-
-		// timer register
-		if(wait_ctr == wait_ctr_max) begin
-			// reset timer counter
-			wait_ctr <= $size(wait_ctr)'(1'b0);
-		end else begin
-			// next timer counter
-			wait_ctr <= $size(wait_ctr)'(wait_ctr + 1'b1);
-		end
 
 		last_byte_finished <= in_bus_next_word;
 	end

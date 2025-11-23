@@ -158,6 +158,24 @@ begin
 
 
 	-- --------------------------------------------------------------------
+	-- wait timers
+	-- --------------------------------------------------------------------
+	timer_ff : process(in_clk, in_rst) begin
+		if in_rst = '1' then
+			wait_ctr <= 0;
+
+		elsif rising_edge(in_clk) then
+			if wait_ctr = wait_ctr_max then
+				wait_ctr <= 0;
+			else
+				wait_ctr <= wait_ctr + 1;
+			end if;
+		end if;
+	end process;
+	-- --------------------------------------------------------------------
+
+
+	-- --------------------------------------------------------------------
 	-- state machine
 	-- --------------------------------------------------------------------
 	state_ff : process(in_clk, in_rst) begin
@@ -167,7 +185,6 @@ begin
 
 			init_ctr <= 0;
 			seg_ctr <= 1;
-			wait_ctr <= 0;
 
 		elsif rising_edge(in_clk) then
 			state <= next_state;
@@ -175,12 +192,6 @@ begin
 
 			init_ctr <= next_init_ctr;
 			seg_ctr <= next_seg_ctr;
-
-			if wait_ctr = wait_ctr_max then
-				wait_ctr <= 0;
-			else
-				wait_ctr <= wait_ctr + 1;
-			end if;
 		end if;
 	end process;
 
