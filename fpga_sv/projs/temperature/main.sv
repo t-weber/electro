@@ -36,7 +36,7 @@ localparam SERIAL_BITS   = 16;
 // ----------------------------------------------------------------------------
 // keys
 // ----------------------------------------------------------------------------
-wire rst, stop_update, show_hex;
+wire rst, stop_update, show_hex, show_humid;
 
 debounce_switch debounce_key0(.in_clk(clk27), .in_rst(1'b0),
 	.in_signal(~key[0]), .out_debounced(rst));
@@ -47,6 +47,10 @@ debounce_button debounce_key1(.in_clk(clk27), .in_rst(rst),
 debounce_button #(.STABLE_TICKS(64))
 	debounce_btn0(.in_clk(clk27), .in_rst(rst),
 		.in_signal(~btn[0]), .out_toggled(show_hex), .out_debounced());
+
+debounce_button #(.STABLE_TICKS(64))
+	debounce_btn1(.in_clk(clk27), .in_rst(rst),
+		.in_signal(~btn[1]), .out_toggled(show_humid), .out_debounced());
 // ----------------------------------------------------------------------------
 
 
@@ -76,12 +80,12 @@ serial_mod(
 // led matrix interface
 // ----------------------------------------------------------------------------
 wire update_leds = show_hex ? !stop_update : bcd_finished && !stop_update;
-wire [31 : 0] displayed_temp = show_hex ? temp : bcd_temp;
+wire [31 : 0] displayed_data = show_hex ? data : bcd_data;
 
 ledmatrix #(.MAIN_CLK(MAIN_CLK), .BUS_BITS(SERIAL_BITS),
 	.NUM_SEGS(8), .LEDS_PER_SEG(8), .TRANSPOSE(1'b1))
 ledmatrix_mod (.in_clk(clk27), .in_rst(rst),
-	.in_update(update_leds), .in_digits(displayed_temp),
+	.in_update(update_leds), .in_digits(displayed_data),
 	.in_bus_ready(serial_ready), .in_bus_next_word(serial_next_word),
 	.out_bus_enable(serial_enable), .out_bus_data(serial_in_parallel),
 	.out_seg_enable(seg_sel)
@@ -102,11 +106,13 @@ clk_slow (.in_clk(clk27), .in_rst(rst), .out_clk(slow_clk));
 // ----------------------------------------------------------------------------
 // temperature
 // ----------------------------------------------------------------------------
-localparam TEMP_BITS = 24;
-reg [TEMP_BITS - 1 : 0] temp = 1'b0;
+localparam TEMP_BITS = 8;
+wire [TEMP_BITS - 1 : 0] humid, temp;
+wire [TEMP_BITS - 1 : 0] data = show_humid ? humid : temp;
 
-temperature #(.MAIN_CLK(MAIN_CLK))
+temperature #(.MAIN_CLK(MAIN_CLK), .DATA_BITS(TEMP_BITS))
 temp_sensor(.in_clk(clk27), .in_rst(rst),
+	.out_humid(humid), .out_temp(temp),
 	.inout_dat(temp_dat));
 // ----------------------------------------------------------------------------
 
@@ -115,11 +121,11 @@ temp_sensor(.in_clk(clk27), .in_rst(rst),
 // bcd conversion
 // ----------------------------------------------------------------------------
 logic bcd_finished;
-reg [8*4 - 1 : 0] bcd_temp;
+reg [8*4 - 1 : 0] bcd_data;
 
 bcd #(.IN_BITS(TEMP_BITS), .OUT_BITS(8*4), .NUM_BCD_DIGITS(8))
 bcd_mod(.in_clk(clk27), .in_rst(rst),
-	.in_num(temp), .out_bcd(bcd_temp),
+	.in_num(data), .out_bcd(bcd_data),
 	.in_start(1'b1), .out_finished(bcd_finished));
 // ----------------------------------------------------------------------------
 
@@ -131,7 +137,7 @@ bcd_mod(.in_clk(clk27), .in_rst(rst),
 assign led[0] = ~serial_ready;
 assign led[1] = ~stop_update;
 assign led[2] = ~show_hex;
-assign led[3] = btn[0];
+assign led[3] = ~show_humid;
 assign led[4] = slow_clk;
 assign led[5] = temp_dat;
 // ----------------------------------------------------------------------------
