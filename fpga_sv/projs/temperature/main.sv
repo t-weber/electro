@@ -26,11 +26,11 @@ module temp_ctrl
 );
 
 
-localparam MAIN_CLK      = 27_000_000;
-localparam SERIAL_CLK    =  2_000_000;
-localparam SLOW_CLK      =         10;
+localparam longint MAIN_CLK       = 27_000_000;
+localparam longint LED_SERIAL_CLK =  2_000_000;
+localparam longint SLOW_CLK       =         10;
 
-localparam SERIAL_BITS   = 16;
+localparam byte LED_SERIAL_BITS   = 16;
 
 
 // ----------------------------------------------------------------------------
@@ -58,13 +58,13 @@ debounce_button #(.STABLE_TICKS(64))
 // led matrix serial bus
 // --------------------------------------------------------------------
 wire serial_enable, serial_ready;
-wire [SERIAL_BITS - 1 : 0] serial_in_parallel;
+wire [LED_SERIAL_BITS - 1 : 0] serial_in_parallel;
 wire serial_next_word;
 
 // instantiate serial module
 serial_tx #(
-	.BITS(SERIAL_BITS), .LOWBIT_FIRST(1'b0), .FALLING_EDGE(1'b0),
-	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SERIAL_CLK),
+	.BITS(LED_SERIAL_BITS), .LOWBIT_FIRST(1'b0), .FALLING_EDGE(1'b0),
+	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(LED_SERIAL_CLK),
 	.SERIAL_CLK_INACTIVE(1'b0), .SERIAL_DATA_INACTIVE(1'b0)
 )
 serial_mod(
@@ -82,7 +82,7 @@ serial_mod(
 wire update_leds = show_hex ? !stop_update : bcd_finished && !stop_update;
 wire [31 : 0] displayed_data = show_hex ? data : bcd_data;
 
-ledmatrix #(.MAIN_CLK(MAIN_CLK), .BUS_BITS(SERIAL_BITS),
+ledmatrix #(.MAIN_CLK(MAIN_CLK), .BUS_BITS(LED_SERIAL_BITS),
 	.NUM_SEGS(8), .LEDS_PER_SEG(8), .TRANSPOSE(1'b1))
 ledmatrix_mod (.in_clk(clk27), .in_rst(rst),
 	.in_update(update_leds), .in_digits(displayed_data),
@@ -106,7 +106,7 @@ clk_slow (.in_clk(clk27), .in_rst(rst), .out_clk(slow_clk));
 // ----------------------------------------------------------------------------
 // temperature
 // ----------------------------------------------------------------------------
-localparam TEMP_BITS = 8;
+localparam byte TEMP_BITS = 8;
 wire [TEMP_BITS - 1 : 0] humid, temp;
 wire [TEMP_BITS - 1 : 0] data = show_humid ? humid : temp;
 

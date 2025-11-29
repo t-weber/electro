@@ -9,9 +9,9 @@
 
 module bcd
 #(
-	parameter IN_BITS        = 8,
-	parameter OUT_BITS       = 3 * 4,
-	parameter NUM_BCD_DIGITS = OUT_BITS / 4
+	parameter int IN_BITS        = 8,
+	parameter int OUT_BITS       = 3 * 4,
+	parameter int NUM_BCD_DIGITS = OUT_BITS / 4
 )
 (
 	// clock and reset
@@ -22,25 +22,25 @@ module bcd
 	input wire in_start,
 
 	// input
-	input wire [IN_BITS-1 : 0] in_num,
+	input wire [IN_BITS - 1 : 0] in_num,
 
 	// output
-	output wire [OUT_BITS-1 : 0] out_bcd,
+	output wire [OUT_BITS - 1 : 0] out_bcd,
 
 	// conversion finished (or idle)?
 	output wire out_finished
 );
 
 
-typedef enum bit [2:0] { Idle, Reset, Shift, Add, NextIndex } t_state;
+typedef enum bit [2 : 0] { Idle, Reset, Shift, Add, NextIndex } t_state;
 
 t_state state = Shift;
 t_state state_next = Shift;
 
 
-reg [OUT_BITS-1 : 0] bcdnum, bcdnum_next;
-reg [IN_BITS-1 : 0] bitidx, bitidx_next;
-reg [NUM_BCD_DIGITS-1 : 0] bcdidx, bcdidx_next;
+logic [OUT_BITS - 1 : 0] bcdnum, bcdnum_next;
+logic [IN_BITS - 1 : 0] bitidx, bitidx_next;
+logic [NUM_BCD_DIGITS - 1 : 0] bcdidx, bcdidx_next;
 
 
 // output

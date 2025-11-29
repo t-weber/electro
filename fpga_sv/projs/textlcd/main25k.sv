@@ -37,12 +37,12 @@ module main
 );
 
 
-localparam MAIN_CLK     = 50_000_000;
-localparam SERIAL_CLK   = 1_000_000;
-localparam SEVENSEG_CLK = 100;
+localparam longint MAIN_CLK     = 50_000_000;
+localparam longint SERIAL_CLK   = 1_000_000;
+localparam longint SEVENSEG_CLK = 100;
 
-localparam BITS     = 8;
-localparam LCD_SIZE = 4*20;
+localparam byte BITS     = 8;
+localparam int  LCD_SIZE = 4*20;
 
 
 wire reset = ~btn[0];

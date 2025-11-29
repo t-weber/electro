@@ -14,14 +14,14 @@
 
 module ledmatrix
 #(
-	parameter MAIN_CLK     = 50_000_000,
-	parameter BUS_BITS     = 16,
+	parameter longint MAIN_CLK = 50_000_000,
+	parameter byte BUS_BITS    = 16,
 
-	parameter NUM_SEGS     = 8,
-	parameter LEDS_PER_SEG = 8,
+	parameter int NUM_SEGS     = 8,
+	parameter int LEDS_PER_SEG = 8,
 
 	// transpose pixel matrix (or reverse segment order)
-	parameter TRANSPOSE    = 1'b0
+	parameter bit TRANSPOSE    = 1'b0
  )
 (
 	// clock and reset
@@ -135,12 +135,12 @@ logic [LEDS_PER_SEG - 1 : 0] leds;
 // wait timer register
 // --------------------------------------------------------------------
 `ifdef __IN_SIMULATION__
-	localparam WAIT_RESET  = 1;
-	localparam WAIT_UPDATE = 1;
+	localparam longint WAIT_RESET  = 1;
+	localparam longint WAIT_UPDATE = 1;
 `else
-	localparam WAIT_RESET  = MAIN_CLK/1000*100;  // 100 ms
-	localparam WAIT_UPDATE = MAIN_CLK/1000*50;   // 50 ms, 20 Hz
-	localparam WAIT_INIT   = MAIN_CLK/1000_000;  // 1 mus
+	localparam longint WAIT_RESET  = MAIN_CLK * 100 / 1000; // 100 ms
+	localparam longint WAIT_UPDATE = MAIN_CLK * 50 / 1000;  // 50 ms, 20 Hz
+	localparam longint WAIT_INIT   = MAIN_CLK / 1000_000;   // 1 us
 `endif
 
 logic [$clog2(WAIT_RESET /*largest value*/) : 0]
@@ -179,7 +179,7 @@ localparam [7 : 0] cmd_test       = 8'b0000_1111;
 
 
 // init sequence, [hw, pp. 7 - 10]
-localparam INIT_WORDS = 5;
+localparam int INIT_WORDS = 5;
 logic [0 : INIT_WORDS - 1][BUS_BITS - 1 : 0] init_cmds;
 assign init_cmds =
 {

@@ -20,12 +20,12 @@ module serial_async
 );
 
 
-localparam MAIN_CLK     = 27_000_000;
-localparam SERIAL_CLK   =    115_200;
+localparam longint MAIN_CLK   = 27_000_000;
+localparam longint SERIAL_CLK =    115_200;
 
-localparam BITS         = 8;
-localparam CLK_MULTIPLE = 16;
-localparam CLK_TOCHECK  = 8;
+localparam byte BITS          = 8;
+localparam int CLK_MULTIPLE   = 16;
+localparam int CLK_TOCHECK    = 8;
 
 
 // ----------------------------------------------------------------------------

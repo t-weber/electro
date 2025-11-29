@@ -9,21 +9,21 @@
 module serial_duplex
 #(
 	// clock frequencies
-	parameter MAIN_CLK_HZ   = 50_000_000,
-	parameter SERIAL_CLK_HZ = 10_000,
+	parameter longint MAIN_CLK_HZ   = 50_000_000,
+	parameter longint SERIAL_CLK_HZ = 10_000,
 
 	// inactive signals
-	parameter SERIAL_CLK_INACTIVE     = 1'b1,
-	parameter SERIAL_DATA_INACTIVE    = 1'b1,
-	parameter KEEP_SERIAL_CLK_RUNNING = 1'b0,
+	parameter bit SERIAL_CLK_INACTIVE     = 1'b1,
+	parameter bit SERIAL_DATA_INACTIVE    = 1'b1,
+	parameter bit KEEP_SERIAL_CLK_RUNNING = 1'b0,
 
 	// signal triggers
-	parameter FROM_FPGA_FALLING_EDGE  = 1'b1,
-	parameter TO_FPGA_FALLING_EDGE    = 1'b1,
+	parameter bit FROM_FPGA_FALLING_EDGE  = 1'b1,
+	parameter bit TO_FPGA_FALLING_EDGE    = 1'b1,
 
 	// word length
-	parameter BITS         = 8,
-	parameter LOWBIT_FIRST = 1'b1
+	parameter byte BITS        = 8,
+	parameter bit LOWBIT_FIRST = 1'b1
  )
 (
 	// main clock and reset

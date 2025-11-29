@@ -13,18 +13,18 @@
 module txtlcd_3wire
 #(
     // clock frequency
-    parameter MAIN_CLK         = 50_000_000,
+    parameter longint MAIN_CLK      = 50_000_000,
 
     // word length and address of the LCD
-    parameter BUS_NUM_DATABITS = 8,
+    parameter byte BUS_NUM_DATABITS = 8,
 
     // number of characters on the LCD
-    parameter LCD_SIZE         = 4*20,
-    parameter LCD_NUM_ADDRBITS = 7,
-    parameter LCD_NUM_DATABITS = BUS_NUM_DATABITS,
+    parameter int LCD_SIZE          = 4*20,
+    parameter byte LCD_NUM_ADDRBITS = 7,
+    parameter byte LCD_NUM_DATABITS = BUS_NUM_DATABITS,
 
     // use the lcd busy flag for waiting instead of the timers
-    parameter READ_BUSY_FLAG   = 1
+    parameter bit READ_BUSY_FLAG    = 1
 )
 (
     // clock and reset
@@ -69,14 +69,14 @@ t_lcd_state cmd_after_busy_check = Wait_Reset, next_cmd_after_busy_check = Wait_
 
 
 // delays
-localparam const_wait_prereset = MAIN_CLK/1000*50;        // 50 ms
-localparam const_wait_reset    = MAIN_CLK/1_000_000*500;  // 500 us
-localparam const_wait_resetted = MAIN_CLK/1000*1;         // 1 ms
-localparam const_wait_init     = MAIN_CLK/1_000_000*100;  // 100 us
-localparam const_wait_update   = MAIN_CLK/1000*100;       // 100 ms
+localparam longint const_wait_prereset = MAIN_CLK * 50 / 1000;        // 50 ms
+localparam longint const_wait_reset    = MAIN_CLK * 500 / 1_000_000;  // 500 us
+localparam longint const_wait_resetted = MAIN_CLK * 1 / 1000;         // 1 ms
+localparam longint const_wait_init     = MAIN_CLK * 100 / 1_000_000;  // 100 us
+localparam longint const_wait_update   = MAIN_CLK * 100 / 1000;       // 100 ms
 
 // the maximum of the above delays
-localparam const_wait_max      = const_wait_update;
+localparam longint const_wait_max      = const_wait_update;
 
 // busy wait counters
 logic [$clog2(const_wait_max) : 0] wait_counter, wait_counter_max = 1'b0;
@@ -120,7 +120,7 @@ localparam [0 : 0] invert_caret  = 1'b0;
 localparam [0 : 0] mirror_y      = 1'b1;
 localparam [0 : 0] mirror_x      = 1'b0;
 
-localparam init_num_commands = 22;
+localparam int init_num_commands = 22;
 logic [0 : init_num_commands*3 - 1][LCD_NUM_DATABITS/2 - 1 : 0] init_arr;
 assign init_arr =
 {

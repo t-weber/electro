@@ -8,19 +8,19 @@
 module serial_2wire
 #(
 	// clock frequencies
-	parameter MAIN_CLK_HZ   = 50_000_000,
-	parameter SERIAL_CLK_HZ = 10_000,
+	parameter longint MAIN_CLK_HZ   = 50_000_000,
+	parameter longint SERIAL_CLK_HZ = 10_000,
 
 	// address and word lengths
-	parameter ADDR_BITS     = 8,
-	parameter BITS          = 8,
-	parameter LOWBIT_FIRST  = 1'b1,
+	parameter byte ADDR_BITS    = 8,
+	parameter byte BITS         = 8,
+	parameter bit LOWBIT_FIRST  = 1'b1,
 
 	// transmit target read/write addresses?
-	parameter TRANSMIT_ADDR = 1'b1,
+	parameter bit TRANSMIT_ADDR = 1'b1,
 
 	// continue after errors
-	parameter IGNORE_ERROR  = 1'b0
+	parameter bit IGNORE_ERROR  = 1'b0
  )
 (
 	// main clock and reset

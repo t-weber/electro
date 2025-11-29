@@ -20,10 +20,10 @@ module serial_async
 );
 
 
-localparam MAIN_CLK   = 27_000_000;
-localparam SERIAL_CLK =    115_200;
+localparam longint MAIN_CLK   = 27_000_000;
+localparam longint SERIAL_CLK =    115_200;
 
-localparam BITS = 8;
+localparam byte BITS = 8;
 
 
 // ----------------------------------------------------------------------------
@@ -53,7 +53,7 @@ clk_test (.in_clk(clk27), .in_rst(rst), .out_clk(slow_clk));
 // serial interface
 // ----------------------------------------------------------------------------
 // data
-localparam NUM_BYTES = 4;
+localparam int NUM_BYTES = 4;
 logic [0 : NUM_BYTES-1] [BITS-1 : 0] data_tosend =
 {
 	"T", "e", "s", "t"

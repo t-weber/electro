@@ -11,22 +11,22 @@
 module serial_async_tx
 #(
 	// clock frequencies
-	parameter MAIN_CLK_HZ   = 50_000_000,
-	parameter SERIAL_CLK_HZ = 9_600,
+	parameter longint MAIN_CLK_HZ   = 50_000_000,
+	parameter longint SERIAL_CLK_HZ = 9_600,
 
 	// constants
-	parameter SERIAL_INACTIVE = 1'b1,
-	parameter SERIAL_START    = 1'b0,
-	parameter SERIAL_STOP     = 1'b1,
+	parameter bit SERIAL_INACTIVE = 1'b1,
+	parameter bit SERIAL_START    = 1'b0,
+	parameter bit SERIAL_STOP     = 1'b1,
 
 	// word lengths
-	parameter BITS         = 8,
-	parameter START_BITS   = 1,
-	parameter PARITY_BITS  = 0,
-	parameter STOP_BITS    = 1,
+	parameter byte BITS           = 8,
+	parameter byte START_BITS     = 1,
+	parameter byte PARITY_BITS    = 0,
+	parameter byte STOP_BITS      = 1,
 
-	parameter LOWBIT_FIRST = 1'b1,
-	parameter EVEN_PARITY  = 1'b1
+	parameter bit LOWBIT_FIRST    = 1'b1,
+	parameter bit EVEN_PARITY     = 1'b1
  )
 (
 	// main clock and reset

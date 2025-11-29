@@ -29,17 +29,17 @@ module flash_serial_mod
 );
 
 // clocks
-localparam MAIN_CLK   = 27_000_000;
-localparam SERIAL_CLK = 115_200;
-localparam FLASH_CLK  = MAIN_CLK;
-//localparam FLASH_CLK  = 10_000_000;
+localparam longint MAIN_CLK   = 27_000_000;
+localparam longint SERIAL_CLK = 115_200;
+localparam longint FLASH_CLK  = MAIN_CLK;
+//localparam longint FLASH_CLK  = 10_000_000;
 
 // sizes
-localparam BITS       = 8;
-localparam ADDR_WORDS = 3;
+localparam shortint BITS       = 8;
+localparam shortint ADDR_WORDS = 3;
 
 // delays
-localparam WAIT_DELAY_START       = MAIN_CLK/1000*200; // 200 ms
+localparam longint WAIT_DELAY_START = MAIN_CLK * 200 / 1000;  // 200 ms
 logic [$clog2(WAIT_DELAY_START) : 0] wait_ctr = 1'b0;
 
 

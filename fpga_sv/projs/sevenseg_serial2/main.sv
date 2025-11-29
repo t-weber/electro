@@ -23,11 +23,11 @@ module sevenseg_test
 );
 
 
-localparam MAIN_CLK      = 27_000_000;
-localparam SERIAL_CLK    =  2_000_000;
-localparam SLOW_CLK      =         10;
+localparam longint MAIN_CLK   = 27_000_000;
+localparam longint SERIAL_CLK =  2_000_000;
+localparam longint SLOW_CLK   =         10;
 
-localparam SERIAL_BITS   = 16;
+localparam byte SERIAL_BITS   = 16;
 
 
 // ----------------------------------------------------------------------------
@@ -101,7 +101,7 @@ clk_slow (.in_clk(clk27), .in_rst(rst), .out_clk(slow_clk));
 // ----------------------------------------------------------------------------
 // counter
 // ----------------------------------------------------------------------------
-localparam CTR_BITS = 24;
+localparam byte CTR_BITS = 24;
 reg [CTR_BITS - 1 : 0] ctr;
 
 always_ff@(posedge slow_clk, posedge rst) begin

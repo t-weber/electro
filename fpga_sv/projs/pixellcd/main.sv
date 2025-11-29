@@ -23,12 +23,12 @@ module main
 );
 
 
-localparam MAIN_CLK     = 27_000_000;
-localparam SERIAL_CLK   = 100_000;
+localparam longint MAIN_CLK   = 27_000_000;
+localparam longint SERIAL_CLK = 100_000;
 
-localparam BITS      = 8;
-localparam LCD_COLS  = 128*2;
-localparam LCD_PAGES = 8;
+localparam byte BITS     = 8;
+localparam int LCD_COLS  = 128*2;
+localparam int LCD_PAGES = 8;
 
 
 wire reset = ~key[0];

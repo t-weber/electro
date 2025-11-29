@@ -29,8 +29,8 @@ module gpio
 );
 
 
-localparam MAIN_CLK = 27_000_000;
-localparam SLOW_CLK =          1;
+localparam longint MAIN_CLK = 27_000_000;
+localparam longint SLOW_CLK =          1;
 
 
 // ----------------------------------------------------------------------------

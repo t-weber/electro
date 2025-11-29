@@ -10,8 +10,8 @@
 
 module cpuctrl
 #(
-	parameter MAIN_CLK = 27_000_000,
-	parameter SYS_CLK  =        100
+	parameter longint MAIN_CLK = 27_000_000,
+	parameter longint SYS_CLK  =        100
 )
 (
 	// main clock
@@ -34,12 +34,12 @@ module cpuctrl
 // ----------------------------------------------------------------------------
 // parameters
 // ----------------------------------------------------------------------------
-localparam ADDR_BITS       = 16;
-localparam DATA_BITS       = 16;
-localparam RAM_ADDR_BITS   = 9;
+localparam byte ADDR_BITS         = 16;
+localparam byte DATA_BITS         = 16;
+localparam byte RAM_ADDR_BITS     = 9;
 
-localparam SEG_SERIAL_BITS = 16;
-localparam SEG_SERIAL_CLK  = 500_000;
+localparam byte SEG_SERIAL_BITS   = 16;
+localparam longint SEG_SERIAL_CLK = 500_000;
 
 // ----------------------------------------------------------------------------
 
@@ -152,10 +152,10 @@ ram_mod(.in_rst(reset),
 // ---------------------------------------------------------------------------
 `ifdef ROM_ADDR_BITS
 	// use value from define
-	localparam ROM_ADDR_BITS = `ROM_ADDR_BITS;
+	localparam byte ROM_ADDR_BITS = `ROM_ADDR_BITS;
 `else
 	// use value from generated rom.sv
-	localparam ROM_ADDR_BITS = rom.ADDR_BITS;
+	localparam byte ROM_ADDR_BITS = rom.ADDR_BITS;
 `endif
 
 logic [DATA_BITS - 1 : 0] out_rom_data;
@@ -260,8 +260,8 @@ assign write_enable_1 = (state == RUN_CPU ? cpu_write_enable : memcpy_write_enab
 logic [ADDR_BITS - 1 : 0] addr_watch;
 logic [DATA_BITS - 1 : 0] data_watch, next_data_watch;
 
-localparam READ_CYCLES = 1;
-localparam WRITE_CYCLES = 2;
+localparam byte READ_CYCLES = 1;
+localparam byte WRITE_CYCLES = 2;
 logic [1 : 0] read_cycle = 1'b0, write_cycle = 1'b0;
 
 typedef enum bit [3 : 0]

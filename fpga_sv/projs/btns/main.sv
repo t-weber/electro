@@ -25,13 +25,13 @@ module btns
 );
 
 
-localparam MAIN_CLK = 27_000_000;
-localparam SLOW_CLK =          4;
+localparam longint MAIN_CLK = 27_000_000;
+localparam longint SLOW_CLK =          4;
 
 `ifdef USE_1K
-	localparam NUM_LEDS = $size(ledr);
+	localparam byte NUM_LEDS = $size(ledr);
 `else
-	localparam NUM_LEDS = $size(ledg);
+	localparam byte NUM_LEDS = $size(ledg);
 `endif
 
 

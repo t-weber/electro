@@ -12,18 +12,18 @@
 module pixlcd_3wire
 #(
 	// clock frequency
-	parameter MAIN_CLK     = 50_000_000,
+	parameter longint MAIN_CLK       = 50_000_000,
 
 	// word length and address of the LCD
-	parameter BUS_DATABITS = 8,
+	parameter byte    BUS_DATABITS   = 8,
 
 	// number of characters on the LCD
-	parameter LCD_COLS     = 128,
-	parameter LCD_PAGES    = 8,
-	parameter LCD_DATABITS = BUS_DATABITS,
+	parameter shortint LCD_COLS      = 128,
+	parameter shortint LCD_PAGES     = 8,
+	parameter byte     LCD_DATABITS  = BUS_DATABITS,
 
 	// explicitely set the column on data writing
-	parameter SET_COL      = 1
+	parameter bit      SET_COL       = 1
 )
 (
 	// clock and reset
@@ -67,14 +67,14 @@ t_state state_afterwait = Wait_Reset, next_state_afterwait = Wait_Reset;
 
 
 // delays
-localparam const_wait_prereset = MAIN_CLK/1000*50;        // 50 ms
-localparam const_wait_reset    = MAIN_CLK/1000*1;         // 1 ms
-localparam const_wait_resetted = MAIN_CLK/1000*1;         // 1 ms
-localparam const_wait_init     = MAIN_CLK/1_000_000*100;  // 100 us
-localparam const_wait_update   = MAIN_CLK/1000*100;       // 100 ms
+localparam longint const_wait_prereset = MAIN_CLK * 50 / 1000;        // 50 ms
+localparam longint const_wait_reset    = MAIN_CLK * 1 / 1000;         // 1 ms
+localparam longint const_wait_resetted = MAIN_CLK * 1 / 1000;         // 1 ms
+localparam longint const_wait_init     = MAIN_CLK * 100 / 1_000_000;  // 100 us
+localparam longint const_wait_update   = MAIN_CLK * 100 / 1000;       // 100 ms
 
 // the maximum of the above delays
-localparam const_wait_max      = const_wait_update;
+localparam longint const_wait_max      = const_wait_update;
 
 // busy wait counters
 logic [$clog2(const_wait_max) : 0] wait_counter, wait_counter_max = 1'b0;
@@ -96,7 +96,7 @@ localparam [2 : 0] regulator    = 3'b111;
 localparam [4 : 0] contrast     = 5'h07;
 localparam [0 : 0] bias_V       = 1'b1;
 
-localparam init_num_commands = 18;
+localparam int init_num_commands = 18;
 logic [0 : init_num_commands - 1][LCD_DATABITS - 1 : 0] init_arr;
 assign init_arr =
 {

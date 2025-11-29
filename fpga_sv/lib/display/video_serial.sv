@@ -14,29 +14,29 @@
 
 module video_serial
 #(
-	parameter SERIAL_BITS     = 8,
-	parameter PIXEL_BITS      = 16,
-	parameter RED_BITS        = 5,
-	parameter GREEN_BITS      = 6,
-	parameter BLUE_BITS       = 5,
+	parameter byte SERIAL_BITS       = 8,
+	parameter byte PIXEL_BITS        = 16,
+	parameter byte RED_BITS          = 5,
+	parameter byte GREEN_BITS        = 6,
+	parameter byte BLUE_BITS         = 5,
 
-	parameter SCREEN_HOFFS    = 0,
-	parameter SCREEN_VOFFS    = 0,
-	parameter SCREEN_WIDTH    = 128,
-	parameter SCREEN_HEIGHT   = 64,
+	parameter shortint SCREEN_HOFFS  = 0,
+	parameter shortint SCREEN_VOFFS  = 0,
+	parameter shortint SCREEN_WIDTH  = 128,
+	parameter shortint SCREEN_HEIGHT = 64,
 
-	parameter SCREEN_HINV     = 1'b1,
-	parameter SCREEN_VINV     = 1'b0,
-	parameter SCREEN_HVINV    = 1'b1,
-	parameter SCREEN_RGBINV   = 1'b0,
+	parameter bit SCREEN_HINV        = 1'b1,
+	parameter bit SCREEN_VINV        = 1'b0,
+	parameter bit SCREEN_HVINV       = 1'b1,
+	parameter bit SCREEN_RGBINV      = 1'b0,
 
-	parameter MAIN_CLK        = 50_000_000,
-	parameter SERIAL_CLK      = 10_000_000,
+	parameter longint MAIN_CLK       = 50_000_000,
+	parameter longint SERIAL_CLK     = 10_000_000,
 
-	parameter HCTR_BITS       = $clog2(SCREEN_WIDTH),
-	parameter VCTR_BITS       = $clog2(SCREEN_HEIGHT),
+	parameter shortint HCTR_BITS     = $clog2(SCREEN_WIDTH),
+	parameter shortint VCTR_BITS     = $clog2(SCREEN_HEIGHT),
 
-	parameter USE_TESTPATTERN = 1'b1
+	parameter bit USE_TESTPATTERN    = 1'b1
  )
 (
 	// clock and reset
@@ -66,13 +66,13 @@ module video_serial
 // wait timer register
 // --------------------------------------------------------------------
 `ifdef __IN_SIMULATION__
-	localparam WAIT_RESET       = 1;
-	localparam WAIT_AFTER_RESET = 1;
-	localparam WAIT_UPDATE      = 1;
+	localparam longint WAIT_RESET       = 1;
+	localparam longint WAIT_AFTER_RESET = 1;
+	localparam longint WAIT_UPDATE      = 1;
 `else
-	localparam WAIT_RESET       = MAIN_CLK/1000/1000*50; // >=10 us, see [ctrl, p. 48]
-	localparam WAIT_AFTER_RESET = MAIN_CLK/1000*150;     // >129 ms, see [ctrl, p. 49]
-	localparam WAIT_UPDATE      = MAIN_CLK/1000*50;      // 50 ms, 20 Hz
+	localparam longint WAIT_RESET       = MAIN_CLK * 50 / 1000_000;  // >=10 us, see [ctrl, p. 48]
+	localparam longint WAIT_AFTER_RESET = MAIN_CLK * 150 / 1000;     // >129 ms, see [ctrl, p. 49]
+	localparam longint WAIT_UPDATE      = MAIN_CLK * 50 / 1000;      // 50 ms, 20 Hz
 `endif
 
 logic [$clog2(WAIT_AFTER_RESET /*largest value*/) : 0]
@@ -87,7 +87,7 @@ localparam [15 : 0] x_start = 16'(SCREEN_HOFFS), x_end = 16'(x_start + SCREEN_WI
 localparam [15 : 0] y_start = 16'(SCREEN_VOFFS), y_end = 16'(y_start + SCREEN_HEIGHT - 1'b1);
 
 // start display [ctrl, pp. 156ff]
-localparam INIT_BYTES = 17;
+localparam byte INIT_BYTES = 17;
 
 logic [0 : INIT_BYTES - 1][SERIAL_BITS - 1 : 0] init_data;
 assign init_data =

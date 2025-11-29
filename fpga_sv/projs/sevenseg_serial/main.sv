@@ -24,11 +24,11 @@ module sevenseg_test
 );
 
 
-localparam MAIN_CLK      = 27_000_000;
-localparam SERIAL_CLK    =     10_000;
-localparam SLOW_CLK      =          2;
+localparam longint MAIN_CLK   = 27_000_000;
+localparam longint SERIAL_CLK =     10_000;
+localparam longint SLOW_CLK   =          2;
 
-localparam SERIAL_BITS   = 8;
+localparam byte SERIAL_BITS   = 8;
 
 
 // ----------------------------------------------------------------------------

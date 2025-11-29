@@ -14,16 +14,16 @@
 
 module oled_serial
 #(
-	parameter MAIN_CLK        = 50_000_000,
-	parameter BUS_BITS        = 8,
+	parameter longint  MAIN_CLK        = 50_000_000,
+	parameter shortint BUS_BITS        = 8,
 
-	parameter SCREEN_WIDTH    = 128,
-	parameter SCREEN_HEIGHT   = 64,
-	parameter SCREEN_PAGES    = SCREEN_HEIGHT / BUS_BITS,
+	parameter shortint SCREEN_WIDTH    = 128,
+	parameter shortint SCREEN_HEIGHT   = 64,
+	parameter shortint SCREEN_PAGES    = SCREEN_HEIGHT / BUS_BITS,
 
-	parameter HCTR_BITS       = $clog2(SCREEN_WIDTH),
-	parameter VCTR_BITS       = $clog2(SCREEN_HEIGHT),
-	parameter PAGE_BITS       = $clog2(SCREEN_PAGES)
+	parameter shortint HCTR_BITS       = $clog2(SCREEN_WIDTH),
+	parameter shortint VCTR_BITS       = $clog2(SCREEN_HEIGHT),
+	parameter shortint PAGE_BITS       = $clog2(SCREEN_PAGES)
  )
 (
 	// clock and reset
@@ -50,11 +50,11 @@ module oled_serial
 // wait timer register
 // --------------------------------------------------------------------
 `ifdef __IN_SIMULATION__
-	localparam WAIT_RESET       = 1;
-	localparam WAIT_UPDATE      = 1;
+	localparam longint WAIT_RESET     = 1;
+	localparam longint WAIT_UPDATE    = 1;
 `else
-	localparam WAIT_RESET       = MAIN_CLK/1000*20;  // 20 ms
-	localparam WAIT_UPDATE      = MAIN_CLK/1000*50;  // 50 ms, 20 Hz
+	localparam longint WAIT_RESET     = MAIN_CLK * 20 / 1000;  // 20 ms
+	localparam longint WAIT_UPDATE    = MAIN_CLK * 50 / 1000;  // 50 ms, 20 Hz
 `endif
 
 logic [$clog2(WAIT_UPDATE /*largest value*/) : 0]

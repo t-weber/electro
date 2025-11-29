@@ -11,9 +11,9 @@
 
 module sevenseg_serial
 #(
-	parameter MAIN_CLK = 50_000_000,
-	parameter BUS_BITS = 8,
-	parameter NUM_SEGS = 6
+	parameter longint MAIN_CLK = 50_000_000,
+	parameter byte BUS_BITS    = 8,
+	parameter byte NUM_SEGS    = 6
  )
 (
 	// clock and reset
@@ -89,11 +89,11 @@ sevenseg_mod(
 // wait timer register
 // --------------------------------------------------------------------
 `ifdef __IN_SIMULATION__
-	localparam WAIT_RESET  = 1;
-	localparam WAIT_UPDATE = 1;
+	localparam longint WAIT_RESET  = 1;
+	localparam longint WAIT_UPDATE = 1;
 `else
-	localparam WAIT_RESET  = MAIN_CLK/1000*100;  // 100 ms
-	localparam WAIT_UPDATE = MAIN_CLK/1000*100;  // 100 ms, 10 Hz
+	localparam longint WAIT_RESET  = MAIN_CLK * 100 / 1000;  // 100 ms
+	localparam longint WAIT_UPDATE = MAIN_CLK * 100 / 1000;  // 100 ms, 10 Hz
 `endif
 
 logic [$clog2(WAIT_UPDATE /*largest value*/) : 0]
@@ -116,7 +116,7 @@ localparam [3 : 0] brightness = 4'hf;
 
 
 // init sequence
-localparam INIT_BYTES = 1;
+localparam int INIT_BYTES = 1;
 logic [0 : INIT_BYTES - 1][BUS_BITS - 1 : 0] init_cmds;
 assign init_cmds =
 {
@@ -128,7 +128,7 @@ reg [$clog2(INIT_BYTES) : 0] init_ctr = 0, next_init_ctr = 0;
 
 
 // data transmission sequence
-localparam DATA_BYTES = 2;
+localparam int DATA_BYTES = 2;
 logic [0 : DATA_BYTES - 1][BUS_BITS - 1 : 0] data_cmds;
 assign data_cmds =
 {

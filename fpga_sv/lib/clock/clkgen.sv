@@ -6,15 +6,18 @@
  */
 
 
+//`define CLKGEN_ASYNC
+
+
 module clkgen
 #(
 	// clock frequencies
-	parameter MAIN_CLK_HZ = 50_000_000,
-	parameter CLK_HZ      = 10_000,
+	parameter longint MAIN_CLK_HZ = 50_000_000,
+	parameter longint CLK_HZ      = 10_000,
 
 	// reset value of clock
-	parameter CLK_INIT    = 1'b0,
-	parameter CLK_SHIFT   = 1'b0
+	parameter bit CLK_INIT  = 1'b0,
+	parameter bit CLK_SHIFT = 1'b0
  )
 (
 	// main clock and reset
@@ -47,17 +50,23 @@ if(MAIN_CLK_HZ == CLK_HZ) begin
 end else begin
 
 	// clock counter
-	localparam CLK_CTR_MAX     = MAIN_CLK_HZ / CLK_HZ / 2 - 1;
-	localparam CLK_CTR_SHIFTED = MAIN_CLK_HZ / CLK_HZ / 2 - MAIN_CLK_HZ / CLK_HZ / 4;
-	bit [$clog2(CLK_CTR_MAX) : 0] clk_ctr = 0;
+	localparam longint CLK_CTR_MAX     = MAIN_CLK_HZ / CLK_HZ / 2 - 1;
+	localparam longint CLK_CTR_SHIFTED = MAIN_CLK_HZ / CLK_HZ / 2 - MAIN_CLK_HZ / CLK_HZ / 4;
+
+	logic [$clog2(CLK_CTR_MAX) : 0] clk_ctr = 0;
 
 
 	// output clock
-	reg clk = CLK_INIT;
+	logic clk = CLK_INIT;
 	assign out_clk = clk;
 
-	always_ff@(posedge in_clk, posedge in_rst) begin
+	always_ff@(posedge in_clk
+`ifdef CLKGEN_ASYNC
 		// asynchronous reset
+		, posedge in_rst
+`endif
+	) begin
+		// reset
 		if(in_rst == 1'b1) begin
 			if(CLK_SHIFT == 1'b1) begin
 				clk_ctr <= CLK_CTR_SHIFTED;
@@ -71,10 +80,10 @@ end else begin
 		else begin
 			if(clk_ctr == CLK_CTR_MAX) begin
 				clk_ctr <= 1'b0;
-				clk <= !clk;
+				clk <= ~clk;
 			end
 			else begin
-				clk_ctr <= $size(clk_ctr)'(clk_ctr + 1);
+				clk_ctr <= $size(clk_ctr)'(clk_ctr + 1'b1);
 			end
 		end
 	end

@@ -22,11 +22,11 @@ module ledmatrix_test
 );
 
 
-localparam MAIN_CLK      = 27_000_000;
-localparam SERIAL_CLK    =  1_000_000;
-localparam SLOW_CLK      =         10;
+localparam longint MAIN_CLK   = 27_000_000;
+localparam longint SERIAL_CLK =  1_000_000;
+localparam longint SLOW_CLK   =         10;
 
-localparam SERIAL_BITS   = 16;
+localparam byte SERIAL_BITS   = 16;
 
 
 // ----------------------------------------------------------------------------

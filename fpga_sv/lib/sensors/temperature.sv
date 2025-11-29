@@ -9,9 +9,9 @@
 
 module temperature
 #(
-	parameter MAIN_CLK     = 50_000_000,
-	parameter DATA_BITS    = 8,
-	parameter USE_CHECKSUM = 1'b1
+	parameter longint MAIN_CLK     = 50_000_000,
+	parameter int     DATA_BITS    = 8,
+	parameter bit     USE_CHECKSUM = 1'b1
 )
 (
 	// clock and reset
@@ -33,9 +33,9 @@ module temperature
 // ----------------------------------------------------------------------------
 // wait timers
 // ----------------------------------------------------------------------------
-localparam WAIT_RESET    = MAIN_CLK/1_000*1000;  // 1000 ms
-localparam WAIT_START0   = MAIN_CLK/1_000*20;    // 20 ms [hw, p. 6]
-localparam WAIT_FINISHED = MAIN_CLK/1_100*500;   // 500 ms
+localparam longint WAIT_RESET    = MAIN_CLK;                // 1 s
+localparam longint WAIT_START0   = MAIN_CLK * 20 / 1_000;   // 20 ms [hw, p. 6]
+localparam longint WAIT_FINISHED = MAIN_CLK * 500 / 1_000;  // 500 ms
 
 logic [$clog2(WAIT_RESET /*largest value*/) : 0]
 	wait_ctr = 1'b0, wait_ctr_max = 1'b0;
@@ -61,10 +61,10 @@ end
 // ----------------------------------------------------------------------------
 // track response, poll inout_dat every us
 // ----------------------------------------------------------------------------
-localparam POLLING_CLK     = 1_000_000;  // 1 us
-localparam START_SIGNAL_US = 70;         // max. 80 us [hw, p. 6]
-localparam ZERO_SIGNAL_US  = 35;         // max. 28 us at 'z' meaning '0' and 70 us meaning '1' [hw, pp. 7, 8]
-localparam ZERO_BIT_US     = 40;         // max. 50 us at '0' [hw, pp. 7, 8]
+localparam longint POLLING_CLK     = 1_000_000;  // 1 us
+localparam int     START_SIGNAL_US = 70;         // max. 80 us [hw, p. 6]
+localparam int     ZERO_SIGNAL_US  = 35;         // max. 28 us at 'z' meaning '0' and 70 us meaning '1' [hw, pp. 7, 8]
+localparam int     ZERO_BIT_US     = 40;         // max. 50 us at '0' [hw, pp. 7, 8]
 
 logic poll_clk;
 logic cur_dat = 1'b0, last_dat = 1'b0;
@@ -118,14 +118,14 @@ logic [$clog2(NUM_BITS) : 0] bit_ctr = 1'b0, next_bit_ctr = 1'b0;
 // checksum calculation
 logic checksum_ok;
 generate if(USE_CHECKSUM) begin
-	logic [NUM_BITS - 1 : 0] checksum;
+	logic [DATA_BITS + 1 : 0] checksum;
 	assign checksum =
 		data[NUM_BITS - 1 - 0*DATA_BITS -: DATA_BITS] +
 		data[NUM_BITS - 1 - 1*DATA_BITS -: DATA_BITS] +
 		data[NUM_BITS - 1 - 2*DATA_BITS -: DATA_BITS] +
 		data[NUM_BITS - 1 - 3*DATA_BITS -: DATA_BITS];
 
-	assign checksum_ok = (checksum == data[NUM_BITS - 1 - 4*DATA_BITS -: DATA_BITS]);
+	assign checksum_ok = (checksum[DATA_BITS - 1 : 0] == data[NUM_BITS - 1 - 4*DATA_BITS -: DATA_BITS]);
 end else begin
 	assign checksum_ok = 1'b1;
 end

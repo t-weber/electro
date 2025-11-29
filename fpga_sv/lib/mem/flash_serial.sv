@@ -11,11 +11,11 @@
 
 module flash_serial
 #(
-	parameter WORD_BITS      = 8,
-	parameter ADDRESS_WORDS  = 2,
+	parameter byte WORD_BITS      = 8,
+	parameter byte ADDRESS_WORDS  = 2,
 
-	parameter MAIN_CLK       = 50_000_000,
-	parameter SERIAL_CLK     = 10_000_000
+	parameter longint MAIN_CLK    = 50_000_000,
+	parameter longint SERIAL_CLK  = 10_000_000
  )
 (
 	// main clock and reset
@@ -66,15 +66,15 @@ localparam [WORD_BITS - 1 : 0] CMD_ERASE         = WORD_BITS'(8'h81);
 // wait timer register, see [flash], p.11, p. 13, pp. 76-77
 // --------------------------------------------------------------------
 `ifdef __IN_SIMULATION__
-	localparam WAIT_INIT        = 1;
-	localparam WAIT_RESET       = 1;
-	localparam WAIT_AFTER_RESET = 1;
+	localparam longint WAIT_INIT        = 1;
+	localparam longint WAIT_RESET       = 1;
+	localparam longint WAIT_AFTER_RESET = 1;
 `else
-	localparam WAIT_INIT        = MAIN_CLK/1000/1000 * 400; // 400 us
-	localparam WAIT_RESET       = MAIN_CLK/1000/1000 * 2;   // 2 us
-	localparam WAIT_AFTER_RESET = MAIN_CLK/1000/1000 * 50;  // 50 us
-	localparam WAIT_AFTER_WRITE = MAIN_CLK/1000 * 3;        // 3 ms
-	localparam WAIT_AFTER_ERASE = MAIN_CLK/1000 * 20;       // 20 ms
+	localparam longint WAIT_INIT        = MAIN_CLK * 400 / 1000_000; // 400 us
+	localparam longint WAIT_RESET       = MAIN_CLK * 2 / 1000_000;   // 2 us
+	localparam longint WAIT_AFTER_RESET = MAIN_CLK * 50 / 1000_000;  // 50 us
+	localparam longint WAIT_AFTER_WRITE = MAIN_CLK * 3 / 1000;       // 3 ms
+	localparam longint WAIT_AFTER_ERASE = MAIN_CLK * 20 / 1000;      // 20 ms
 `endif
 
 logic [$clog2(WAIT_AFTER_ERASE /*largest value*/) : 0]
