@@ -110,7 +110,8 @@ localparam TEMP_BITS = 8;
 wire [TEMP_BITS - 1 : 0] humid, temp;
 wire [TEMP_BITS - 1 : 0] data = show_humid ? humid : temp;
 
-temperature #(.MAIN_CLK(MAIN_CLK), .DATA_BITS(TEMP_BITS))
+temperature #(.MAIN_CLK(MAIN_CLK), .DATA_BITS(TEMP_BITS),
+	.USE_CHECKSUM(1'b1))
 temp_sensor(.in_clk(clk27), .in_rst(rst),
 	.out_humid(humid), .out_temp(temp),
 	.inout_dat(temp_dat));

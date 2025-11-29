@@ -9,8 +9,9 @@
 
 module temperature
 #(
-	parameter MAIN_CLK  = 50_000_000,
-	parameter DATA_BITS = 8
+	parameter MAIN_CLK     = 50_000_000,
+	parameter DATA_BITS    = 8,
+	parameter USE_CHECKSUM = 1'b1
 )
 (
 	// clock and reset
@@ -73,7 +74,7 @@ logic [7 : 0] dat1_us = 1'b0;   // number of us that the signal has been at '1' 
 clkgen #(.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(POLLING_CLK), .CLK_INIT(1'b1))
 	poll_clk_mod(.in_clk(in_clk), .in_rst(in_rst), .out_clk(poll_clk));
 
-always@(posedge poll_clk) begin
+always_ff@(posedge poll_clk) begin
 	last_dat <= cur_dat;
 	cur_dat <= inout_dat;
 
@@ -101,8 +102,8 @@ typedef enum
 	Reset,
 	SendStart0, SendStartZ,
 	ReceiveStart0, ReceiveStartZ,
-	ReceiveBitsWait, ReceiveBits,
-	Finished
+	ReceiveBitWait, ReceiveBit,
+	Verify, Finished
 } t_state;
 t_state state = Reset, next_state = Reset;
 
@@ -110,17 +111,37 @@ t_state state = Reset, next_state = Reset;
 // the sensor's data register
 localparam NUM_BITS = 40;
 logic [NUM_BITS - 1 : 0] data = 1'b0, next_data = 1'b0;
+logic [NUM_BITS - 1 : 0] final_data = 1'b0, next_final_data = 1'b0;
 logic [$clog2(NUM_BITS) : 0] bit_ctr = 1'b0, next_bit_ctr = 1'b0;
+
+
+// checksum calculation
+logic checksum_ok;
+generate if(USE_CHECKSUM) begin
+	logic [NUM_BITS - 1 : 0] checksum;
+	assign checksum =
+		data[NUM_BITS - 1 - 0*DATA_BITS -: DATA_BITS] +
+		data[NUM_BITS - 1 - 1*DATA_BITS -: DATA_BITS] +
+		data[NUM_BITS - 1 - 2*DATA_BITS -: DATA_BITS] +
+		data[NUM_BITS - 1 - 3*DATA_BITS -: DATA_BITS];
+
+	assign checksum_ok = (checksum == data[NUM_BITS - 1 - 4*DATA_BITS -: DATA_BITS]);
+end else begin
+	assign checksum_ok = 1'b1;
+end
+endgenerate
 
 
 always_ff@(posedge in_clk) begin
 	if(in_rst == 1'b1) begin
 		state <= Reset;
 		data <= 1'b0;
+		final_data <= 1'b0;
 		bit_ctr <= 1'b0;
 	end else begin
 		state <= next_state;
 		data <= next_data;
+		final_data <= next_final_data;
 		bit_ctr <= next_bit_ctr;
 	end
 end
@@ -129,6 +150,7 @@ end
 always_comb begin
 	next_state = state;
 	next_data = data;
+	next_final_data = final_data;
 	next_bit_ctr = bit_ctr;
 	wait_ctr_max = WAIT_RESET;
 
@@ -165,15 +187,15 @@ always_comb begin
 		// receive the sensor's start signal: 1 (START_SIGNAL_US) [hw, p. 6]
 		ReceiveStartZ: begin
 			if(dat_negedge && dat1_us >= START_SIGNAL_US)
-				next_state = ReceiveBitsWait;
+				next_state = ReceiveBitWait;
 		end
 
-		ReceiveBitsWait: begin
+		ReceiveBitWait: begin
 			if(dat_posedge && dat0_us >= ZERO_BIT_US)
-				next_state = ReceiveBits;
+				next_state = ReceiveBit;
 		end
 
-		ReceiveBits: begin
+		ReceiveBit: begin
 			if(dat_negedge) begin
 				if(dat1_us < ZERO_SIGNAL_US) begin
 					// received '0'
@@ -185,12 +207,18 @@ always_comb begin
 
 				// next bit
 				next_bit_ctr = bit_ctr + 1'b1;
-				next_state = ReceiveBitsWait;
+				next_state = ReceiveBitWait;
 
 				// all bits received?
 				if(bit_ctr == NUM_BITS - 1'b1)
-					next_state = Finished;
+					next_state = Verify;
 			end
+		end
+
+		Verify: begin
+			if(checksum_ok)
+				next_final_data = data;
+			next_state = Finished;
 		end
 
 		Finished: begin
@@ -211,13 +239,13 @@ end
 // ----------------------------------------------------------------------------
 // input / output
 // ----------------------------------------------------------------------------
-assign inout_dat = (state == SendStart0 ? 1'b0 : 1'bz);
+assign inout_dat     = (state == SendStart0 ? 1'b0 : 1'bz);
 
-assign out_humid     = data[NUM_BITS - 1 - 0*DATA_BITS -: DATA_BITS];
-assign out_humid_dec = data[NUM_BITS - 1 - 1*DATA_BITS -: DATA_BITS];
+assign out_humid     = final_data[NUM_BITS - 1 - 0*DATA_BITS -: DATA_BITS];
+assign out_humid_dec = final_data[NUM_BITS - 1 - 1*DATA_BITS -: DATA_BITS];
 
-assign out_temp      = data[NUM_BITS - 1 - 2*DATA_BITS -: DATA_BITS];
-assign out_temp_dec  = data[NUM_BITS - 1 - 3*DATA_BITS -: DATA_BITS];
+assign out_temp      = final_data[NUM_BITS - 1 - 2*DATA_BITS -: DATA_BITS];
+assign out_temp_dec  = final_data[NUM_BITS - 1 - 3*DATA_BITS -: DATA_BITS];
 // ----------------------------------------------------------------------------
 
 
