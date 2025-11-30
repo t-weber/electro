@@ -30,6 +30,8 @@ src_files="../../lib/sync/debounce_button.sv \
 	../../lib/sync/debounce_switch.sv \
 	../../lib/conv/bcd.sv \
 	../../lib/clock/clkgen.sv \
+	../../lib/sync/syncbit.sv \
+	../../lib/sync/syncdata.sv \
 	../../lib/comm/serial_tx.sv \
 	../../lib/display/ledmatrix.sv \
 	../../lib/display/sevenseg.v \

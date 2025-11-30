@@ -7,11 +7,11 @@
 
 module syncbit
 #(
-	parameter STEPS = 4
+	parameter int STEPS = 4
 )
 (
-	input wire in_clk, in_rst,
-	input wire in_bit,
+	input  wire in_clk, in_rst,
+	input  wire in_bit,
 	output wire out_bit
 );
 

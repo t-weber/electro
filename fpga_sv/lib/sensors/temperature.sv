@@ -65,32 +65,58 @@ localparam longint POLLING_CLK     = 1_000_000;  // 1 us
 localparam int     START_SIGNAL_US = 70;         // max. 80 us [hw, p. 6]
 localparam int     ZERO_SIGNAL_US  = 35;         // max. 28 us at 'z' meaning '0' and 70 us meaning '1' [hw, pp. 7, 8]
 localparam int     ZERO_BIT_US     = 40;         // max. 50 us at '0' [hw, pp. 7, 8]
+localparam byte    US_CTR_BITS     = 8;
 
-logic poll_clk;
 logic cur_dat = 1'b0, last_dat = 1'b0;
-logic [7 : 0] dat0_us = 1'b0;   // number of us that the signal has been at '0'
-logic [7 : 0] dat1_us = 1'b0;   // number of us that the signal has been at '1' (i.e. 'z')
+logic [US_CTR_BITS - 1 : 0] _dat0_us = 1'b0;   // number of us that the signal has been at '0'
+logic [US_CTR_BITS - 1 : 0] _dat1_us = 1'b0;   // number of us that the signal has been at '1' (i.e. 'z')
+logic [US_CTR_BITS - 1 : 0] dat0_us, dat1_us;
 
+// polling clock
+logic poll_clk;
 clkgen #(.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(POLLING_CLK), .CLK_INIT(1'b1))
 	poll_clk_mod(.in_clk(in_clk), .in_rst(in_rst), .out_clk(poll_clk));
 
+// microsecond counters
 always_ff@(posedge poll_clk) begin
-	last_dat <= cur_dat;
-	cur_dat <= inout_dat;
+	if(in_rst) begin
+		cur_dat <= 1'b0;
+		last_dat <= 1'b0;
+		_dat0_us <= 1'b0;
+		_dat1_us <= 1'b0;
+	end else begin
+		last_dat <= cur_dat;
+		cur_dat <= inout_dat;
 
-	if(dat_posedge)
-		dat1_us <= 1'b0;
-	else if(cur_dat == 1'b1)
-		dat1_us <= dat1_us + 1'b1;
+		if(dat_posedge)
+			_dat1_us <= 1'b0;
+		else if(cur_dat == 1'b1)
+			_dat1_us <= _dat1_us + 1'b1;
 
-	if(dat_negedge)
-		dat0_us <= 1'b0;
-	else if(cur_dat == 1'b0)
-		dat0_us <= dat0_us + 1'b1;
+		if(dat_negedge)
+			_dat0_us <= 1'b0;
+		else if(cur_dat == 1'b0)
+			_dat0_us <= _dat0_us + 1'b1;
+	end
 end
 
-logic dat_posedge = (last_dat == 1'b0 && cur_dat == 1'b1);
-logic dat_negedge = (last_dat == 1'b1 && cur_dat == 1'b0);
+// edge detection
+logic dat_posedge, _dat_posedge = (last_dat == 1'b0 && cur_dat == 1'b1);
+logic dat_negedge, _dat_negedge = (last_dat == 1'b1 && cur_dat == 1'b0);
+
+// synchronise edge detection to faster clock domain
+syncbit #(.STEPS(1)) sync_posedge(.in_clk(in_clk), .in_rst(in_rst),
+	.in_bit(_dat_posedge), .out_bit(dat_posedge));
+syncbit #(.STEPS(1)) sync_negedge(.in_clk(in_clk), .in_rst(in_rst),
+	.in_bit(_dat_negedge), .out_bit(dat_negedge));
+
+// synchronise counters to faster clock domain
+syncdata #(.STEPS(1), .BITS(US_CTR_BITS))
+	sync_dat0(.in_clk(in_clk), .in_rst(in_rst),
+		.in_data(_dat0_us), .out_data(dat0_us));
+syncdata #(.STEPS(1), .BITS(US_CTR_BITS))
+	sync_dat1(.in_clk(in_clk), .in_rst(in_rst),
+		.in_data(_dat1_us), .out_data(dat1_us));
 // ----------------------------------------------------------------------------
 
 

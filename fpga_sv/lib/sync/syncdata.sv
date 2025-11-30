@@ -7,12 +7,12 @@
 
 module syncdata
 #(
-	parameter BITS = 8,
-	parameter STEPS = 4
+	parameter int BITS  = 8,
+	parameter int STEPS = 4
 )
 (
-	input wire in_clk, in_rst,
-	input wire [BITS - 1 : 0] in_data,
+	input  wire in_clk, in_rst,
+	input  wire [BITS - 1 : 0] in_data,
 	output wire [BITS - 1 : 0] out_data
 );
 
