@@ -48,7 +48,7 @@ if(MAIN_CLK_HZ == CLK_HZ) begin
 		always_ff@(/*posedge*/ in_clk
 `ifdef CLKGEN_ASYNC
 			// asynchronous reset
-			, in_rst
+			, posedge in_rst
 `endif
 		) begin
 			if(in_rst == 1'b1) begin
@@ -75,7 +75,7 @@ end else begin
 	always_ff@(posedge in_clk
 `ifdef CLKGEN_ASYNC
 		// asynchronous reset
-		, in_rst
+		, posedge in_rst
 `endif
 	) begin
 		// reset
