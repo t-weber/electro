@@ -52,15 +52,30 @@ begin
 	-- output clock
 	gen_clk : if MAIN_HZ = CLK_HZ generate
 
-		-- same frequency, just output main clock
-		gen_shift : if CLK_SHIFT = '1' and CLK_INIT = '1' generate
-			out_clk <= not in_clk;
-		elsif CLK_SHIFT = '1' and CLK_INIT = '0' generate
+		gen_shift : if CLK_SHIFT = '1' and CLK_INIT = '0' generate
+			-- same frequency, just output main clock
 			out_clk <= in_clk;
 		elsif CLK_SHIFT = '0' and CLK_INIT = '1' generate
+			-- same frequency, just output main clock
 			out_clk <= in_clk;
 		else generate
-			out_clk <= not in_clk;
+			-- same frequency, but inverted
+
+			-- avoid gating the clock as this causes glitches
+			--out_clk <= not in_clk;
+			out_clk <= clk;
+
+			-- output a signal from a flip-flop instead of a gate
+			process(in_clk, in_reset) begin
+				if in_reset = '1' then
+					clk <= CLK_INIT;
+				--elsif rising_edge(in_clk) then
+				else
+					clk <= not clk;
+				end if;
+			end process;
+
+		-- psl inv_clk_assert : assert always (in_clk and not in_reset -> clk) @rising_edge(in_clk);
 		end generate;
 
 	else generate

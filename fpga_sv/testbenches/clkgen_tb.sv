@@ -22,17 +22,33 @@ module clkgen_tb;
 
 
 	// --------------------------------------------------------------------
-	// instantiate clock generator
+	// instantiate slow clock generator
 	logic slow_clk;
 
 	clkgen #(
 		.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(SLOW_CLK),
-		.CLK_INIT(1'b1)
+		.CLK_INIT(1'b1), .CLK_SHIFT(1'b1)
 	)
-	serial_clk_mod
+	slow_clk_mod
 	(
 		.in_clk(clk), .in_rst(rst),
 		.out_clk(slow_clk)
+	);
+	// --------------------------------------------------------------------
+
+
+	// --------------------------------------------------------------------
+	// instantiate inverted clock generator
+	logic inv_clk;
+
+	clkgen #(
+		.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(MAIN_CLK),
+		.CLK_INIT(1'b0), .CLK_SHIFT(1'b0)
+	)
+	inv_clk_mod
+	(
+		.in_clk(clk), .in_rst(rst),
+		.out_clk(inv_clk)
 	);
 	// --------------------------------------------------------------------
 
@@ -47,6 +63,9 @@ module clkgen_tb;
 
 		iter = 0;
 		clk_ticks = 0;
+
+		rst = 1'b1; #1;
+		rst = 1'b0;
 	end
 
 

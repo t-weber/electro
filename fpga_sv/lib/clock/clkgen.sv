@@ -33,17 +33,29 @@ generate
 if(MAIN_CLK_HZ == CLK_HZ) begin
 
 	// same frequency -> just output main clock
-	if(CLK_INIT == 1'b1) begin
-		if(CLK_SHIFT == 1'b1) begin
-			assign out_clk = ~in_clk;
-		end else begin
-			assign out_clk = in_clk;
-		end
+	if(CLK_INIT != CLK_SHIFT) begin
+		// same frequency, just output main clock
+		assign out_clk = in_clk;
 	end else begin
-		if(CLK_SHIFT == 1'b1) begin
-			assign out_clk = in_clk;
-		end else begin
-			assign out_clk = ~in_clk;
+		// same frequency, but inverted
+		// avoid gating the clock as this causes glitches
+		//assign out_clk = ~in_clk;
+
+		logic clk = CLK_INIT;
+		assign out_clk = clk;
+
+		// output a signal from a flip-flop instead of a gate
+		always_ff@(/*posedge*/ in_clk
+`ifdef CLKGEN_ASYNC
+			// asynchronous reset
+			, in_rst
+`endif
+		) begin
+			if(in_rst == 1'b1) begin
+				clk <= CLK_INIT;
+			end else begin
+				clk <= ~clk;
+			end
 		end
 	end
 
@@ -63,7 +75,7 @@ end else begin
 	always_ff@(posedge in_clk
 `ifdef CLKGEN_ASYNC
 		// asynchronous reset
-		, posedge in_rst
+		, in_rst
 `endif
 	) begin
 		// reset
