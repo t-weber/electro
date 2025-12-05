@@ -56,7 +56,7 @@ begin
 		val1_next <= val1;
 
 		-- also explicit default action: creates a latch
-		-- when assigned in a combinatorial block!
+		-- when assigned in a combinational block!
 		val2 <= val2;
 
 		case state is
