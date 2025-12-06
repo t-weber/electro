@@ -19,8 +19,8 @@ end entity;
 
 architecture fsm_tb_arch of fsm_tb is
 	-- clock
+	constant CLK_DELAY : time := 1.0 us;
 	constant MAIN_CLK : natural := 1_000_000;
-	constant CLK_DELAY : time := 1 us;
 	signal clk : std_logic := '0';
 
 	-- reset
@@ -37,7 +37,7 @@ architecture fsm_tb_arch of fsm_tb is
 
 begin
 	-- clock
-	clk <= not clk after CLK_DELAY;
+	clk <= not clk after CLK_DELAY / 2;
 
 
 	---------------------------------------------------------------------------
@@ -46,7 +46,7 @@ begin
 	--
 	-- flip-flops
 	--
-	fsm2_ff : process(clk) is
+	fsm2_ff : process(clk, rst) is
 	begin
 		if rst then
 			-- reset
@@ -72,10 +72,11 @@ begin
 	fsm2_comb : process(all) is
 	begin
 		fsm2_state_next <= fsm2_state;
-		fsm2_wait_ctr_max <= WAIT_DELAY;
+		fsm2_wait_ctr_max <= 0;
 
 		case fsm2_state is
 			when Start =>
+				fsm2_wait_ctr_max <= WAIT_DELAY;
 				if fsm2_wait_ctr = fsm2_wait_ctr_max then
 					fsm2_state_next <= One;
 				end if;
@@ -136,6 +137,7 @@ begin
 			end case;
 		end if;
 
+		--report fsm1_state'instance_name;
 		report "t = "             & time'image(now)
 			 & ", rst = "         & std_logic'image(rst)
 			 & ", clk = "         & std_logic'image(clk)
@@ -161,7 +163,8 @@ begin
 	--
 	-- debug output
 	--
-	report_proc : process(clk) is
+	report_proc : process(clk, rst) is
+		--alias fsm1_state is <<variable .fsm_tb.fsm1_proc.fsm1_state : t_state>>;
 	begin
 		report "t = "             & time'image(now)
 			 & ", rst = "         & std_logic'image(rst)
