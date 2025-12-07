@@ -20,7 +20,7 @@ module fsm;
 // clock
 localparam int MAX_CLK_ITER = 25;
 logic theclk = 1'b0;
-always #1 theclk <= ~theclk;
+always #1 theclk = ~theclk;
 
 // reset
 localparam int RESET_ITERS = 4;
@@ -55,7 +55,7 @@ always_ff@(posedge theclk, posedge therst) begin
 		fsm2_wait_ctr <= 0;
 	end
 
-	else if(theclk) begin
+	else begin
 		// clock
 		fsm2_state <= fsm2_state_next;
 
@@ -123,8 +123,8 @@ always@(posedge theclk, posedge therst) begin
 		fsm1_wait_ctr <= 0;
 	end
 
-	else if(theclk) begin
-		unique case(fsm2_state)
+	else begin
+		unique case(fsm1_state)
 			Start: begin
 				if(fsm1_wait_ctr == WAIT_DELAY)
 					fsm1_state <= One;
@@ -175,9 +175,9 @@ initial begin
 	$dumpfile("fsm.vcd");
 	$dumpvars(0, fsm);
 
-	therst <= 1'b1;
+	therst = 1'b1;
 	#(RESET_ITERS);
-	therst <= 1'b0;
+	therst = 1'b0;
 
 	#(MAX_CLK_ITER);
 
