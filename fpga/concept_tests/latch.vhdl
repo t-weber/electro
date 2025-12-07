@@ -4,19 +4,19 @@
 -- @date 27-nov-2023
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 latch_tb.vhdl  &&  ghdl -e --std=08 latch_tb latch_tb_arch
--- ghdl -r --std=08 latch_tb latch_tb_arch --vcd=latch_tb.vcd --stop-time=1us
--- gtkwave latch_tb.vcd
+-- ghdl -a --std=08 latch.vhdl  &&  ghdl -e --std=08 latch latch_arch
+-- ghdl -r --std=08 latch latch_arch --vcd=latch.vcd --stop-time=1us
+-- gtkwave latch.vcd --rcvar "do_initial_zoom_fit yes"
 --
 
 library ieee;
 use ieee.std_logic_1164.all;
 
 
-entity latch_tb is end entity;
+entity latch is end entity;
 
 
-architecture latch_tb_arch of latch_tb is
+architecture latch_arch of latch is
 	-- clock
 	constant CLK_DELAY : time := 100 ns;
 	signal clk : std_logic := '0';

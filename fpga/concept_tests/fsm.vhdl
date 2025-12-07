@@ -4,20 +4,20 @@
 -- @date dec-2025
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 fsm_tb.vhdl  &&  ghdl -e --std=08 fsm_tb fsm_tb_arch
--- ghdl -r --std=08 fsm_tb fsm_tb_arch --vcd=fsm_tb.vcd --stop-time=25us
--- gtkwave fsm_tb.vcd --rcvar "do_initial_zoom_fit yes"
+-- ghdl -a --std=08 fsm.vhdl  &&  ghdl -e --std=08 fsm fsm_arch
+-- ghdl -r --std=08 fsm fsm_arch --vcd=fsm.vcd --stop-time=25us
+-- gtkwave fsm.vcd --rcvar "do_initial_zoom_fit yes"
 --
 
 library ieee;
 use ieee.std_logic_1164.all;
 
 
-entity fsm_tb is
+entity fsm is
 end entity;
 
 
-architecture fsm_tb_arch of fsm_tb is
+architecture fsm_arch of fsm is
 	-- clock
 	constant CLK_DELAY : time := 1.0 us;
 	constant MAIN_CLK : natural := 1_000_000;
@@ -164,7 +164,7 @@ begin
 	-- debug output
 	--
 	report_proc : process(clk, rst) is
-		--alias fsm1_state is <<variable .fsm_tb.fsm1_proc.fsm1_state : t_state>>;
+		--alias fsm1_state is <<variable .fsm.fsm1_proc.fsm1_state : t_state>>;
 	begin
 		report "t = "             & time'image(now)
 			 & ", rst = "         & std_logic'image(rst)

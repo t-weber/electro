@@ -4,12 +4,12 @@
  * @date 20-apr-2024
  * @license see 'LICENSE' file
  *
- * iverilog -g2012 -o delay_tb delay_tb.sv
+ * iverilog -g2012 -o delay delay.sv
  */
 
 `timescale 1ms / 1us
 
-module delay_tb(
+module delay(
 	output reg out_direct,
 	output wire out_viareg,
 	output wire out_vianext

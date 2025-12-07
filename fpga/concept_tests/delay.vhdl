@@ -4,16 +4,16 @@
 -- @date 27-nov-2023
 -- @license see 'LICENSE' file
 --
--- ghdl -a --std=08 delay_tb.vhdl  &&  ghdl -e --std=08 delay_tb delay_tb_arch
--- ghdl -r --std=08 delay_tb delay_tb_arch --vcd=delay_tb.vcd --stop-time=500ns
--- gtkwave delay_tb.vcd
+-- ghdl -a --std=08 delay.vhdl  &&  ghdl -e --std=08 delay delay_arch
+-- ghdl -r --std=08 delay delay_arch --vcd=delay.vcd --stop-time=500ns
+-- gtkwave delay.vcd --rcvar "do_initial_zoom_fit yes"
 --
 
 library ieee;
 use ieee.std_logic_1164.all;
 
 
-entity delay_tb is
+entity delay is
 	port(
 		out_direct : out std_logic;
 		out_sig : out std_logic;
@@ -23,7 +23,7 @@ entity delay_tb is
 end entity;
 
 
-architecture delay_tb_arch of delay_tb is
+architecture delay_arch of delay is
 	-- clock
 	constant CLK_DELAY : time := 20 ns;
 	signal clk : std_logic := '0';
