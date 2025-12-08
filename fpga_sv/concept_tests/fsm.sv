@@ -35,14 +35,104 @@ typedef enum
 
 
 //---------------------------------------------------------------------------
+//-- three-process state machine
+//---------------------------------------------------------------------------
+// state variable
+t_state fsm3_state = Start, fsm3_state_next = Start;
+
+// wait counter
+localparam int WAIT_DELAY = 5;
+logic[$clog2(WAIT_DELAY) : 0] fsm3_wait_ctr = 1'b0, fsm3_wait_ctr_max = 1'b0;
+
+// "output"
+logic fsm3_out;
+
+
+//
+// flip-flops
+//
+always_ff@(posedge theclk, posedge therst) begin
+	if(therst) begin
+		// reset
+		fsm3_state <= Start;
+		fsm3_wait_ctr <= 1'b0;
+	end
+
+	else begin
+		// clock
+		fsm3_state <= fsm3_state_next;
+
+		if(fsm3_wait_ctr == fsm3_wait_ctr_max)
+			fsm3_wait_ctr <= 1'b0;
+		else
+			fsm3_wait_ctr <= fsm3_wait_ctr + 1'b1;
+	end
+end
+
+
+//
+// combinational logic
+//
+always_comb begin
+	// defaults
+	fsm3_state_next = fsm3_state;
+	fsm3_wait_ctr_max = 0;
+
+	unique case(fsm3_state)
+		Start: begin
+			fsm3_wait_ctr_max = WAIT_DELAY;
+			if(fsm3_wait_ctr == fsm3_wait_ctr_max)
+				fsm3_state_next = One;
+		end
+
+		One: begin
+			fsm3_state_next = Two;
+		end
+
+		Two: begin
+			fsm3_state_next = Three;
+		end
+
+		Three: begin
+			fsm3_state_next = Finish;
+		end
+
+		Finish: begin
+		end
+	endcase
+end
+
+
+//
+// combinational output logic
+//
+always_comb begin
+	// defaults
+	fsm3_out = 1'b0;
+
+	unique case(fsm3_state)
+		One, Three: begin
+			fsm3_out = 1'b1;
+		end
+
+		default: begin
+		end
+	endcase
+end
+//---------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------
 //-- two-process state machine
 //---------------------------------------------------------------------------
 // state variable
 t_state fsm2_state = Start, fsm2_state_next = Start;
 
 // wait counter
-localparam int WAIT_DELAY = 5;
 logic[$clog2(WAIT_DELAY) : 0] fsm2_wait_ctr = 1'b0, fsm2_wait_ctr_max = 1'b0;
+
+// "output"
+logic fsm2_out;
 
 
 //
@@ -52,15 +142,15 @@ always_ff@(posedge theclk, posedge therst) begin
 	if(therst) begin
 		// reset
 		fsm2_state <= Start;
-		fsm2_wait_ctr <= 0;
+		fsm2_wait_ctr <= 1'b0;
 	end
 
 	else begin
 		// clock
 		fsm2_state <= fsm2_state_next;
 
-		if(fsm2_wait_ctr == fsm2_wait_ctr_max || fsm2_state != Start)
-			fsm2_wait_ctr <= 0;
+		if(fsm2_wait_ctr == fsm2_wait_ctr_max)
+			fsm2_wait_ctr <= 1'b0;
 		else
 			fsm2_wait_ctr <= fsm2_wait_ctr + 1'b1;
 	end
@@ -74,6 +164,7 @@ always_comb begin
 	// defaults
 	fsm2_state_next = fsm2_state;
 	fsm2_wait_ctr_max = 0;
+	fsm2_out = 1'b0;
 
 	unique case(fsm2_state)
 		Start: begin
@@ -84,6 +175,7 @@ always_comb begin
 
 		One: begin
 			fsm2_state_next = Two;
+			fsm2_out = 1'b1;
 		end
 
 		Two: begin
@@ -92,6 +184,7 @@ always_comb begin
 
 		Three: begin
 			fsm2_state_next = Finish;
+			fsm2_out = 1'b1;
 		end
 
 		Finish: begin
@@ -110,6 +203,10 @@ t_state fsm1_state = Start;
 // wait counter
 logic[$clog2(WAIT_DELAY) : 0] fsm1_wait_ctr = 1'b0;
 
+// "output"
+logic fsm1_out;
+
+
 //
 // flip-flops and combinational logic
 //
@@ -117,19 +214,24 @@ always@(posedge theclk, posedge therst) begin
 	//static t_state fsm1_state = Start;
 	//static logic[$clog2(WAIT_DELAY) : 0] fsm1_wait_ctr = 1'b0;
 
-	if(therst) begin
-		// reset
+	if(therst) begin  // reset
 		fsm1_state <= Start;
 		fsm1_wait_ctr <= 0;
+		fsm1_out <= 1'b0;
 	end
 
-	else begin
+	else begin        // clock
+		fsm1_out <= 1'b0;
+
 		unique case(fsm1_state)
 			Start: begin
-				if(fsm1_wait_ctr == WAIT_DELAY)
+				if(fsm1_wait_ctr == WAIT_DELAY) begin
 					fsm1_state <= One;
-				else
+					fsm1_wait_ctr <= 1'b0;
+					fsm1_out <= 1'b1;
+				end else begin
 					fsm1_wait_ctr <= fsm1_wait_ctr + 1'b1;
+				end
 			end
 
 			One: begin
@@ -138,6 +240,7 @@ always@(posedge theclk, posedge therst) begin
 
 			Two: begin
 				fsm1_state <= Three;
+				fsm1_out <= 1'b1;
 			end
 
 			Three: begin
@@ -156,13 +259,27 @@ end
 //-- debug output
 //---------------------------------------------------------------------------
 always@(/*posedge*/ theclk) begin
-	$display("t = %3t", $time,
-		", therst = %b", therst,
-		", clk = %b", theclk,
-		", FSM2: state = %9s", fsm2_state.name(),
-		", wait_ctr = %d", fsm2_wait_ctr,
-		", FSM1: state = %9s", fsm1_state.name(),
-		", wait_ctr = %d", fsm1_wait_ctr
+	assert(fsm3_state == fsm2_state) else $error("Invalid state (2, 3).");
+	assert(fsm1_state == fsm2_state) else $error("Invalid state (1, 2).");
+
+	assert(fsm3_wait_ctr == fsm2_wait_ctr) else $error("Invalid counter (2, 3).");
+	assert(fsm1_wait_ctr == fsm2_wait_ctr) else $error("Invalid counter (1, 2).");
+
+	assert(fsm3_out == fsm2_out) else $error("Invalid output (2, 3).");
+	assert(fsm1_out == fsm2_out) else $error("Invalid output (1, 2).");
+
+	$display("t = %3t", $time, ", ",
+		"therst = %b", therst, ", ",
+		"clk = %b", theclk, ", ",
+		"\nFSM3: state = %9s", fsm3_state.name(), ", ",
+		"wait_ctr = %d", fsm3_wait_ctr, ", ",
+		"output = %b", fsm3_out, ", ",
+		"\nFSM2: state = %9s", fsm2_state.name(), ", ",
+		"wait_ctr = %d", fsm2_wait_ctr, ", ",
+		"output = %b", fsm2_out, ", ",
+		"\nFSM1: state = %9s", fsm1_state.name(), ", ",
+		"wait_ctr = %d", fsm1_wait_ctr, ", ",
+		"output = %b", fsm1_out, "\n",
 	);
 end
 //---------------------------------------------------------------------------
