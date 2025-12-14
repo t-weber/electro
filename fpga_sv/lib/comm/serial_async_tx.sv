@@ -45,7 +45,7 @@ module serial_async_tx
 	output wire out_word_finished,
 
 	// parallel input data (FPGA -> IC)
-	input wire [BITS-1 : 0] in_parallel,
+	input wire [BITS - 1 : 0] in_parallel,
 
 	// serial output data (FPGA -> IC)
 	output wire out_serial
@@ -99,7 +99,7 @@ assign out_ready = tx_state == Ready;
 
 // ----------------------------------------------------------------------------
 // parallel input buffer (FPGA -> IC)
-reg [BITS-1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
+reg [BITS - 1 : 0] parallel_fromfpga = 0, next_parallel_fromfpga = 0;
 
 // serial output (FPGA -> IC)
 assign out_serial =

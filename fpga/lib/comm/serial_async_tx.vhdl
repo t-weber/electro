@@ -50,7 +50,7 @@ entity serial_async_tx is
 		out_word_finished : out std_logic;
 
 		-- parallel input data (FPGA -> IC)
-		in_parallel : in std_logic_vector(BITS-1 downto 0);
+		in_parallel : in std_logic_vector(BITS - 1 downto 0);
 
 		-- serial output data (FPGA -> IC)
 		out_serial : out std_logic
@@ -72,10 +72,10 @@ architecture serial_async_tx_impl of serial_async_tx is
 
 	-----------------------------------------------------------------------
 	-- bit counter
-	signal bit_ctr, next_bit_ctr : natural range 0 to BITS-1 := 0;
+	signal bit_ctr, next_bit_ctr : natural range 0 to BITS - 1 := 0;
 
 	-- bit counter with correct ordering
-	signal actual_bit_ctr : natural range 0 to BITS-1 := 0;
+	signal actual_bit_ctr : natural range 0 to BITS - 1 := 0;
 	-----------------------------------------------------------------------
 
 	-----------------------------------------------------------------------
@@ -86,7 +86,7 @@ architecture serial_async_tx_impl of serial_async_tx is
 	-----------------------------------------------------------------------
 	-- parallel input buffer (FPGA -> IC)
 	signal parallel_fromfpga, next_parallel_fromfpga
-		: std_logic_vector(BITS-1 downto 0) := (others => '0');
+		: std_logic_vector(BITS - 1 downto 0) := (others => '0');
 
 	-- serial output buffer (FPGA -> IC)
 	signal serial_fromfpga : std_logic := SERIAL_INACTIVE;

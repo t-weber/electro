@@ -33,7 +33,8 @@ module main
 
 	// buttons and leds
 	input [1:0] key,
-	output [5:0] led
+	output [5:0] led,
+    output [7:0] ledg
 );
 
 
@@ -60,6 +61,7 @@ assign led[4] = 1'b0;
 assign led[5] = 1'b0;
 
 wire [7 : 0] flags;
+assign ledg = flags;
 // --------------------------------------------------------------------
 
 
@@ -81,7 +83,7 @@ serial_mod(
 	.out_serial(txtlcd_sda_o), .in_serial(txtlcd_sda_i),
 	.in_parallel(serial_data), .out_parallel(serial_data_in),
 	.out_next_word(serial_next), .out_word_finished(),
-	.out_clk_raw(serial_clk_raw)
+	.out_clk_raw(serial_clk_raw), .out_transmitting()
 );
 // --------------------------------------------------------------------
 
@@ -96,7 +98,8 @@ wire [6 : 0] ram_addr;
 
 // instantiate lcd module
 txtlcd_3wire #(
-	.MAIN_CLK(MAIN_CLK), .LCD_SIZE(LCD_SIZE)
+	.MAIN_CLK(MAIN_CLK), .LCD_SIZE(LCD_SIZE),
+    .READ_BUSY_FLAG(1'b1)
 )
 lcd_mod(
 	.in_clk(clk27), .in_rst(reset),

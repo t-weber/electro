@@ -182,7 +182,7 @@ logic lcd_reset = 1'b0;
 logic [LCD_NUM_ADDRBITS - 1 : 0] mem_addr = 1'b0;
 logic bus_enable = 1'b0;
 logic [BUS_NUM_DATABITS - 1 : 0] bus_data = 1'b0;
-logic [BUS_NUM_DATABITS - 1 : 0] busy_flag = 1'b0, next_busy_flag = 1'b0;
+logic [BUS_NUM_DATABITS - 1 : 0] busy_flag, next_busy_flag = 1'b0;
 
 assign out_lcd_reset = lcd_reset;
 assign out_mem_addr = mem_addr;
@@ -195,7 +195,7 @@ assign out_busy_flag = busy_flag;  // output current busy flag for debugging
 /**
  * state flip-flops
  */
-always_ff@(posedge in_clk) begin
+always_ff@(posedge in_clk, posedge in_rst) begin
 	// reset
 	if(in_rst == 1'b1) begin
 		// state register

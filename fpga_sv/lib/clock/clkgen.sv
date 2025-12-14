@@ -6,7 +6,7 @@
  */
 
 
-//`define CLKGEN_ASYNC
+//`define CLKGEN_SYNC_RESET
 
 
 module clkgen
@@ -46,7 +46,7 @@ if(MAIN_CLK_HZ == CLK_HZ) begin
 
 		// output a signal from a flip-flop instead of a gate
 		always_ff@(/*posedge*/ in_clk
-`ifdef CLKGEN_ASYNC
+`ifndef CLKGEN_SYNC_RESET
 			// asynchronous reset
 			, posedge in_rst
 `endif
@@ -73,7 +73,7 @@ end else begin
 	assign out_clk = clk;
 
 	always_ff@(posedge in_clk
-`ifdef CLKGEN_ASYNC
+`ifndef CLKGEN_SYNC_RESET
 		// asynchronous reset
 		, posedge in_rst
 `endif

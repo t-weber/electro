@@ -35,7 +35,7 @@ typedef enum
 
 
 //---------------------------------------------------------------------------
-//-- three-process state machine
+// three-process state machine
 //---------------------------------------------------------------------------
 // state variable
 t_state fsm3_state = Start, fsm3_state_next = Start;
@@ -123,7 +123,7 @@ end
 
 
 //---------------------------------------------------------------------------
-//-- two-process state machine
+// two-process state machine
 //---------------------------------------------------------------------------
 // state variable
 t_state fsm2_state = Start, fsm2_state_next = Start;
@@ -195,7 +195,7 @@ end
 
 
 //---------------------------------------------------------------------------
-//-- one-process state machine
+// one-process state machine
 //---------------------------------------------------------------------------
 // state variable
 t_state fsm1_state = Start;
@@ -256,7 +256,7 @@ end
 
 
 //---------------------------------------------------------------------------
-//-- debug output
+// debug output
 //---------------------------------------------------------------------------
 always@(/*posedge*/ theclk) begin
 	assert(fsm3_state == fsm2_state) else $error("Invalid state (2, 3).");
