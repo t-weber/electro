@@ -5,6 +5,11 @@
 -- @license see 'LICENSE' file
 --
 
+--
+-- NOTE: prefer timer pulses to clock dividers as this,
+--       since the latter can create combinational glitches
+--
+
 library ieee;
 use ieee.std_logic_1164.all;
 

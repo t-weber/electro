@@ -4,7 +4,7 @@
  * @date 9-june-2024
  * @license see 'LICENSE' file
  *
- * iverilog -g2012 -o serial_async_rx_tb ../lib/comm/serial_async_rx.sv ../lib/comm/serial_async_tx.sv ../clock/clkgen.sv serial_async_rx_tb.sv
+ * iverilog -g2012 -o serial_async_rx_tb ../lib/comm/serial_async_rx.sv ../lib/comm/serial_async_tx.sv serial_async_rx_tb.sv
  * ./serial_async_rx_tb
  * gtkwave serial_async_rx_tb.vcd --rcvar "do_initial_zoom_fit yes"
  *
@@ -196,9 +196,10 @@ module serial_async_rx_tb;
 
 			WaitData: begin
 				if(bus_cycle_rx == 1'b1) begin
-					$display("Received byte    %d: %x\n", byte_ctr, data_rx);
-					if(data_rx != data_tosend[byte_ctr])
-						$error("Invalid byte received!");
+					$display("Received byte    %d: %x", byte_ctr, data_rx);
+					assert(data_rx == data_tosend[byte_ctr])
+						$display("OK\n");
+						else $error("Invalid byte received!\n");
 					next_state_rx = ReadData;
 				end
 			end

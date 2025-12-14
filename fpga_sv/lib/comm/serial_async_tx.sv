@@ -53,22 +53,6 @@ module serial_async_tx
 
 
 // ----------------------------------------------------------------------------
-// generate serial clock
-reg serial_clk;
-
-clkgen #(
-		.MAIN_CLK_HZ(MAIN_CLK_HZ), .CLK_HZ(SERIAL_CLK_HZ),
-		.CLK_INIT(1'b1)
-	)
-	serial_clk_mod
-	(
-		.in_clk(in_clk), .in_rst(in_rst),
-		.out_clk(serial_clk)
-	);
-// ----------------------------------------------------------------------------
-
-
-// ----------------------------------------------------------------------------
 // serial states and next-state logic
 typedef enum bit [2 : 0]
 {
@@ -82,8 +66,12 @@ t_tx_state next_tx_state = Ready;
 
 
 // ----------------------------------------------------------------------------
+// wait counter for serial clock
+localparam longint SERIAL_WAIT_DELAY = MAIN_CLK_HZ / SERIAL_CLK_HZ - 1;
+logic[$clog2(SERIAL_WAIT_DELAY) : 0] serial_wait_ctr = 1'b0;
+
 // bit counter
-reg [$clog2(BITS) : 0] bit_ctr = 0, next_bit_ctr = 0;
+reg [$clog2(BITS) : 0] bit_ctr = 1'b0, next_bit_ctr = 1'b0;
 
 // bit counter with correct ordering
 wire [$clog2(BITS) : 0] actual_bit_ctr;
@@ -186,7 +174,7 @@ endfunction
 
 
 // state and data flip-flops for serial clock
-always_ff@(posedge serial_clk, posedge in_rst) begin
+always_ff@(posedge in_clk, posedge in_rst) begin
 	// reset
 	if(in_rst == 1'b1) begin
 		// state register
@@ -202,23 +190,31 @@ always_ff@(posedge serial_clk, posedge in_rst) begin
 		parallel_fromfpga <= 0;
 
 		request_word <= 1'b0;
+
+		serial_wait_ctr <= 1'b0;
 	end
 
 	// clock
 	else begin
-		// state register
-		tx_state <= next_tx_state;
+		if(serial_wait_ctr == SERIAL_WAIT_DELAY) begin
+			// state register
+			tx_state <= next_tx_state;
 
-		// counter register
-		bit_ctr <= next_bit_ctr;
+			// counter register
+			bit_ctr <= next_bit_ctr;
 
-		// parity
-		parity <= next_parity;
+			// parity
+			parity <= next_parity;
 
-		// parallel data registers
-		parallel_fromfpga <= next_parallel_fromfpga;
+			// parallel data registers
+			parallel_fromfpga <= next_parallel_fromfpga;
 
-		request_word <= next_request_word;
+			request_word <= next_request_word;
+
+			serial_wait_ctr <= 1'b0;
+		end else begin
+			serial_wait_ctr <= serial_wait_ctr + 1'b1;
+		end
 	end
 end
 
@@ -299,7 +295,7 @@ end
 always_comb begin
 	next_parity = parity;
 
-	unique case(tx_state)
+	/*unique*/ case(tx_state)
 		Ready, TransmitStart, TransmitStop: begin
 			next_parity = EVEN_PARITY == 1'b1 ? 1'b0 : 1'b1;
 		end

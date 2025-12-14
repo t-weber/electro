@@ -236,7 +236,7 @@ begin
 		--	report "Invalid output (1, 2)." severity error;
 
 		--report fsm1_state'instance_name;
-		report "t = "             & time'image(now) & ", "
+		report "t = "           & time'image(now) & ", "
 			 & "rst = "         & std_logic'image(rst) & ", "
 			 & "clk = "         & std_logic'image(clk) & ", " & lf & ht
 			 & "FSM1: state = " & t_state'image(fsm1_state) & ", "
@@ -272,7 +272,7 @@ begin
 		assert fsm3_out = fsm2_out
 			report "Invalid output (2, 3)." severity error;
 
-		report "t = "             & time'image(now) & ", "
+		report "t = "           & time'image(now) & ", "
 			 & "rst = "         & std_logic'image(rst) & ", "
 			 & "clk = "         & std_logic'image(clk) & ", " & lf & ht
 			 & "FSM2: state = " & t_state'image(fsm2_state) & ", "

@@ -4,7 +4,7 @@
  * @date 8-june-2024
  * @license see 'LICENSE' file
  *
- * iverilog -g2012 -D __IN_SIMULATION__ -o serial_async_tx_tb ../lib/comm/serial_async_tx.sv ../lib/clock/clkgen.sv serial_async_tx_tb.sv
+ * iverilog -g2012 -D __IN_SIMULATION__ -o serial_async_tx_tb ../lib/comm/serial_async_tx.sv serial_async_tx_tb.sv
  * ./serial_async_tx_tb
  * gtkwave serial_async_tx_tb.vcd --rcvar "do_initial_zoom_fit yes"
  */

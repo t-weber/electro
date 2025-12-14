@@ -27,6 +27,9 @@ localparam byte BITS          = 8;
 localparam int CLK_MULTIPLE   = 16;
 localparam int CLK_TOCHECK    = 8;
 
+localparam byte PARITY_BITS   = 2'h2;
+localparam bit LOWBIT_FIRST   = 1'b1;
+
 
 // ----------------------------------------------------------------------------
 // keys
@@ -72,9 +75,9 @@ logic [$clog2(BITS) : 0] bit_ctr = 0, next_bit_ctr = 0;
 
 // instantiate serial transmitter
 serial_async_tx #(
-	.BITS(BITS), .LOWBIT_FIRST(1'b1),
-	.MAIN_CLK_HZ(MAIN_CLK),
-	.SERIAL_CLK_HZ(SERIAL_CLK)
+	.BITS(BITS), .LOWBIT_FIRST(LOWBIT_FIRST),
+	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SERIAL_CLK),
+	.PARITY_BITS(PARITY_BITS)
 )
 serial_tx_mod(
 	.in_clk(clk27), .in_rst(rst),
@@ -87,10 +90,10 @@ serial_tx_mod(
 
 // instantiate serial receiver
 serial_async_rx #(
-	.BITS(BITS), .LOWBIT_FIRST(1'b1),
-	.MAIN_CLK_HZ(MAIN_CLK),
-	.SERIAL_CLK_HZ(SERIAL_CLK),
-	.CLK_MULTIPLE(CLK_MULTIPLE), .CLK_TOCHECK(CLK_TOCHECK)
+	.BITS(BITS), .LOWBIT_FIRST(LOWBIT_FIRST),
+	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SERIAL_CLK),
+	.CLK_MULTIPLE(CLK_MULTIPLE), .CLK_TOCHECK(CLK_TOCHECK),
+	.PARITY_BITS(PARITY_BITS)
 )
 serial_rx_mod(
 	.in_clk(clk27), .in_rst(rst),

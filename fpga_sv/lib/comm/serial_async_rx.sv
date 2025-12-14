@@ -79,7 +79,11 @@ t_rx_state next_state_after_wait = Ready;
 
 
 // ----------------------------------------------------------------------------
-// clock multipe counter
+// wait counter for serial clock
+localparam longint SERIAL_WAIT_DELAY = MAIN_CLK_HZ / (SERIAL_CLK_HZ * CLK_MULTIPLE) - 1;
+logic[$clog2(SERIAL_WAIT_DELAY) : 0] serial_wait_ctr = 1'b0;
+
+// clock multiple counter
 reg [$clog2(3/2*CLK_MULTIPLE) : 0] multi_ctr = 0, next_multi_ctr = 0;
 reg [$clog2(3/2*CLK_MULTIPLE) : 0] multi_ctr_towait = 0, next_multi_ctr_towait = 0;
 
@@ -114,23 +118,6 @@ assign out_word_finished = word_finished;
 assign out_next_word = next_word_finished;
 assign out_ready = rx_state == Ready;
 assign out_error = rx_state == Error;
-// ----------------------------------------------------------------------------
-
-
-// ----------------------------------------------------------------------------
-// generate serial clock
-reg serial_clk;
-
-clkgen #(
-		.MAIN_CLK_HZ(MAIN_CLK_HZ),
-		.CLK_HZ(SERIAL_CLK_HZ * CLK_MULTIPLE),
-		.CLK_INIT(1)
-	)
-	serial_clk_mod
-	(
-		.in_clk(in_clk), .in_rst(in_rst),
-		.out_clk(serial_clk)
-	);
 // ----------------------------------------------------------------------------
 
 
@@ -187,7 +174,7 @@ endfunction
 
 
 // state and data flip-flops for serial clock
-always_ff@(negedge serial_clk, posedge in_rst) begin
+always_ff@(posedge in_clk, posedge in_rst) begin
 	// reset
 	if(in_rst == 1'b1) begin
 		// state registers
@@ -208,28 +195,36 @@ always_ff@(negedge serial_clk, posedge in_rst) begin
 		parallel_tofpga <= 0;
 
 		word_finished <= 1'b0;
+
+		serial_wait_ctr <= 1'b0;
 	end
 
 	// clock
 	else begin
-		// state registers
-		rx_state <= next_rx_state;
-		state_after_wait = next_state_after_wait;
+		if(serial_wait_ctr == SERIAL_WAIT_DELAY) begin
+			// state registers
+			rx_state <= next_rx_state;
+			state_after_wait = next_state_after_wait;
 
-		// counter registers
-		last_bit_ctr <= bit_ctr;
-		bit_ctr <= next_bit_ctr;
-		multi_ctr <= next_multi_ctr;
-		multi_ctr_towait <= next_multi_ctr_towait;
+			// counter registers
+			last_bit_ctr <= bit_ctr;
+			bit_ctr <= next_bit_ctr;
+			multi_ctr <= next_multi_ctr;
+			multi_ctr_towait <= next_multi_ctr_towait;
 
-		// parity
-		parity <= next_parity;
-		calc_parity <= next_calc_parity;
+			// parity
+			parity <= next_parity;
+			calc_parity <= next_calc_parity;
 
-		// parallel data registers
-		parallel_tofpga <= next_parallel_tofpga;
+			// parallel data registers
+			parallel_tofpga <= next_parallel_tofpga;
 
-		word_finished <= next_word_finished;
+			word_finished <= next_word_finished;
+
+			serial_wait_ctr <= 1'b0;
+		end else begin
+			serial_wait_ctr <= serial_wait_ctr + 1'b1;
+		end
 	end
 end
 
@@ -424,7 +419,7 @@ always_comb begin
 	next_parity = parity;
 	next_calc_parity = calc_parity;
 
-	unique case(rx_state)
+	/*unique*/ case(rx_state)
 		Ready, ReceiveStartCont, ReceiveStart, ReceiveStop: begin
 			next_parity = EVEN_PARITY == 1'b1 ? 1'b0 : 1'b1;
 		end
