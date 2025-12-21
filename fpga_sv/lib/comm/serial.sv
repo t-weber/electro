@@ -157,7 +157,7 @@ assign out_word_finished = request_word;
 assign out_next_word = next_request_word;
 assign out_transmitting = serial_state == Transmit ? 1'b1 : 1'b0;;
 
-// timer pulses corresponsing to serial clock
+// timer pulses corresponding to serial clock
 logic[$clog2(SERIAL_WAIT_DELAY) : 0] serial_wait_fromfpga = 1'b0;
 logic serial_wait_fsm_fromfpga = 1'b0;
 
