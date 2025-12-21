@@ -11,6 +11,8 @@
  *   - https://github.com/sipeed/sipeed_wiki/blob/main/docs/hardware/en/tang/Tang-Nano-9K/examples/rgb_screen.md
  */
 
+`define USE_SERIAL_TX
+
 
 module video_serial
 #(
@@ -140,19 +142,38 @@ logic byte_finished, last_byte_finished = 0;
 wire bus_cycle = byte_finished && ~last_byte_finished;
 //wire bus_cycle_next = ~byte_finished && last_byte_finished;
 
-serial #(
-	.BITS(SERIAL_BITS), .LOWBIT_FIRST(0),
+`ifdef USE_SERIAL_TX
+serial_tx #(
+	.BITS(SERIAL_BITS), .LOWBIT_FIRST(1'b0), .FALLING_EDGE(1'b0),
 	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SERIAL_CLK),
-	.SERIAL_CLK_INACTIVE(1), .SERIAL_DATA_INACTIVE(0),
-	.KEEP_SERIAL_CLK_RUNNING(1)
+	.SERIAL_CLK_INACTIVE(1'b1), .SERIAL_DATA_INACTIVE(1'b0),
+	.KEEP_SERIAL_CLK_RUNNING(1'b1)
 )
 serial_mod(
 	.in_clk(in_clk), .in_rst(in_rst),
 	.in_parallel(data), .in_enable(serial_enable),
 	.out_serial(serial), .out_next_word(byte_finished),
 	.out_ready(serial_ready), .out_clk(serial_clk),
-	.in_serial(serial), .out_parallel()
+	.out_clk_raw(), .out_word_finished()
 );
+
+`else
+serial #(
+	.BITS(SERIAL_BITS), .LOWBIT_FIRST(1'b0),
+    .FROM_FPGA_FALLING_EDGE(1'b0), .TO_FPGA_FALLING_EDGE(1'b0),
+	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SERIAL_CLK),
+	.SERIAL_CLK_INACTIVE(1'b1), .SERIAL_DATA_INACTIVE(1'b0),
+	.KEEP_SERIAL_CLK_RUNNING(1'b1)
+)
+serial_mod(
+	.in_clk(in_clk), .in_rst(in_rst),
+	.in_parallel(data), .in_enable(serial_enable),
+	.out_serial(serial), .out_next_word(byte_finished),
+	.out_ready(serial_ready), .out_clk(serial_clk),
+	.in_serial(1'b0), .out_parallel(), .out_clk_raw(),
+    .out_transmitting(), .out_word_finished()
+);
+`endif
 // --------------------------------------------------------------------
 
 
@@ -412,6 +433,9 @@ always_comb begin
 			end
 		end
 		// ----------------------------------------------------
+
+        default: begin
+        end
 	endcase
 
 `ifdef __IN_SIMULATION__

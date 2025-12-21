@@ -31,9 +31,9 @@ module testpattern
 );
 
 
-wire [RED_BITS-1 : 0] red;
-wire [GREEN_BITS-1 : 0] green;
-wire [BLUE_BITS-1 : 0] blue;
+wire [RED_BITS - 1 : 0] red;
+wire [GREEN_BITS - 1 : 0] green;
+wire [BLUE_BITS - 1 : 0] blue;
 
 
 assign red =

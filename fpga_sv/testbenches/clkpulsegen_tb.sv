@@ -4,9 +4,9 @@
  * @date 14-july-2024
  * @license see 'LICENSE' file
  *
- * iverilog -D __IN_SIMULATION__ -g2012 -o pulsegen_tb ../lib/clock/pulsegen.sv ../lib/clock/clkgen.sv pulsegen_tb.sv
- * ./pulsegen_tb
- * gtkwave pulsegen_tb.vcd --rcvar "do_initial_zoom_fit yes"
+ * iverilog -D __IN_SIMULATION__ -g2012 -o clkpulsegen_tb ../lib/clock/clkpulsegen.sv clkpulsegen_tb.sv
+ * ./clkpulsegen_tb
+ * gtkwave clkpulsegen_tb.vcd --rcvar "do_initial_zoom_fit yes"
  */
 
 
@@ -14,12 +14,12 @@
 `default_nettype /*wire*/ none  // no implicit declarations
 
 
-module pulsegen_tb;
+module clkpulsegen_tb;
 
 
 // clock and reset
-localparam longint MAIN_CLK     = 500_000;
-localparam longint SLOW_CLK     = 100_000;
+localparam longint MAIN_CLK     = 1000_000;
+localparam longint SLOW_CLK     =  100_000;
 localparam int     MAX_CLK_ITER = 50;
 localparam int     RESET_ITERS  = 4;
 
@@ -28,33 +28,17 @@ always #1 clk = ~clk;
 
 
 // --------------------------------------------------------------------
-// instantiate slow clock generator
-// --------------------------------------------------------------------
-logic slow_clk;
-
-clkgen #(
-	.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(SLOW_CLK),
-	.CLK_INIT(1'b1)
-)
-slow_clk_mod
-(
-	.in_clk(clk), .in_rst(rst),
-	.out_clk(slow_clk)
-);
-// --------------------------------------------------------------------
-
-
-// --------------------------------------------------------------------
 // instantiate slow pulse generator
 // --------------------------------------------------------------------
-logic pulse_re, pulse_fe;
+logic slow_clk, pulse_re, pulse_fe;
 
-pulsegen #(.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(SLOW_CLK))
+clkpulsegen #(.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(SLOW_CLK),
+	.CLK_INIT(1))
 slow_pulsegen_mod
 (
 	.in_clk(clk), .in_rst(rst),
-	.out_re(pulse_re),
-	.out_fe(pulse_fe)
+	.out_clk(slow_clk),
+	.out_re(pulse_re), .out_fe(pulse_fe)
 );
 // --------------------------------------------------------------------
 
@@ -63,8 +47,8 @@ slow_pulsegen_mod
 // run simulation
 //---------------------------------------------------------------------------
 initial begin
-	$dumpfile("pulsegen_tb.vcd");
-	$dumpvars(0, pulsegen_tb);
+	$dumpfile("clkpulsegen_tb.vcd");
+	$dumpvars(0, clkpulsegen_tb);
 
 	// reset
 	rst = 1'b1;

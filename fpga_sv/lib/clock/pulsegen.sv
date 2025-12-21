@@ -17,7 +17,7 @@ module pulsegen
 	input wire in_clk,
 	input wire in_rst,
 
-	// output clock
+	// output clock edges
 	output wire out_pulse_re, out_pulse_fe
 );
 

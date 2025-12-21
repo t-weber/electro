@@ -30,7 +30,7 @@ module lcd_serial
 
 
 localparam MAIN_CLK           = 27_000_000;
-localparam SERIAL_CLK         = 10_000_000;
+localparam SERIAL_CLK         =  9_000_000;
 
 localparam SCREEN_WIDTH       = 240;
 localparam SCREEN_HEIGHT      = 135;

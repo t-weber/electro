@@ -94,26 +94,39 @@ endgenerate
 
 
 // ----------------------------------------------------------------------------
-// generate serial clock
+// generate and output serial clock
 // ----------------------------------------------------------------------------
-localparam longint SERIAL_WAIT_DELAY = MAIN_CLK_HZ / SERIAL_CLK_HZ;
+logic serial_clk, serial_re, serial_fe;
+logic serial_edge_fromfpga, serial_edge_tofpga;
 
-
-logic serial_clk;
-
-// TODO: better use external clock or pll to avoid combinational glitches
-clkgen #(
-		.MAIN_CLK_HZ(MAIN_CLK_HZ), .CLK_HZ(SERIAL_CLK_HZ),
-		.CLK_INIT(1'b1)
-	)
-	serial_clk_mod
-	(
-		.in_clk(in_clk), .in_rst(in_rst),
-		.out_clk(serial_clk)
-	);
+clkpulsegen #(
+    .MAIN_CLK_HZ(MAIN_CLK_HZ), .CLK_HZ(SERIAL_CLK_HZ),
+    .CLK_INIT(1'b1)
+)
+serial_clk_mod
+(
+    .in_clk(in_clk), .in_rst(in_rst),
+    .out_clk(serial_clk), .out_re(serial_re), .out_fe(serial_fe)
+);
 
 
 assign out_clk_raw = serial_clk;
+
+generate
+if(FROM_FPGA_FALLING_EDGE == 1'b1) begin
+    assign serial_edge_fromfpga = serial_fe;
+end else begin
+    assign serial_edge_fromfpga = serial_re;
+end
+endgenerate
+
+generate
+if(TO_FPGA_FALLING_EDGE == 1'b1) begin
+    assign serial_edge_tofpga = serial_fe;
+end else begin
+    assign serial_edge_tofpga = serial_re;
+end
+endgenerate
 
 
 // generate serial clock output
@@ -157,51 +170,20 @@ assign out_word_finished = request_word;
 assign out_next_word = next_request_word;
 assign out_transmitting = serial_state == Transmit ? 1'b1 : 1'b0;;
 
-// timer pulses corresponding to serial clock
-logic[$clog2(SERIAL_WAIT_DELAY) : 0] serial_wait_fromfpga = 1'b0;
-logic serial_wait_fsm_fromfpga = 1'b0;
 
-generate
-if(FROM_FPGA_FALLING_EDGE == 1'b1) begin
-	always_ff@(posedge in_clk, posedge in_rst) begin
-		if(in_rst == 1'b1) begin
-			parallel_fromfpga <= 1'b0;
-			serial_wait_fromfpga <= 1'b0;
-			serial_wait_fsm_fromfpga = 1'b0;
-		end else begin
-			serial_wait_fromfpga <= serial_wait_fromfpga + 1'b1;
-			if(serial_wait_fsm_fromfpga == 1'b0) begin
-				// offset timer start to falling edge of serial clock
-				if(serial_wait_fromfpga == SERIAL_WAIT_DELAY/2 - 1) begin
-					serial_wait_fsm_fromfpga <= 1'b1;
-					serial_wait_fromfpga <= 1'b0;
-				end
-			end else begin
-				// sample on falling edge of serial clock
-				if(serial_wait_fromfpga == SERIAL_WAIT_DELAY - 2) begin
-					parallel_fromfpga <= next_parallel_fromfpga;
-					serial_wait_fromfpga <= 1'b0;
-				end
-			end
-		end
-	end
-end else begin
-	always_ff@(posedge in_clk, posedge in_rst) begin
-		if(in_rst == 1'b1) begin
-			parallel_fromfpga <= 1'b0;
-			serial_wait_fromfpga <= 1'b0;
-		end else begin
-			// sample on rising edge of serial clock
-			if(serial_wait_fromfpga == SERIAL_WAIT_DELAY - 2) begin
-				parallel_fromfpga <= next_parallel_fromfpga;
-				serial_wait_fromfpga <= 1'b0;
-			end else begin
-				serial_wait_fromfpga <= serial_wait_fromfpga + 1'b1;
-			end
-		end
-	end
+always_ff@(posedge in_clk, posedge in_rst) begin
+    if(in_rst == 1'b1) begin
+        // data
+        parallel_fromfpga <= 1'b0;
+
+    end else begin
+        // sample on edge of serial clock
+        if(serial_edge_fromfpga == 1'b1) begin
+            // data
+            parallel_fromfpga <= next_parallel_fromfpga;
+        end
+    end
 end
-endgenerate
 
 
 always_comb begin
@@ -220,51 +202,20 @@ end
 logic [BITS - 1 : 0] parallel_tofpga = 1'b0, next_parallel_tofpga = 1'b0;
 assign out_parallel = parallel_tofpga;
 
-// timer pulses corresponsing to serial clock
-logic[$clog2(SERIAL_WAIT_DELAY) : 0] serial_wait_tofpga = 1'b0;
-logic serial_wait_fsm_tofpga = 1'b0;
 
-generate
-if(TO_FPGA_FALLING_EDGE == 1'b1) begin
-	always_ff@(posedge in_clk, posedge in_rst) begin
-		if(in_rst == 1'b1) begin
-			parallel_tofpga <= 1'b0;
-			serial_wait_tofpga <= 1'b0;
-			serial_wait_fsm_tofpga = 1'b0;
-		end else begin
-			serial_wait_tofpga <= serial_wait_tofpga + 1'b1;
-			if(serial_wait_fsm_tofpga == 1'b0) begin
-				// offset timer start to falling edge of serial clock
-				if(serial_wait_tofpga == SERIAL_WAIT_DELAY/2 - 1) begin
-					serial_wait_fsm_tofpga <= 1'b1;
-					serial_wait_tofpga <= 1'b0;
-				end
-			end else begin
-				// sample on falling edge of serial clock
-				if(serial_wait_tofpga == SERIAL_WAIT_DELAY - 2) begin
-					parallel_tofpga <= next_parallel_tofpga;
-					serial_wait_tofpga <= 1'b0;
-				end
-			end
-		end
-	end
-end else begin
-	always_ff@(posedge in_clk, posedge in_rst) begin
-		if(in_rst == 1'b1) begin
-			parallel_tofpga <= 1'b0;
-			serial_wait_tofpga <= 1'b0;
-		end else begin
-			// sample on rising edge of serial clock
-			if(serial_wait_tofpga == SERIAL_WAIT_DELAY - 2) begin
-				parallel_tofpga <= next_parallel_tofpga;
-				serial_wait_tofpga <= 1'b0;
-			end else begin
-				serial_wait_tofpga <= serial_wait_tofpga + 1'b1;
-			end
-		end
-	end
+always_ff@(posedge in_clk, posedge in_rst) begin
+    if(in_rst == 1'b1) begin
+        // data
+        parallel_tofpga <= 1'b0;
+
+    end else begin
+        // sample on edge of serial clock
+        if(serial_edge_tofpga == 1'b1) begin
+            // data
+            parallel_tofpga <= next_parallel_tofpga;
+        end
+    end
 end
-endgenerate
 
 
 always_comb begin
@@ -279,9 +230,6 @@ end
 // ----------------------------------------------------------------------------
 // state machine
 // ----------------------------------------------------------------------------
-// timer pulses corresponsing to serial clock
-logic[$clog2(SERIAL_WAIT_DELAY) : 0] serial_wait = 1'b0;
-logic serial_wait_fsm = 1'b0;
 
 // state and data flip-flops for serial clock
 always_ff@(posedge in_clk, posedge in_rst) begin
@@ -294,35 +242,20 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 
 		// counter register
 		bit_ctr <= 1'b0;
-
-		// timer pulse
-		serial_wait <= 1'b0;
-		serial_wait_fsm <= 1'b0;
 	end
 
 	// clock
 	else begin
-		serial_wait <= serial_wait + 1'b1;
-		if(serial_wait_fsm == 1'b0) begin
-			// offset timer start to falling edge of serial clock
-			if(serial_wait == SERIAL_WAIT_DELAY/2 - 1) begin
-				serial_wait_fsm <= 1'b1;
-				serial_wait <= 1'b0;
-			end
-		end else begin
-			// sample on falling edge of serial clock
-			if(serial_wait == SERIAL_WAIT_DELAY - 2) begin
-				serial_wait <= 1'b0;
+        // sample on rising edge of serial clock
+        if(serial_re == 1'b1) begin
+            // state register
+            serial_state <= next_serial_state;
 
-				// state register
-				serial_state <= next_serial_state;
+            request_word <= next_request_word;
 
-				request_word <= next_request_word;
-
-				// counter register
-				bit_ctr <= next_bit_ctr;
-			end
-		end
+            // counter register
+            bit_ctr <= next_bit_ctr;
+        end
 	end
 end
 

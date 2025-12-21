@@ -84,25 +84,35 @@ endgenerate
 
 
 // ----------------------------------------------------------------------------
-// generate serial clock
+// generate serial clock and edge pulses
 // ----------------------------------------------------------------------------
-logic serial_clk;
+// wait counter
+logic serial_clk, serial_re, serial_fe;
+logic serial_edge;
 
-clkgen #(
-		.MAIN_CLK_HZ(MAIN_CLK_HZ), .CLK_HZ(SERIAL_CLK_HZ),
-		.CLK_INIT(1'b1)
-	)
-	serial_clk_mod
-	(
-		.in_clk(in_clk), .in_rst(in_rst),
-		.out_clk(serial_clk)
-	);
+clkpulsegen #(
+    .MAIN_CLK_HZ(MAIN_CLK_HZ), .CLK_HZ(SERIAL_CLK_HZ),
+    .CLK_INIT(1'b1)
+)
+serial_clk_mod
+(
+    .in_clk(in_clk), .in_rst(in_rst),
+    .out_clk(serial_clk), .out_re(serial_re), .out_fe(serial_fe)
+);
 
 
 assign out_clk_raw = serial_clk;
 
+generate
+if(FALLING_EDGE == 1'b1) begin
+    assign serial_edge = serial_fe;
+end else begin
+    assign serial_edge = serial_re;
+end
+endgenerate
 
-// generate serial clock output
+
+
 generate
 if(KEEP_SERIAL_CLK_RUNNING == 1'b1) begin
 	if(SERIAL_CLK_INACTIVE == 1'b1) begin
@@ -147,57 +157,35 @@ assign out_word_finished = request_word;
 assign out_next_word = next_request_word;
 
 
-generate
-if(FALLING_EDGE == 1'b1) begin
-	always_ff@(negedge serial_clk, posedge in_rst) begin
-		if(in_rst == 1'b1) begin
-			// state register
-			serial_state <= Ready;
+// react on serial clock pulses
+always_ff@(posedge in_clk, posedge in_rst) begin
+    if(in_rst == 1'b1) begin
+        // state register
+        serial_state <= Ready;
 
-			// data
-			parallel <= 1'b0;
+        // data
+        parallel <= 1'b0;
 
-			// counter register
-			bit_ctr <= 1'b0;
-			request_word <= 1'b0;
-		end else begin
-			// state register
-			serial_state <= next_serial_state;
+        // counter register
+        bit_ctr <= 1'b0;
+        request_word <= 1'b0;
 
-			// data
-			parallel <= next_parallel;
+    end else begin
 
-			// counter register
-			bit_ctr <= next_bit_ctr;
-			request_word <= next_request_word;
-		end
-	end
-end else begin
-	always_ff@(posedge serial_clk, posedge in_rst) begin
-		if(in_rst == 1'b1) begin
-			// state register
-			serial_state <= Ready;
+        // sample on edge of serial clock
+        if(serial_edge == 1'b1) begin
+            // state register
+            serial_state <= next_serial_state;
 
-			// data
-			parallel <= 1'b0;
+            // data
+            parallel <= next_parallel;
 
-			// counter register
-			bit_ctr <= 1'b0;
-			request_word <= 1'b0;
-		end else begin
-			// state register
-			serial_state <= next_serial_state;
-
-			// data
-			parallel <= next_parallel;
-
-			// counter register
-			bit_ctr <= next_bit_ctr;
-			request_word <= next_request_word;
-		end
-	end
+            // counter register
+            bit_ctr <= next_bit_ctr;
+            request_word <= next_request_word;
+        end
+    end
 end
-endgenerate
 
 
 always_comb begin

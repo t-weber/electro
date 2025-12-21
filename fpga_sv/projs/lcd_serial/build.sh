@@ -11,7 +11,7 @@
 #   - https://learn.lushaylabs.com/os-toolchain-manual-installation
 #
 
-build_roms=0
+build_roms=1
 run_synth=1
 run_pnr=1
 run_pack=1
