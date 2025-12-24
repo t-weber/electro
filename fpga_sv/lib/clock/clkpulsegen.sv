@@ -85,7 +85,7 @@ end else begin
 end endgenerate
 
 // generate edge pulses
-always@(posedge in_clk, posedge in_rst) begin
+always_ff@(posedge in_clk, posedge in_rst) begin
 	// reset
 	if(in_rst == 1'b1) begin
 		re <= 1'b0;
