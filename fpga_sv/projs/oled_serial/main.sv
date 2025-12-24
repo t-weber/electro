@@ -16,11 +16,11 @@ module oled
 	input clk27,
 
 	// keys and leds
-	input  [1:0] key,
-	output [2:0] led,
+	input  [1 : 0] key,
+	output [2 : 0] led,
 
 	// red leds
-	output [9:0] ledr,
+	output [7 : 0] ledr,
 
 	// oled
 	inout oled_scl,
@@ -179,7 +179,7 @@ clk_slow (.in_clk(clk27), .in_rst(rst), .out_clk(slow_clk));
 // ----------------------------------------------------------------------------
 //assign ledr = { $size(ledr) { slow_clk } };
 assign ledr[0] = ~stop_update;
-assign ledr[9:1] = 1'b0;
+assign ledr[7 : 1] = 1'b0;
 
 assign led[0] = serial_error ? ~slow_clk : 1'b1;
 assign led[1] = 1'b1;

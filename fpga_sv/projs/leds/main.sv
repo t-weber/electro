@@ -15,7 +15,7 @@ module leds
 `ifdef USE_1K
 	// leds
 	output [2 : 0] led,
-	output [9 : 0] ledr
+	output [7 : 0] ledr
 `else
 	// leds
 	output [5 : 0] led,

@@ -110,17 +110,17 @@ assign out_err = err;
 // generate serial clock
 // TODO: use external or PLL clock to avoid combinational glitches
 // ============================================================================
-logic serial_clk;
+logic serial_clk, serial_fe;
 
 // generate serial clock
-clkgen #(
+clkpulsegen #(
 		.MAIN_CLK_HZ(MAIN_CLK_HZ), .CLK_HZ(SERIAL_CLK_HZ),
-		.CLK_INIT(1)
+		.CLK_INIT(1'b1)
 	)
 	serial_clk_mod
 	(
 		.in_clk(in_clk), .in_rst(in_rst),
-		.out_clk(serial_clk)
+		.out_clk(serial_clk), .out_re(), .out_fe(serial_fe)
 	);
 
 
@@ -157,12 +157,6 @@ end
 // state and data flip-flops for serial clock
 // ============================================================================
 
-// timer pulses corresponding to serial clock
-localparam longint SERIAL_WAIT_DELAY = MAIN_CLK_HZ / SERIAL_CLK_HZ;
-logic[$clog2(SERIAL_WAIT_DELAY) : 0] serial_wait = 1'b0;
-logic serial_wait_fsm = 1'b0;
-
-
 always_ff@(posedge in_clk, posedge in_rst) begin
 	// reset
 	if(in_rst == 1'b1) begin
@@ -180,25 +174,11 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 		// parallel data registers
 		parallel_fromfpga <= 1'b0;
 		parallel_tofpga <= 1'b0;
-
-		// pulse generator wait states
-		serial_wait <= 1'b0;
-		serial_wait_fsm = 1'b0;
 	end
 
 	// clock
 	else begin
-		serial_wait <= serial_wait + 1'b1;
-
-		if(serial_wait_fsm == 1'b0) begin
-			// offset timer start to falling edge of serial clock
-			if(serial_wait == SERIAL_WAIT_DELAY/2 - 1) begin
-				serial_wait_fsm <= 1'b1;
-				serial_wait <= 1'b0;
-			end
-		end else begin
-			// sample on falling edge of serial clock
-			if(serial_wait == SERIAL_WAIT_DELAY - 2) begin
+			if(serial_fe == 1'b1) begin
 				// state registers
 				serial_state <= next_serial_state;
 				state_afterstart <= next_state_afterstart;
@@ -213,12 +193,8 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 				// parallel data registers
 				parallel_fromfpga <= next_parallel_fromfpga;
 				parallel_tofpga <= next_parallel_tofpga;
-
-				// wait counter
-				serial_wait <= 1'b0;
 			end
 		end
-	end
 end
 // ============================================================================
 

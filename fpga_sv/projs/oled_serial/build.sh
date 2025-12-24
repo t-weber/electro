@@ -29,6 +29,7 @@ pnr_log=output/pnr.log
 src_files="../../lib/sync/debounce_button.sv \
 	../../lib/sync/debounce_switch.sv \
 	../../lib/clock/clkgen.sv \
+	../../lib/clock/clkpulsegen.sv \
 	../../lib/comm/serial_2wire.sv \
 	../../lib/display/oled_serial.sv \
 	../../lib/mem/ram_2port.sv \
