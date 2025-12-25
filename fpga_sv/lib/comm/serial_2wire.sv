@@ -178,23 +178,23 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 
 	// clock
 	else begin
-			if(serial_fe == 1'b1) begin
-				// state registers
-				serial_state <= next_serial_state;
-				state_afterstart <= next_state_afterstart;
-				state_afterstop <= next_state_afterstop;
-				state_afterack <= next_state_afterack;
+		if(serial_fe == 1'b1) begin
+			// state registers
+			serial_state <= next_serial_state;
+			state_afterstart <= next_state_afterstart;
+			state_afterstop <= next_state_afterstop;
+			state_afterack <= next_state_afterack;
 
-				request_word <= next_request_word;
+			request_word <= next_request_word;
 
-				// counter register
-				bit_ctr <= next_bit_ctr;
+			// counter register
+			bit_ctr <= next_bit_ctr;
 
-				// parallel data registers
-				parallel_fromfpga <= next_parallel_fromfpga;
-				parallel_tofpga <= next_parallel_tofpga;
-			end
+			// parallel data registers
+			parallel_fromfpga <= next_parallel_fromfpga;
+			parallel_tofpga <= next_parallel_tofpga;
 		end
+	end
 end
 // ============================================================================
 

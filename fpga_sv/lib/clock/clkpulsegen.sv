@@ -105,4 +105,10 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 end
 
 
+// assertions
+initial begin
+	assert(CLK_HZ <= MAIN_CLK_HZ); //else $error("CLK_HZ has to be smaller than MAIN_CLK_HZ");
+	assert(CLK_HZ > 0 && MAIN_CLK_HZ > 0);
+end
+
 endmodule
