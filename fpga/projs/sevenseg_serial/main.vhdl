@@ -29,7 +29,7 @@ end entity;
 
 architecture main_impl of main is
 	constant MAIN_CLK   : natural := 27_000_000;
-	constant SERIAL_CLK : natural :=     5; --10_000;
+	constant SERIAL_CLK : natural :=     10_000;
 
 	constant SERIAL_BITS : natural := 8;
 	constant NUM_SEGS    : natural := 4;
@@ -40,6 +40,7 @@ architecture main_impl of main is
 	signal serial_enable : std_logic := '1';
 	signal serial_ready, serial_err, serial_next_word : std_logic;
 	signal serial_in_parallel : std_logic_vector(SERIAL_BITS - 1 downto 0);
+	signal dbg_bit_ctr : std_logic_vector(SERIAL_BITS - 1 downto 0) := (others => '0');
 
 	-- seven segment module
 	signal stop_update : std_logic;
@@ -69,7 +70,7 @@ serial_mod : entity work.serial_2wire
 		in_addr_write => (others => '0'), in_addr_read => (others => '0'),
 		in_parallel => serial_in_parallel, out_parallel => open,
 		out_ready => serial_ready, out_err => serial_err,
-		out_next_word => serial_next_word,
+		out_next_word => serial_next_word, --out_bit_ctr => dbg_bit_ctr,
 		inout_clk => sevenseg_clk, inout_serial => sevenseg_dat);
 --------------------------------------------------------------------------------
 
@@ -90,7 +91,8 @@ sevenseg_mod : entity work.sevenseg_serial
 -- leds
 --------------------------------------------------------------------------------
 led <= (0 => not serial_err, 1 => '1', 2 => not serial_ready);
-ledr <= (0 => stop_update, 1 => sevenseg_clk, 2 => sevenseg_dat, others => '0');
+ledr <= (0 => stop_update, 1 => sevenseg_clk, 2 => sevenseg_dat,
+	7 downto 4 => dbg_bit_ctr(3 downto 0), others => '0');
 --------------------------------------------------------------------------------
 
 end architecture;

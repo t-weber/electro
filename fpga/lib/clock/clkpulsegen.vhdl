@@ -67,6 +67,7 @@ begin
 		-- asynchronous reset
 		if in_reset = '1' then
 			clk_ctr_half := 0;
+			clk_ctr_full := 0;
 			clk <= CLK_INIT;
 
 			re <= '0';
@@ -86,6 +87,7 @@ begin
 
 			if clk_ctr_full = clk_ctr_half_max - 1 then
 				re <= '1';
+				clk_ctr_full := clk_ctr_full + 1;
 			elsif clk_ctr_full = clk_ctr_full_max - 1 then
 				fe <= '1';
 				clk_ctr_full := 0;
