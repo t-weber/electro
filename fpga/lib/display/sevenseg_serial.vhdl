@@ -46,8 +46,8 @@ architecture sevenseg_serial_impl of sevenseg_serial is
 	signal leds : std_logic_vector(6 downto 0);
 
 	-- wait timer
-	constant WAIT_RESET  : natural := MAIN_CLK / 1000 * 100;  -- 100 ms
-	constant WAIT_UPDATE : natural := MAIN_CLK / 1000 * 100;  -- 100 ms, 10 Hz
+	constant WAIT_RESET  : natural := MAIN_CLK * 100 / 1000;  -- 100 ms
+	constant WAIT_UPDATE : natural := MAIN_CLK * 100 / 1000;  -- 100 ms, 10 Hz
 
 	signal wait_ctr, wait_ctr_max : natural range 0 to WAIT_UPDATE := 0;
 
@@ -65,13 +65,12 @@ architecture sevenseg_serial_impl of sevenseg_serial is
 	-- led brightness
 	constant BRIGHTNESS : std_logic_vector(3 downto 0) := x"f";
 
-	constant START_ADDR : std_logic_vector(3 downto 0) := x"0";
-
 	-- init sequence
 	constant INIT_BYTES : natural := 1;
 	type t_init_bytes is array(0 to INIT_BYTES - 1) of std_logic_vector(BUS_BITS - 1 downto 0);
 	constant init_cmds : t_init_bytes := (
-		std_logic_vector'(CMD_DISP & BRIGHTNESS)
+		0 => std_logic_vector'(CMD_DISP & BRIGHTNESS)
+		--1 => std_logic_vector'(BUS_BITS - 1 downto 0 => '0')
 	);
 	signal init_ctr, next_init_ctr : natural range 0 to INIT_BYTES - 1 := 0;
 
@@ -79,8 +78,8 @@ architecture sevenseg_serial_impl of sevenseg_serial is
 	constant DATA_BYTES : natural := 2;
 	type t_data_bytes is array(0 to DATA_BYTES - 1) of std_logic_vector(BUS_BITS - 1 downto 0);
 	constant data_cmds : t_data_bytes := (
-		std_logic_vector'(CMD_DATA & '0' & not CONST_ADDR & '0' & '0'),
-		std_logic_vector'(CMD_ADDR & START_ADDR)
+		0 => std_logic_vector'(CMD_DATA & '0' & (not CONST_ADDR) & '0' & '0'),
+		1 => std_logic_vector'(CMD_ADDR & (3 downto 0 => '0'))
 	);
 	signal data_ctr, next_data_ctr : natural range 0 to DATA_BYTES - 1 := 0;
 
@@ -140,7 +139,7 @@ begin
 		generic map(ZERO_IS_ON => '0', INVERSE_NUMBERING => '1', ROTATED => '1')
 		port map(in_digit => digit, out_leds => leds);
 
-	digit <= mem(seg_ctr*4 to seg_ctr*4 + 4);
+	digit <= mem(seg_ctr*4 + 4 - 1 downto seg_ctr*4);
 	-- --------------------------------------------------------------------
 
 
@@ -184,7 +183,7 @@ begin
 	end process;
 
 
-	state_comb : process(state, init_ctr, data_ctr, seg_ctr) begin
+	state_comb : process(all) begin
 		next_state <= state;
 
 		next_init_ctr <= init_ctr;
@@ -221,7 +220,7 @@ begin
 				else
 					bus_data <= init_cmds(init_ctr);
 
-					-- send stop command
+					-- send init command
 					if in_bus_ready = '1' then
 						next_init_ctr <= init_ctr + 1;
 						next_state <= WriteInit;
@@ -248,7 +247,7 @@ begin
 			-- write data transfer commands
 			---------------------------------------------------------------
 			when WriteDataInit =>
-				bus_data <= data_cmds(init_ctr);
+				bus_data <= data_cmds(data_ctr);
 				bus_enable <= '1';
 
 				if bus_cycle = '1' then
@@ -258,11 +257,12 @@ begin
 			when NextDataInit =>
 				if data_ctr = DATA_BYTES - 1 then
 					bus_enable <= '1';
+					next_data_ctr <= 0;
 					next_state <= WriteData;
 				else
-					bus_data <= data_cmds(init_ctr);
+					bus_data <= data_cmds(data_ctr);
 
-					-- send stop command
+					-- send data transfer command
 					if in_bus_ready = '1' then
 						next_data_ctr <= data_ctr + 1;
 						next_state <= WriteDataInit;

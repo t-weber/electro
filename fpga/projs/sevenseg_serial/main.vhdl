@@ -1,0 +1,136 @@
+--
+-- serial seven segment display test
+-- @author Tobias Weber <tobias.weber@tum.de>
+-- @date 25-dec-2025
+-- @license see 'LICENSE' file
+--
+
+library ieee;
+use ieee.std_logic_1164.all;
+use work.conv.all;
+
+
+entity main is
+	port(
+		-- main clock
+		clk27 : in std_logic;
+
+		-- seven segment display
+		sevenseg_clk : inout std_logic;
+		sevenseg_dat : inout std_logic;
+
+		-- buttons and leds
+		key : in std_logic_vector(1 downto 0);
+		led : out std_logic_vector(2 downto 0);
+		ledr : out std_logic_vector(7 downto 0)
+	);
+end entity;
+
+
+architecture main_impl of main is
+	constant MAIN_CLK   : natural := 27_000_000;
+	constant SERIAL_CLK : natural :=     10_000;
+
+	constant SERIAL_BITS : natural := 8;
+	constant NUM_SEGS    : natural := 4;
+
+	signal rst : std_logic := '0';
+
+	-- seven segment serial bus
+	signal serial_enable : std_logic := '1';
+	signal serial_ready, serial_err, serial_next_word : std_logic;
+	signal serial_in_parallel : std_logic_vector(SERIAL_BITS - 1 downto 0);
+	signal dbg_bit_ctr : std_logic_vector(SERIAL_BITS - 1 downto 0) := (others => '0');
+
+	-- counter
+	signal ctr_clk, ctr_clk_re : std_logic;
+	signal ctr : std_logic_vector(NUM_SEGS*4 - 1 downto 0) := (others => '0');
+
+	-- bcd converter
+	signal show_bcd, bcd_finished : std_logic;
+	signal bcd_ctr : std_logic_vector(NUM_SEGS*4 - 1 downto 0) := (others => '0');
+begin
+
+--------------------------------------------------------------------------------
+-- keys
+--------------------------------------------------------------------------------
+debounce_key0 : entity work.debounce(debounce_switch_impl)
+	port map(in_clk => clk27, in_rst => '0', in_signal => not key(0), out_debounced => rst);
+
+debounce_key1 : entity work.debounce(debounce_button_impl)
+	port map(in_clk => clk27, in_rst => rst, in_signal => not key(1), out_toggled => show_bcd);
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+-- seven segment serial bus
+--------------------------------------------------------------------------------
+serial_mod : entity work.serial_2wire
+	generic map(MAIN_HZ => MAIN_CLK, SERIAL_HZ => SERIAL_CLK,
+		BITS => SERIAL_BITS, LOWBIT_FIRST => '1', ADDR_BITS => 1,
+		TRANSMIT_ADDR => '0', IGNORE_ERROR => '0')
+	port map(in_clk => clk27, in_reset => rst,
+		in_enable => serial_enable, in_write => '1',
+		in_addr_write => (others => '0'), in_addr_read => (others => '0'),
+		in_parallel => serial_in_parallel, out_parallel => open,
+		out_ready => serial_ready, out_err => serial_err,
+		out_next_word => serial_next_word, --out_bit_ctr => dbg_bit_ctr,
+		inout_clk => sevenseg_clk, inout_serial => sevenseg_dat);
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+-- seven segment module
+--------------------------------------------------------------------------------
+sevenseg_mod : entity work.sevenseg_serial
+	generic map(MAIN_CLK => MAIN_CLK, BUS_BITS => SERIAL_BITS, NUM_SEGS => NUM_SEGS)
+	port map(in_clk => clk27, in_rst => rst,
+		in_update => bcd_finished when show_bcd else '1',
+		in_digits => bcd_ctr when show_bcd else ctr,
+		in_bus_ready => serial_ready, in_bus_next_word => serial_next_word,
+		out_bus_enable => serial_enable, out_bus_data => serial_in_parallel);
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+-- counter
+--------------------------------------------------------------------------------
+serial_clkgen : entity work.clkpulsegen
+	generic map(MAIN_HZ => MAIN_CLK, CLK_HZ => 10)
+	port map(in_clk => clk27, in_reset => rst,
+		out_clk => ctr_clk, out_re => ctr_clk_re);
+
+process(clk27, rst) begin
+	if rst = '1' then
+		ctr <= (others => '0');
+	elsif rising_edge(clk27) then
+		if ctr_clk_re then
+			ctr <= inc_logvec(ctr, 1);
+		end if;
+	end if;
+end process;
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+-- bcd converter
+--------------------------------------------------------------------------------
+bcd_mod : entity work.bcd
+	generic map(IN_BITS => ctr'length, OUT_BITS => bcd_ctr'length,
+		NUM_BCD_DIGITS => NUM_SEGS)
+	port map(in_clk => clk27, in_rst => rst,
+		in_start => '1', in_num => ctr,
+		out_bcd => bcd_ctr, out_finished => bcd_finished);
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+-- leds
+--------------------------------------------------------------------------------
+led <= (0 => not serial_err, 1 => '1', 2 => not serial_ready);
+ledr <= (0 => sevenseg_clk, 1 => sevenseg_dat,
+	2 => show_bcd, 3 => ctr_clk,
+	7 downto 4 => dbg_bit_ctr(3 downto 0), others => '0');
+--------------------------------------------------------------------------------
+
+end architecture;

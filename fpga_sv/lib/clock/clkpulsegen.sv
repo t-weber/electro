@@ -85,7 +85,7 @@ end else begin
 end endgenerate
 
 // generate edge pulses
-always@(posedge in_clk, posedge in_rst) begin
+always_ff@(posedge in_clk, posedge in_rst) begin
 	// reset
 	if(in_rst == 1'b1) begin
 		re <= 1'b0;
@@ -104,5 +104,11 @@ always@(posedge in_clk, posedge in_rst) begin
 	end
 end
 
+
+// assertions
+initial begin
+	assert(CLK_HZ <= MAIN_CLK_HZ); //else $error("CLK_HZ has to be smaller than MAIN_CLK_HZ");
+	assert(CLK_HZ > 0 && MAIN_CLK_HZ > 0);
+end
 
 endmodule

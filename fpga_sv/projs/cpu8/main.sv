@@ -19,7 +19,8 @@ module cpuctrl
 
 	// leds
 	output [2 : 0] led,
-	output [9 : 0] ledr
+	//output [9 : 0] ledr
+	output [7 : 0] ledr
 );
 
 
@@ -341,13 +342,13 @@ assign addr_watch = 8'hff;
 assign ledr[DATA_BITS - 1 : 0] = data_watch;
 //assign ledr[DATA_BITS - 1 : 0] = cpu_instr;
 //assign ledr[ADDR_BITS - 1 : 0] = cpu_pc;
-assign ledr[8 : DATA_BITS] = 1'b0;
+//assign ledr[8 : DATA_BITS] = 1'b0;
 
-`ifndef CPU_DISABLE_FUNCS
+/*`ifndef CPU_DISABLE_FUNCS
 	assign ledr[9] = btn;
 `else
 	assign ledr[9] = 1'b0;
-`endif
+`endif*/
 // ---------------------------------------------------------------------------
 
 

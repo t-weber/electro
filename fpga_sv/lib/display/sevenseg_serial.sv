@@ -246,7 +246,7 @@ always_comb begin
 		end
 
 		NextInit: begin
-			if(init_ctr + 1 == INIT_BYTES) begin
+			if(init_ctr == INIT_BYTES - 1) begin
 				if(in_bus_ready == 1'b1)
 					next_state = WaitUpdate;
 			end else begin
@@ -290,7 +290,7 @@ always_comb begin
 		end
 
 		NextDataInit: begin
-			if(data_ctr + 1 == DATA_BYTES) begin
+			if(data_ctr == DATA_BYTES - 1) begin
 				// keep enabled, don't send stop signal
 				bus_enable = 1'b1;
 				//if(in_bus_ready == 1'b1)
@@ -321,7 +321,7 @@ always_comb begin
 		NextData: begin
 			bus_data = {1'b0, leds};
 
-			if(seg_ctr + 1 == NUM_SEGS) begin
+			if(seg_ctr == NUM_SEGS - 1) begin
 				// at last segment
 				if(in_bus_ready == 1'b1) begin
 					// all finished

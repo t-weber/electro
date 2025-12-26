@@ -1,6 +1,6 @@
 --
 -- serial controller for 2-wire interface
--- @author Tobias Weber <tobias.weber@tum.de>
+-- @author Tobias Weber <tobias.weber@tum.de> (0000-0002-7230-1932)
 -- @date apr-2024
 -- @license see 'LICENSE' file
 --
@@ -25,6 +25,9 @@ entity serial_2wire is
 		constant BITS : natural := 8;
 		constant LOWBIT_FIRST : std_logic := '0';
 
+		-- send address before data?
+		constant TRANSMIT_ADDR : std_logic := '1';
+
 		-- continue after errors
 		constant IGNORE_ERROR : std_logic := '0'
 	);
@@ -48,15 +51,18 @@ entity serial_2wire is
 		-- current word transmitted or received?
 		out_next_word : out std_logic;
 
+		-- debugging
+		--out_bit_ctr : out std_logic_vector(BITS - 1 downto 0);
+
 		-- target addresses for writing and reading
-		in_addr_write : in std_logic_vector(ADDR_BITS-1 downto 0);
-		in_addr_read : in std_logic_vector(ADDR_BITS-1 downto 0);
+		in_addr_write : in std_logic_vector(ADDR_BITS - 1 downto 0);
+		in_addr_read : in std_logic_vector(ADDR_BITS - 1 downto 0);
 
 		-- parallel input data (FPGA -> IC)
-		in_parallel : in std_logic_vector(BITS-1 downto 0);
+		in_parallel : in std_logic_vector(BITS - 1 downto 0);
 
 		-- parallel output data (IC -> FPGA)
-		out_parallel : out std_logic_vector(BITS-1 downto 0)
+		out_parallel : out std_logic_vector(BITS - 1 downto 0)
 	);
 end entity;
 
@@ -78,17 +84,17 @@ architecture serial_2wire_impl of serial_2wire is
 	signal state_afterack, next_state_afterack : t_serial_state := Ready;
 
 	-- serial clock
-	signal serial_clk, serial_clk_z : std_logic := '0';
+	signal serial_clk : std_logic := '0';
 
 	-- bit counter
-	signal bit_ctr, next_bit_ctr : natural range 0 to BITS-1 := 0;
+	signal bit_ctr, next_bit_ctr : natural range 0 to BITS - 1 := 0;
 
 	-- bit counter with correct ordering
-	signal actual_bit_ctr : natural range 0 to BITS-1 := 0;
+	signal actual_bit_ctr : natural range 0 to BITS - 1 := 0;
 
 	-- parallel input buffer (FPGA -> IC)
 	signal parallel_fromfpga, next_parallel_fromfpga
-		: std_logic_vector(BITS-1 downto 0) := (others => '0');
+		: std_logic_vector(BITS - 1 downto 0) := (others => '0');
 
 	-- serial output buffer (FPGA -> IC)
 	signal serial_fromfpga : std_logic := '0';
@@ -96,36 +102,41 @@ architecture serial_2wire_impl of serial_2wire is
 
 	-- parallel output buffer (IC -> FPGA)
 	signal parallel_tofpga, next_parallel_tofpga
-		: std_logic_vector(BITS-1 downto 0) := (others => '0');
+		: std_logic_vector(BITS - 1 downto 0) := (others => '0');
+
+	-- serial clock falling edge
+	signal serial_fe : std_logic;
 
 begin
 	--
-	-- generate serial clock
+	-- generate serial clock pulses
 	--
-	serial_clkgen : entity work.clkgen
+	--serial_clkgen : entity work.clkgen
+	--	generic map(MAIN_HZ => MAIN_HZ, CLK_HZ => SERIAL_HZ, CLK_INIT => '1')
+	--	port map(in_clk => in_clk, in_reset => in_reset, out_clk => serial_clk);
+	serial_clkgen : entity work.clkpulsegen
 		generic map(MAIN_HZ => MAIN_HZ, CLK_HZ => SERIAL_HZ, CLK_INIT => '1')
 		port map(in_clk => in_clk, in_reset => in_reset,
-			out_clk => serial_clk);
+			out_clk => serial_clk, out_re => open, out_fe => serial_fe);
 
 
 	--
 	-- output serial clock
 	-- inactive 'Z' and trigger on falling edge
 	--
-	serial_clk_z <= '0' when serial_clk = '0' else 'Z';
-
-	inout_clk <= serial_clk_z
-		when serial_state = Transmit or serial_state = Receive
+	inout_clk <= '0' when serial_clk = '0' and
+		(serial_state = Transmit or serial_state = Receive
 		  or serial_state = TransmitWriteAddress or serial_state = TransmitReadAddress
 		  or serial_state = ReceiveAck or serial_state = SendAck or serial_state = SendNoAck
-		  or serial_state = SendStop or serial_state = SendRepeatedStart
+		  or serial_state = SendStop or serial_state = SendRepeatedStart)
 		else 'Z';
 
 
 	--
 	-- state and data flip-flops for serial clock
 	--
-	serial_ff : process(serial_clk, in_reset) begin
+	--serial_ff : process(serial_clk, in_reset) begin
+	serial_ff : process(in_clk, in_reset) begin
 		-- reset
 		if in_reset = '1' then
 			-- state registers
@@ -142,19 +153,22 @@ begin
 			parallel_tofpga <= (others => '0');
 
 		-- clock
-		elsif falling_edge(serial_clk) then
-			-- state registers
-			serial_state <= next_serial_state;
-			state_afterstart <= next_state_afterstart;
-			state_afterstop <= next_state_afterstop;
-			state_afterack <= next_state_afterack;
+		--elsif falling_edge(serial_clk) then
+		elsif rising_edge(in_clk) then
+			if serial_fe = '1' then
+				-- state registers
+				serial_state <= next_serial_state;
+				state_afterstart <= next_state_afterstart;
+				state_afterstop <= next_state_afterstop;
+				state_afterack <= next_state_afterack;
 
-			-- counter register
-			bit_ctr <= next_bit_ctr;
+				-- counter register
+				bit_ctr <= next_bit_ctr;
 
-			-- parallel data registers
-			parallel_fromfpga <= next_parallel_fromfpga;
-			parallel_tofpga <= next_parallel_tofpga;
+				-- parallel data registers
+				parallel_fromfpga <= next_parallel_fromfpga;
+				parallel_tofpga <= next_parallel_tofpga;
+			end if;
 		end if;
 	end process;
 
@@ -168,6 +182,12 @@ begin
 	gen_ctr_0 : if LOWBIT_FIRST = '0' generate
 		actual_bit_ctr <= BITS - bit_ctr - 1;
 	end generate;
+
+
+	--
+	-- debugging
+	--
+	--out_bit_ctr <= nat_to_logvec(bit_ctr, BITS);
 
 
 	--
@@ -305,7 +325,11 @@ begin
 				next_bit_ctr <= 0;
 				if in_enable = '1' then
 					next_serial_state <= SendStart;
-					next_state_afterstart <= TransmitWriteAddress;
+					if TRANSMIT_ADDR = '1' then
+						next_state_afterstart <= TransmitWriteAddress;
+					else
+						next_state_afterstart <= Transmit;
+					end if;
 				else
 					out_ready <= '1';
 				end if;
@@ -355,7 +379,11 @@ begin
 						next_state_afterack <= Transmit;
 					else
 						next_state_afterack <= SendRepeatedStart;
-						next_state_afterstart <= TransmitReadAddress;
+						if TRANSMIT_ADDR = '1' then
+							next_state_afterstart <= TransmitReadAddress;
+						else
+							next_state_afterstart <= Receive;
+						end if;
 					end if;
 				else
 					-- next bit of the word
