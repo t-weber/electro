@@ -95,10 +95,10 @@ sevenseg_mod (.in_clk(clk27), .in_rst(rst),
 // ----------------------------------------------------------------------------
 // slow clock
 // ----------------------------------------------------------------------------
-wire slow_clk;
+wire slow_clk, slow_clk_re;
 
-clkgen #(.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(SLOW_CLK))
-clk_slow (.in_clk(clk27), .in_rst(rst), .out_clk(slow_clk));
+clkpulsegen #(.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(SLOW_CLK))
+clk_slow (.in_clk(clk27), .in_rst(rst), .out_clk(slow_clk), .out_re(slow_clk_re));
 // ----------------------------------------------------------------------------
 
 
@@ -108,10 +108,10 @@ clk_slow (.in_clk(clk27), .in_rst(rst), .out_clk(slow_clk));
 localparam byte CTR_BITS = 16;
 reg [CTR_BITS - 1 : 0] ctr;
 
-always_ff@(posedge slow_clk, posedge rst) begin
+always_ff@(posedge clk27, posedge rst) begin
 	if(rst == 1'b1)
 		ctr <= 1'b0;
-	else
+	else if(slow_clk_re)
 		ctr <= ctr + 1'b1;
 end
 // ----------------------------------------------------------------------------

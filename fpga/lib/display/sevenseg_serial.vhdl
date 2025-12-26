@@ -78,8 +78,8 @@ architecture sevenseg_serial_impl of sevenseg_serial is
 	constant DATA_BYTES : natural := 2;
 	type t_data_bytes is array(0 to DATA_BYTES - 1) of std_logic_vector(BUS_BITS - 1 downto 0);
 	constant data_cmds : t_data_bytes := (
-		std_logic_vector'(CMD_DATA & '0' & (not CONST_ADDR) & '0' & '0'),
-		std_logic_vector'(CMD_ADDR & (3 downto 0 => '0'))
+		0 => std_logic_vector'(CMD_DATA & '0' & (not CONST_ADDR) & '0' & '0'),
+		1 => std_logic_vector'(CMD_ADDR & (3 downto 0 => '0'))
 	);
 	signal data_ctr, next_data_ctr : natural range 0 to DATA_BYTES - 1 := 0;
 
@@ -220,7 +220,7 @@ begin
 				else
 					bus_data <= init_cmds(init_ctr);
 
-					-- send stop command
+					-- send init command
 					if in_bus_ready = '1' then
 						next_init_ctr <= init_ctr + 1;
 						next_state <= WriteInit;
@@ -247,7 +247,7 @@ begin
 			-- write data transfer commands
 			---------------------------------------------------------------
 			when WriteDataInit =>
-				bus_data <= data_cmds(init_ctr);
+				bus_data <= data_cmds(data_ctr);
 				bus_enable <= '1';
 
 				if bus_cycle = '1' then
@@ -257,11 +257,12 @@ begin
 			when NextDataInit =>
 				if data_ctr = DATA_BYTES - 1 then
 					bus_enable <= '1';
+					next_data_ctr <= 0;
 					next_state <= WriteData;
 				else
-					bus_data <= data_cmds(init_ctr);
+					bus_data <= data_cmds(data_ctr);
 
-					-- send stop command
+					-- send data transfer command
 					if in_bus_ready = '1' then
 						next_data_ctr <= data_ctr + 1;
 						next_state <= WriteDataInit;
