@@ -1,0 +1,75 @@
+//
+// @author Tobias Weber
+// @date 4-Jan-2026
+// @license see 'LICENSE' file
+//
+// references:
+//   - https://github.com/sipeed/sipeed_wiki/blob/main/docs/hardware/en/tang/tang-nano-20k/nano-20k.md
+//       -> Schematic
+//
+
+
+// clock
+IO_LOC  "clk27"      4;
+
+IO_PORT "clk27"      PULL_MODE=NONE IO_TYPE=LVCMOS33;
+
+
+// buttons
+IO_LOC  "key[0]"     88;
+IO_LOC  "key[1]"     87;
+
+IO_PORT "key[0]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "key[1]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+
+
+// leds
+IO_LOC  "led[0]"     15;
+IO_LOC  "led[1]"     16;
+IO_LOC  "led[2]"     17;
+IO_LOC  "led[3]"     18;
+IO_LOC  "led[4]"     19;
+IO_LOC  "led[5]"     20;
+
+IO_PORT "led[0]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "led[1]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "led[2]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "led[3]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "led[4]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "led[5]"     PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+
+
+// asynchronous serial interface
+IO_LOC  "serial_tx"  69;
+IO_LOC  "serial_rx"  70;
+
+IO_PORT "serial_tx"  PULL_MODE=NONE IO_TYPE=LVCMOS33;
+IO_PORT "serial_rx"  PULL_MODE=NONE IO_TYPE=LVCMOS33;
+
+
+// audio
+IO_LOC  "aud_ena"    51;
+IO_LOC  "aud_datin"  54;
+IO_LOC  "aud_lrclk"  55;
+IO_LOC  "aud_bitclk" 56;
+
+IO_PORT "aud_ena"    PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "aud_datin"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "aud_lrclk"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "aud_bitclk" PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+
+
+// available 3.3 V gpios on the left/bottom side
+IO_LOC  "gpiol[0]"   73;
+IO_LOC  "gpiol[1]"   74;
+IO_LOC  "gpiol[2]"   75;
+
+IO_PORT "gpiol[0]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "gpiol[1]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "gpiol[2]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+
+
+// available 3.3 V gpios on the right/top side
+IO_LOC  "gpior[0]"   86;
+
+IO_PORT "gpior[0]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;

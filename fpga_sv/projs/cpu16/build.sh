@@ -11,6 +11,8 @@
 #   - https://learn.lushaylabs.com/os-toolchain-manual-installation
 #
 
+target_hw="9k"
+
 # which tools to run?
 build_fs=1
 build_testbench=1
@@ -59,6 +61,7 @@ pack_png_file=output/${top_module}.png
 synth_log=output/synth.log
 pnr_log=output/pnr.log
 src_files="../../lib/clock/clkgen.sv \
+	../../lib/clock/clkpulsegen.sv \
 	../../lib/sync/debounce_switch.sv \
 	../../lib/sync/debounce_button.sv \
 	../../lib/sync/edge.sv \
@@ -77,21 +80,7 @@ src_files="../../lib/clock/clkgen.sv \
 #	../../sync/syncdata.sv \
 
 
-# 9k board
-target_board=GW1NR-LV9QN88PC6/I5
-target_fpga=GW1N-9C
-target_freq=27
-target_pins_file=pins9k.cst
-target_clocks_file=clocks9k.sdc
-target_defines="-DUSE_9K"
-
-# 1k board (define RAM_UNPACKED for it to be recognised as BSRAM)
-#target_board=GW1NZ-LV1QN48C6/I5
-#target_fpga=GW1NZ-1
-#target_freq=27
-#target_pins_file=pins1k.cst
-#target_clocks_file=clocks1k.sdc
-#target_defines="-DUSE_1K"
+source ../pins/boards.sh
 
 
 # options
@@ -103,25 +92,13 @@ target_defines+=" -DROM_ADDR_BITS=$rom_addr_bits"
 target_defines+=" -DCPU_NO_MULT_DIV"
 
 
-# tools
-YOSYS=yosys
-NEXTPNR=nextpnr-himbaechel
-PACK=gowin_pack
-SIM=iverilog
-
-echo -e "Using tool: $(which $YOSYS)"
-echo -e "Using tool: $(which $NEXTPNR)"
-echo -e "Using tool: $(which $PACK)"
-echo -e "Using simulation tool: $(which $SIM)"
-
-
 if [ ! -e output ]; then
 	mkdir output
 fi
 
 
 # create sv rom
-echo -e "\nCreating ROM: ${rom_file} -> ${rom_svfile}..."
+echo -e "Creating ROM: ${rom_file} -> ${rom_svfile}..."
 if [ -e genrom ]; then
 	if ! ./genrom -t sv -c 0 -p 1 -d 1 -w 16 --convert_text 1 -o ${rom_svfile} ${rom_file}; then
 		exit -1

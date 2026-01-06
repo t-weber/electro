@@ -16,10 +16,15 @@ module leds
 	// leds
 	output [2 : 0] led,
 	output [7 : 0] ledr
-`else
+`endif
+`ifdef USE_9K
 	// leds
 	output [5 : 0] led,
 	output [7 : 0] ledg
+`endif
+`ifdef USE_20K
+	// leds
+	output [5 : 0] led
 `endif
 );
 
@@ -29,8 +34,12 @@ localparam longint SLOW_CLK =          4;
 
 `ifdef USE_1K
 	localparam byte NUM_LEDS = $size(ledr);
-`else
+`endif
+`ifdef USE_9K
 	localparam byte NUM_LEDS = $size(ledg);
+`endif
+`ifdef USE_20K
+	localparam byte NUM_LEDS = $size(led);
 `endif
 
 
@@ -39,8 +48,13 @@ localparam longint SLOW_CLK =          4;
 // ----------------------------------------------------------------------------
 wire rst;
 
-debounce_switch debounce_key0(.in_clk(clk27), .in_rst(1'b0),
-	.in_signal(~key[0]), .out_debounced(rst));
+`ifdef USE_20K
+	debounce_switch debounce_key0(.in_clk(clk27), .in_rst(1'b0),
+		.in_signal(key[0]), .out_debounced(rst));
+`else
+	debounce_switch debounce_key0(.in_clk(clk27), .in_rst(1'b0),
+		.in_signal(~key[0]), .out_debounced(rst));
+`endif
 // ----------------------------------------------------------------------------
 
 
@@ -86,9 +100,11 @@ end
 
 `ifdef USE_1K
 	assign ledr = shiftreg;
-`else
+`endif
+`ifdef USE_9K
 	assign ledg = shiftreg;
 `endif
+
 assign led = ~shiftreg[$high(led) : 0];
 
 

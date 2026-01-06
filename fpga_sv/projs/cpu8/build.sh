@@ -11,6 +11,8 @@
 #   - https://learn.lushaylabs.com/os-toolchain-manual-installation
 #
 
+target_hw="1k"
+
 # which tools to run?
 run_synth=1
 run_pnr=1
@@ -57,32 +59,13 @@ src_files="../../lib/clock/clkgen.sv \
 	main.sv"
 
 
-# 9k board
-#target_board=GW1NR-LV9QN88PC6/I5
-#target_fpga=GW1N-9C
-#target_freq=27
-#target_pins_file=pins9k.cst
-#target_defines="-DUSE_9K"
+source ../pins/boards.sh
 
-# 1k board (define RAM_UNPACKED for it to be recognised as BSRAM)
-target_board=GW1NZ-LV1QN48C6/I5
-target_fpga=GW1NZ-1
-target_freq=27
-target_pins_file=pins1k.cst
-target_defines="-DUSE_1K -DRAM_DISABLE_PORT2 -DRAM_UNPACKED -DRAM_INIT"
-target_defines+=" -DCPU_DISABLE_FUNCS -DROM_ADDR_BITS=$rom_addr_bits"
-
-
-# tools
-YOSYS=yosys
-NEXTPNR=nextpnr-himbaechel
-PACK=gowin_pack
-SIM=iverilog
-
-echo -e "Using tool: $(which $YOSYS)"
-echo -e "Using tool: $(which $NEXTPNR)"
-echo -e "Using tool: $(which $PACK)"
-echo -e "Using simulation tool: $(which $SIM)"
+if [[ "$target_hw" == "1k" ]]; then
+	# 1k board (define RAM_UNPACKED for it to be recognised as BSRAM)
+	target_defines+=" -DRAM_DISABLE_PORT2 -DRAM_UNPACKED -DRAM_INIT"
+	target_defines+=" -DCPU_DISABLE_FUNCS -DROM_ADDR_BITS=$rom_addr_bits"
+fi
 
 
 if [ ! -e output ]; then
@@ -91,7 +74,7 @@ fi
 
 
 # create sv rom
-echo -e "\nCreating ROM: ${rom_file} -> ${rom_svfile}..."
+echo -e "Creating ROM: ${rom_file} -> ${rom_svfile}..."
 if [ -e genrom ]; then
 	if ! ./genrom -t sv -c 0 -p 1 -d 1 -w 8 --convert_text 1 -o ${rom_svfile} ${rom_file}; then
 		exit -1

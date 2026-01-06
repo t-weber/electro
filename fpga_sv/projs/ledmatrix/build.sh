@@ -11,6 +11,8 @@
 #   - https://learn.lushaylabs.com/os-toolchain-manual-installation
 #
 
+target_hw="9k"
+
 run_synth=1
 run_pnr=1
 run_pack=1
@@ -28,32 +30,12 @@ pnr_log=output/pnr.log
 src_files="../../lib/sync/debounce_button.sv \
 	../../lib/sync/debounce_switch.sv \
 	../../lib/clock/clkgen.sv \
+	../../lib/clock/clkpulsegen.sv \
 	../../lib/comm/serial_tx.sv \
 	../../lib/display/ledmatrix.sv \
 	main.sv"
 
-# 9k board
-target_board=GW1NR-LV9QN88PC6/I5
-target_fpga=GW1N-9C
-target_freq=27
-target_pins_file=pins9k.cst
-
-# 1k board
-#target_board=GW1NZ-LV1QN48C6/I5
-#target_fpga=GW1NZ-1
-#target_freq=27
-#target_pins_file=pins1k.cst
-
-# tools
-YOSYS=yosys
-NEXTPNR=nextpnr-himbaechel
-PACK=gowin_pack
-gen_type=sv
-
-echo -e "Using tool: $(which $YOSYS)"
-echo -e "Using tool: $(which $NEXTPNR)"
-echo -e "Using tool: $(which $PACK)"
-
+source ../pins/boards.sh
 
 if [ ! -e output ]; then
 	mkdir output
