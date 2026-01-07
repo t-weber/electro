@@ -59,14 +59,22 @@ IO_PORT "aud_lrclk"  PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 IO_PORT "aud_bitclk" PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 
 
-// available 3.3 V gpios on the left/bottom side
-IO_LOC  "gpiol[0]"   73;
-IO_LOC  "gpiol[1]"   74;
-IO_LOC  "gpiol[2]"   75;
+// text lcd
+IO_LOC  "txtlcd_scl" 73;
+IO_LOC  "txtlcd_sda" 74;
 
-IO_PORT "gpiol[0]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpiol[1]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
-IO_PORT "gpiol[2]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+IO_PORT "txtlcd_scl" PULL_MODE=UP  IO_TYPE=LVCMOS33;
+IO_PORT "txtlcd_sda" PULL_MODE=UP  IO_TYPE=LVCMOS33;
+
+
+// available 3.3 V gpios on the left/bottom side
+//IO_LOC  "gpiol[0]"   73;
+//IO_LOC  "gpiol[1]"   74;
+//IO_LOC  "gpiol[2]"   75;
+
+//IO_PORT "gpiol[0]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+//IO_PORT "gpiol[1]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
+//IO_PORT "gpiol[2]"   PULL_MODE=NONE  IO_TYPE=LVCMOS33;
 
 
 // available 3.3 V gpios on the right/top side
