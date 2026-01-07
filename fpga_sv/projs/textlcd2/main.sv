@@ -1,7 +1,7 @@
 /**
- * serial seven segment display test
+ * serial 2-wire text display test
  * @author Tobias Weber
- * @date 18-oct-2025
+ * @date 6-jan-2026
  * @license see 'LICENSE' file
  */
 
