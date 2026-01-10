@@ -5,6 +5,7 @@
  * @license see 'LICENSE' file
  */
 
+//`default_nettype /*wire*/ none
 
 module textlcd2_test
 (
@@ -22,7 +23,7 @@ module textlcd2_test
 
 
 localparam longint MAIN_CLK   = 27_000_000;
-localparam longint SERIAL_CLK =     10_000;
+localparam longint SERIAL_CLK =    100_000;
 localparam longint SLOW_CLK   =          2;
 
 localparam byte SERIAL_BITS   = 8;
@@ -34,7 +35,7 @@ localparam byte SERIAL_BITS   = 8;
 wire rst;
 
 debounce_switch debounce_key0(.in_clk(clk27), .in_rst(1'b0),
-	.in_signal(~key[0]), .out_debounced(rst));
+	.in_signal(key[1]), .out_debounced(rst));
 // ----------------------------------------------------------------------------
 
 
@@ -60,6 +61,7 @@ serial_mod(
 	.in_clk(clk27), .in_rst(rst), .out_err(serial_error),
 	.in_enable(serial_enable), .in_write(1'b1), .out_ready(serial_ready),
 	.in_addr_write(8'h26), .in_addr_read(8'h27),
+	//.in_addr_write(8'h3e), .in_addr_read(8'h3f),
 	.inout_serial_clk(txtlcd_scl), .inout_serial(txtlcd_sda),
 	.in_parallel(serial_data), .out_parallel(serial_data_in),
 	.out_next_word(serial_next_word)
@@ -70,26 +72,29 @@ serial_mod(
 // ----------------------------------------------------------------------------
 // text lcd serial interface
 // ----------------------------------------------------------------------------
+wire update;
+assign update = 1'b0;  // TODO
+
 // instantiate lcd module
-/*txtlcd2 #(
-	.MAIN_CLK(MAIN_CLK),
+txtlcd2 #(
+	.MAIN_CLK(MAIN_CLK), .LCD_SIZE(4*20)
 )
 lcd_mod(
-	.in_clk(clk27), .in_rst(reset),
-	.in_update(update), .in_bus_data(serial_data_in),
+	.in_clk(clk27), .in_rst(rst),
+	.in_update(update), //.in_bus_data(serial_data_in),
 	.in_bus_next(serial_next_word), .in_bus_ready(serial_ready),
 	.out_bus_data(serial_data), .out_bus_enable(serial_enable)
-);*/
+);
 // ----------------------------------------------------------------------------
 
 
 // ----------------------------------------------------------------------------
 // slow clock
 // ----------------------------------------------------------------------------
-wire slow_clk, slow_clk_re;
+wire slow_clk;
 
 clkpulsegen #(.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(SLOW_CLK))
-clk_slow (.in_clk(clk27), .in_rst(rst), .out_clk(slow_clk), .out_re(slow_clk_re));
+clk_slow (.in_clk(clk27), .in_rst(rst), .out_clk(slow_clk), .out_re());
 // ----------------------------------------------------------------------------
 
 
@@ -97,9 +102,10 @@ clk_slow (.in_clk(clk27), .in_rst(rst), .out_clk(slow_clk), .out_re(slow_clk_re)
 // outputs
 // ----------------------------------------------------------------------------
 assign led[0] = serial_error ? ~slow_clk : 1'b1;
-assign led[1] = 1'b1;
-assign led[2] = ~serial_ready;
-assign led[5:3] = 1'b1;
+assign led[1] = ~serial_ready;
+assign led[2] = ~txtlcd_scl;
+assign led[3] = ~txtlcd_sda;
+assign led[5:4] = 2'b11;
 // ----------------------------------------------------------------------------
 
 

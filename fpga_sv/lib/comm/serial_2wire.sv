@@ -9,7 +9,7 @@ module serial_2wire
 #(
 	// clock frequencies
 	parameter longint MAIN_CLK_HZ   = 50_000_000,
-	parameter longint SERIAL_CLK_HZ = 10_000,
+	parameter longint SERIAL_CLK_HZ = 100_000,
 
 	// address and word lengths
 	parameter byte ADDR_BITS    = 8,

@@ -31,6 +31,7 @@ src_files="../../lib/sync/debounce_button.sv \
 	../../lib/sync/debounce_switch.sv \
 	../../lib/clock/clkpulsegen.sv \
 	../../lib/comm/serial_2wire.sv \
+	../../lib/display/txtlcd2.sv \
 	main.sv"
 
 
