@@ -73,7 +73,7 @@ serial_mod(
 // text lcd serial interface
 // ----------------------------------------------------------------------------
 wire update;
-assign update = 1'b0;  // TODO
+assign update = 1'b1;
 
 // instantiate lcd module
 txtlcd2 #(

@@ -48,7 +48,7 @@ module txtlcd2
 	localparam longint WAIT_INIT3  = MAIN_CLK * 1 / 1000;    // 1 ms
 	localparam longint WAIT_ENABLE = MAIN_CLK * 1 / 1000;    // 1 ms
 	localparam longint WAIT_CLEAR  = MAIN_CLK * 5 / 1000;    // 5 ms
-	localparam longint WAIT_UPDATE = MAIN_CLK * 100 / 1000;  // 100 ms, 10 Hz
+	localparam longint WAIT_UPDATE = MAIN_CLK * 500 / 1000;  // 500 ms, 2 Hz
 `endif
 
 logic [$clog2(WAIT_UPDATE /*largest value*/) : 0]
@@ -59,26 +59,26 @@ logic [$clog2(WAIT_UPDATE /*largest value*/) : 0]
 // --------------------------------------------------------------------
 // initialise display, [hw], p. 12
 // --------------------------------------------------------------------
-localparam [3 : 0] pin_ena        = 4'b0100;
-localparam [3 : 0] pin_rs         = 4'b0001;
-localparam [3 : 0] pin_led        = 4'b1000;
+localparam [BUS_BITS - 1 : 0] pin_ena        = 4'b0100;
+localparam [BUS_BITS - 1 : 0] pin_rs         = 4'b0001;
+localparam [BUS_BITS - 1 : 0] pin_led        = 4'b1000;
 
-localparam [7 : 0] set_func       = 8'b0010_0000;
-localparam [7 : 0] func_8bit      = 8'b0001_0000;
-localparam [7 : 0] func_2line     = 8'b0000_1000;
-localparam [7 : 0] func_font      = 8'b0000_0100;
+localparam [BUS_BITS - 1 : 0] set_func       = 8'b0010_0000;
+localparam [BUS_BITS - 1 : 0] func_8bit      = 8'b0001_0000;
+localparam [BUS_BITS - 1 : 0] func_2line     = 8'b0000_1000;
+localparam [BUS_BITS - 1 : 0] func_font      = 8'b0000_0100;
 
-localparam [7 : 0] set_disp       = 8'b0000_1000;
-localparam [7 : 0] disp_on        = 8'b0000_0100;
-localparam [7 : 0] disp_linecaret = 8'b0000_0010;
-localparam [7 : 0] disp_boxcaret  = 8'b0000_0001;
+localparam [BUS_BITS - 1 : 0] set_disp       = 8'b0000_1000;
+localparam [BUS_BITS - 1 : 0] disp_on        = 8'b0000_0100;
+localparam [BUS_BITS - 1 : 0] disp_linecaret = 8'b0000_0010;
+localparam [BUS_BITS - 1 : 0] disp_boxcaret  = 8'b0000_0001;
 
-localparam [7 : 0] set_caret      = 8'b0000_0100;
-localparam [7 : 0] caret_inc      = 8'b0000_0010;
-localparam [7 : 0] caret_shift    = 8'b0000_0001;
+localparam [BUS_BITS - 1 : 0] set_caret      = 8'b0000_0100;
+localparam [BUS_BITS - 1 : 0] caret_inc      = 8'b0000_0010;
+localparam [BUS_BITS - 1 : 0] caret_shift    = 8'b0000_0001;
 
-localparam [7 : 0] set_clear      = 8'b0000_0001;
-localparam [7 : 0] set_return     = 8'b0000_0010;
+localparam [BUS_BITS - 1 : 0] set_clear      = 8'b0000_0001;
+localparam [BUS_BITS - 1 : 0] set_return     = 8'b0000_0010;
 
 // init sequence
 localparam int INIT_BYTES = 14*2;
@@ -177,7 +177,9 @@ typedef enum {
 	Reset,
 	WriteInit, NextInit, WaitInit,
 	WaitUpdate, WaitUpdate2,
-	WriteDataHigh, WriteDataLow, NextData
+	WriteDataHigh, WriteDataHighWait, WriteDataHighEnd,
+	WriteDataLow, WriteDataLowWait, WriteDataLowEnd,
+	NextData
 } t_state;
 
 t_state state = Reset, next_state = Reset;
@@ -255,8 +257,6 @@ always_comb begin
 			end else begin
 				bus_data = init_cmds[init_ctr];
 
-				// send stop signal
-				//bus_enable = 1'b1;
 				if(in_bus_ready == 1'b1) begin
 					wait_ctr_max = init_wait[init_ctr];
 					next_init_ctr = $size(init_ctr)'(init_ctr + 1'b1);
@@ -291,7 +291,21 @@ always_comb begin
 		// ----------------------------------------------------
 		// write high nibble of text byte
 		WriteDataHigh: begin
-			bus_data = 1'b0;  // TODO
+			bus_data = 8'h41 & 8'hf0 | pin_led | pin_rs | pin_ena;  // TODO
+			bus_enable = 1'b1;
+
+			if(bus_cycle == 1'b1)
+				next_state = WriteDataHighWait;
+		end
+
+		WriteDataHighWait: begin
+			wait_ctr_max = WAIT_ENABLE;
+			if(wait_ctr == wait_ctr_max)
+				next_state = WriteDataHighEnd;
+		end
+
+		WriteDataHighEnd: begin
+			bus_data = 8'h41 & 8'hf0 | pin_led | pin_rs;  // TODO
 			bus_enable = 1'b1;
 
 			if(bus_cycle == 1'b1)
@@ -300,7 +314,21 @@ always_comb begin
 
 		// write low nibble of text byte
 		WriteDataLow: begin
-			bus_data = 1'b0;  // TODO
+			bus_data = (8'h41 & 8'h0f) << 4 | pin_led | pin_rs | pin_ena;  // TODO
+			bus_enable = 1'b1;
+
+			if(bus_cycle == 1'b1)
+				next_state = WriteDataLowWait;
+		end
+
+		WriteDataLowWait: begin
+			wait_ctr_max = WAIT_ENABLE;
+			if(wait_ctr == wait_ctr_max)
+				next_state = WriteDataLowEnd;
+		end
+
+		WriteDataLowEnd: begin
+			bus_data = (8'h41 & 8'h0f) << 4 | pin_led | pin_rs;  // TODO
 			bus_enable = 1'b1;
 
 			if(bus_cycle == 1'b1)
@@ -309,8 +337,6 @@ always_comb begin
 
 		// next byte
 		NextData: begin
-			bus_data = 1'b0;  // TODO
-
 			if(seg_ctr == LCD_SIZE - 1) begin
 				// at last segment
 				if(in_bus_ready == 1'b1) begin
@@ -321,7 +347,6 @@ always_comb begin
 			end else begin
 				next_seg_ctr = $size(seg_ctr)'(seg_ctr + 1'b1);
 				next_state = WriteDataHigh;
-				bus_enable = 1'b1;
 			end
 		end
 		// ----------------------------------------------------

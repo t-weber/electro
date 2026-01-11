@@ -39,6 +39,8 @@ void lcd_send_nibble_wire(const LCDInfo* lcd, bool rs, uint8_t data)
 	data <<= 4;
 	if(rs)
 		data |= pin_rs;
+
+	/* backlight */
 	data |= pin_led;
 
 	lcd->wire_begin(lcd->wire_addr);
@@ -69,8 +71,8 @@ void lcd_send_nibble(const LCDInfo* lcd, bool rs, uint8_t data)
  */
 void lcd_send_byte(const LCDInfo* lcd, bool rs, uint8_t data)
 {
-	lcd_send_nibble(lcd, rs, (data&0xf0)>>4);
-	lcd_send_nibble(lcd, rs, data&0x0f);
+	lcd_send_nibble(lcd, rs, (data & 0xf0) >> 4);
+	lcd_send_nibble(lcd, rs, data & 0x0f);
 }
 
 
@@ -80,13 +82,19 @@ void lcd_send_byte(const LCDInfo* lcd, bool rs, uint8_t data)
  */
 void lcd_init(const LCDInfo* lcd)
 {
-	lcd->delay(20);
-	lcd_send_nibble(lcd, 0, 0b0011);
-	lcd->delay(5);
-	lcd_send_nibble(lcd, 0, 0b0011);
-	lcd->delay(1);
-	lcd_send_nibble(lcd, 0, 0b0011);
-	lcd_send_nibble(lcd, 0, 0b0010);
+	uint8_t set_func = 0b0010;
+	uint8_t func_8bit = 0b0001;
+
+	uint32_t delays[] = { 20, 5, 1 };
+
+	for(uint8_t i = 0; i < 3; ++i)
+	{
+		lcd->delay(delays[i]);
+		lcd_send_nibble(lcd, 0, set_func | func_8bit);
+	}
+
+	/* to 4-bit mode */
+	lcd_send_nibble(lcd, 0, set_func);
 }
 
 
@@ -107,7 +115,7 @@ void lcd_set_caret_direction(const LCDInfo* lcd, bool inc, bool shift)
 {
 	uint8_t byte = 0b00000100;
 	if(inc)
-		byte |= 1<<1;
+		byte |= 1 << 1;
 	if(shift)
 		byte |= 1;
 	lcd_send_byte(lcd, 0, byte);
@@ -131,9 +139,9 @@ void lcd_shift(const LCDInfo* lcd, bool all, bool right)
 {
 	uint8_t byte = 0b00010000;
 	if(all) /* shift all or just caret? */
-		byte |= 1<<3;
+		byte |= 1 << 3;
 	if(right)
-		byte |= 1<<2;
+		byte |= 1 << 2;
 	lcd_send_byte(lcd, 0, byte);
 }
 
@@ -145,11 +153,11 @@ void lcd_set_function(const LCDInfo* lcd, bool bits_8, bool two_lines, bool font
 {
 	uint8_t byte = 0b00100000;
 	if(bits_8)
-		byte |= 1<<4;
+		byte |= 1 << 4;
 	if(two_lines)
-		byte |= 1<<3;
+		byte |= 1 << 3;
 	if(font)
-		byte |= 1<<2;
+		byte |= 1 << 2;
 	lcd_send_byte(lcd, 0, byte);
 }
 
@@ -161,9 +169,9 @@ void lcd_set_display(const LCDInfo* lcd, bool on, bool caret_line, bool caret_bo
 {
 	uint8_t byte = 0b00001000;
 	if(on)
-		byte |= 1<<2;
+		byte |= 1 << 2;
 	if(caret_line)
-		byte |= 1<<1;
+		byte |= 1 << 1;
 	if(caret_box)
 		byte |= 1;
 	lcd_send_byte(lcd, 0, byte);
