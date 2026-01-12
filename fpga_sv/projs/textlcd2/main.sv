@@ -49,7 +49,7 @@ wire serial_next_word;
 // instantiate serial module
 serial_2wire #(
 	.BITS(SERIAL_BITS), .ADDR_BITS(SERIAL_BITS),
-	.LOWBIT_FIRST(1), .TRANSMIT_ADDR(1),
+	.LOWBIT_FIRST(0), .TRANSMIT_ADDR(1),
 	.MAIN_CLK_HZ(MAIN_CLK), .SERIAL_CLK_HZ(SERIAL_CLK),
 `ifdef __IN_SIMULATION__
 	.IGNORE_ERROR(1'b1)
@@ -60,8 +60,8 @@ serial_2wire #(
 serial_mod(
 	.in_clk(clk27), .in_rst(rst), .out_err(serial_error),
 	.in_enable(serial_enable), .in_write(1'b1), .out_ready(serial_ready),
-	.in_addr_write(8'h26), .in_addr_read(8'h27),
-	//.in_addr_write(8'h3e), .in_addr_read(8'h3f),
+	//.in_addr_write(8'h26), .in_addr_read(8'h27),
+	.in_addr_write(8'h4e), .in_addr_read(8'h4f),
 	.inout_serial_clk(txtlcd_scl), .inout_serial(txtlcd_sda),
 	.in_parallel(serial_data), .out_parallel(serial_data_in),
 	.out_next_word(serial_next_word)
