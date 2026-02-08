@@ -63,7 +63,7 @@ serial_mod(
 	//.in_addr_write(8'h26), .in_addr_read(8'h27),
 	.in_addr_write(8'h4e), .in_addr_read(8'h4f),
 	.inout_serial_clk(txtlcd_scl), .inout_serial(txtlcd_sda),
-	.in_parallel(serial_data), .out_parallel(serial_data_in),
+	.in_parallel(serial_data), //.out_parallel(serial_data_in),
 	.out_next_word(serial_next_word)
 );
 // --------------------------------------------------------------------
@@ -73,15 +73,21 @@ serial_mod(
 // text lcd serial interface
 // ----------------------------------------------------------------------------
 wire update;
+wire [SERIAL_BITS - 1 : 0] char_ctr;
 assign update = 1'b1;
+assign serial_data_in =
+	char_ctr < 20 ? 8'h41 :
+	char_ctr < 40 ? 8'h42 :
+	char_ctr < 60 ? 8'h43 :
+	8'h44;
 
 // instantiate lcd module
 txtlcd2 #(
 	.MAIN_CLK(MAIN_CLK), .LCD_SIZE(4*20)
 )
 lcd_mod(
-	.in_clk(clk27), .in_rst(rst),
-	.in_update(update), //.in_bus_data(serial_data_in),
+	.in_clk(clk27), .in_rst(rst), .out_char_ctr(char_ctr),
+	.in_update(update), .in_bus_data(serial_data_in),
 	.in_bus_next(serial_next_word), .in_bus_ready(serial_ready),
 	.out_bus_data(serial_data), .out_bus_enable(serial_enable)
 );
@@ -106,6 +112,9 @@ assign led[1] = ~serial_ready;
 assign led[2] = ~txtlcd_scl;
 assign led[3] = ~txtlcd_sda;
 assign led[5:4] = 2'b11;
+
+//assign txtlcd_scl = 1'b1;
+//assign txtlcd_sda = 1'b0;
 // ----------------------------------------------------------------------------
 
 
