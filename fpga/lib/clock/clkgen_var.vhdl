@@ -85,7 +85,7 @@ begin
 	--
 	-- generate clock
 	--
-	proc_clk : process(in_clk, in_reset, in_clk_init, clk_ctr_shifted)
+	proc_clk : process(in_clk, in_reset) --, in_clk_init, clk_ctr_shifted)
 		variable clk_ctr : natural range 0 to MAIN_HZ - 1 := 0;
 	begin
 		-- asynchronous reset
