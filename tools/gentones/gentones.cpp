@@ -301,10 +301,10 @@ int main(int argc, char** argv)
 			t_audio len = seconds[idx_seq] * base_length;
 			t_audio freq = tuning[idx];
 
-			(*ostr) << "(freq => " << num_freq_bits << "d\"" << std::round(freq) << "\""
+			(*ostr) << "( freq => " << num_freq_bits << "d\"" << std::round(freq) << "\""
 				<< ", duration => MAIN_HZ / 1000 * " << std::round(len * 1000.)
-				<< ", delay => MAIN_HZ / 20)"
-				<< ", -- tone " << idx_seq
+				<< ", delay => MAIN_HZ / 20 )"
+				<< ",  -- tone " << idx_seq
 				<< std::endl;
 
 			cur_time_sig += len;
@@ -312,6 +312,12 @@ int main(int argc, char** argv)
 	}
 	else if(out_type == "sv")
 	{
+		bool show_fields = true;
+		std::string freq_name = show_fields ? "freq : " : "";
+		std::string dur_name = show_fields ? "duration : " : "";
+		std::string delay_name = show_fields ? "delay : " : "";
+		std::string struct_cast = show_fields ? "'" : "";
+
 		(*ostr) << "// sequence " << cur_seq << std::endl;
 		for(std::size_t idx_seq = 0; idx_seq < sequence.size(); ++idx_seq)
 		{
@@ -332,11 +338,15 @@ int main(int argc, char** argv)
 			t_audio len = seconds[idx_seq] * base_length;
 			t_audio freq = tuning[idx];
 
-			(*ostr) << "'{freq : " << num_freq_bits << "d'" << std::round(freq)
-				<< ", duration : MAIN_HZ / 1000 * " << std::round(len * 1000.)
-				<< ", delay : MAIN_HZ / 20}"
-				<< ", // tone " << idx_seq
-				<< std::endl;
+			(*ostr) << struct_cast << "{ "
+				<< freq_name << num_freq_bits << "'d" << std::round(freq)
+				<< ", " << dur_name << "int'(MAIN_HZ / 1000 * " << std::round(len * 1000.) << ")"
+				<< ", " << delay_name << "int'(MAIN_HZ / 20) }";
+			if(idx_seq < sequence.size() - 1)
+				(*ostr) << ",  // tone " << idx_seq;
+			else
+				(*ostr) << "   // tone " << idx_seq;
+			(*ostr)	<< std::endl;
 
 			cur_time_sig += len;
 		}

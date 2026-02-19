@@ -20,7 +20,7 @@ typedef struct packed
 } t_str;
 
 
-t_str [0 : 3] strs;
+t_str [4] strs;
 
 assign strs =
 {
