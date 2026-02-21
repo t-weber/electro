@@ -39,11 +39,10 @@ assign out_data = amp[0];
 
 // clock for tone generation
 logic tone_clk;
-// TODO:
-//clkgen_var #(.MAIN_HZ(SAMPLE_FREQ), .HZ_BITS(TONE_BITS))
-//tone_clkgen(.in_clk(in_sampleclk), .in_reset(in_reset),
-//	.in_clk_hz(in_tone_hz), .in_clk_shift(1'b0), .in_clk_init(1'b0),
-//	.out_clk(tone_clk));
+clkgen_var #(.MAIN_HZ(SAMPLE_FREQ), .HZ_BITS(TONE_BITS))
+tone_clkgen(.in_clk(in_sampleclk), .in_reset(in_reset),
+	.in_clk_hz(in_tone_hz), .in_clk_shift(1'b0), .in_clk_init(1'b0),
+	.out_clk(tone_clk));
 
 
 always_ff@(posedge in_bitclk, posedge in_reset) begin

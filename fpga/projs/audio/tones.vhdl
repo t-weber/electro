@@ -1,5 +1,5 @@
 --
--- timed sequence test
+-- timed sequence of tones
 -- @author Tobias Weber <tobias.weber@tum.de>
 -- @date 24-may-2025
 -- @license see 'LICENSE' file
@@ -235,7 +235,7 @@ begin
 				end if;
 
 			--
-			-- setup finished
+			-- sequence finished
 			--
 			when Idle =>
 				null;

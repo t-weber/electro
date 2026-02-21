@@ -154,7 +154,7 @@ int main(int argc, char** argv)
 			("generate all keys, default: "
 				+ std::to_string(all_keys)).c_str())
 		("type,t", args::value<decltype(out_type)>(&out_type),
-			("output type (vhdl/text), default: "
+			("output type (vhdl/sv/text), default: "
 				+ out_type).c_str())
 		("freq_bits,f", args::value<decltype(num_freq_bits)>(&num_freq_bits),
 			("number of bits for frequency, default: "
@@ -301,11 +301,52 @@ int main(int argc, char** argv)
 			t_audio len = seconds[idx_seq] * base_length;
 			t_audio freq = tuning[idx];
 
-			(*ostr) << "(freq => " << num_freq_bits << "d\"" << std::round(freq) << "\""
+			(*ostr) << "( freq => " << num_freq_bits << "d\"" << std::round(freq) << "\""
 				<< ", duration => MAIN_HZ / 1000 * " << std::round(len * 1000.)
-				<< ", delay => MAIN_HZ / 20)"
-				<< ", -- tone " << idx_seq
+				<< ", delay => MAIN_HZ / 20 )"
+				<< ",  -- tone " << idx_seq
 				<< std::endl;
+
+			cur_time_sig += len;
+		}
+	}
+	else if(out_type == "sv")
+	{
+		bool show_fields = true;
+		std::string freq_name = show_fields ? "freq : " : "";
+		std::string dur_name = show_fields ? "duration : " : "";
+		std::string delay_name = show_fields ? "delay : " : "";
+		std::string struct_cast = show_fields ? "'" : "";
+
+		(*ostr) << "// sequence " << cur_seq << std::endl;
+		for(std::size_t idx_seq = 0; idx_seq < sequence.size(); ++idx_seq)
+		{
+			if(cur_time_sig >= time_sig)
+			{
+				++cur_seq;
+				cur_time_sig = 0.;
+				(*ostr) << "\n// sequence " << cur_seq << std::endl;
+			}
+
+			std::size_t idx = sequence[idx_seq] + shift_half_tones;
+			if(idx >= tuning.size())
+			{
+				std::cerr << "Error: Invalid tuning index: " << idx << "." << std::endl;
+				continue;
+			}
+
+			t_audio len = seconds[idx_seq] * base_length;
+			t_audio freq = tuning[idx];
+
+			(*ostr) << struct_cast << "{ "
+				<< freq_name << num_freq_bits << "'d" << std::round(freq)
+				<< ", " << dur_name << "int'(MAIN_HZ / 1000 * " << std::round(len * 1000.) << ")"
+				<< ", " << delay_name << "int'(MAIN_HZ / 20) }";
+			if(idx_seq < sequence.size() - 1)
+				(*ostr) << ",  // tone " << idx_seq;
+			else
+				(*ostr) << "   // tone " << idx_seq;
+			(*ostr)	<< std::endl;
 
 			cur_time_sig += len;
 		}
