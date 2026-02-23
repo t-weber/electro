@@ -29,7 +29,9 @@ elif [[ "$target_hw" == "20k" ]]; then
 	echo -e "Using 20k board."
 
 	target_board=GW2A-LV18QN88C8/I7
+	#target_board=GW2AR-LV18QN88C8/I7
 	target_fpga=GW2A-18
+	#target_fpga=GW2AR-18
 	target_freq=27
 	target_pins_file=pins20k.cst
 	target_clocks_file=clocks20k.sdc
