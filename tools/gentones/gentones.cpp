@@ -118,7 +118,7 @@ int main(int argc, char** argv)
 	std::string in_file = "";
 	std::string out_file = "";
 	std::string out_type = "vhdl";
-	int num_freq_bits = 16;
+	//int num_freq_bits = 16;
 	// --------------------------------------------------------------------------------
 
 
@@ -156,9 +156,9 @@ int main(int argc, char** argv)
 		("type,t", args::value<decltype(out_type)>(&out_type),
 			("output type (vhdl/sv/text), default: "
 				+ out_type).c_str())
-		("freq_bits,f", args::value<decltype(num_freq_bits)>(&num_freq_bits),
+		/*("freq_bits,f", args::value<decltype(num_freq_bits)>(&num_freq_bits),
 			("number of bits for frequency, default: "
-				+ std::to_string(num_freq_bits)).c_str())
+				+ std::to_string(num_freq_bits)).c_str())*/
 		("input,i", args::value<decltype(in_file)>(&in_file),
 			"input data file")
 		("output,o", args::value<decltype(out_file)>(&out_file),
@@ -301,7 +301,9 @@ int main(int argc, char** argv)
 			t_audio len = seconds[idx_seq] * base_length;
 			t_audio freq = tuning[idx];
 
-			(*ostr) << "( freq => " << num_freq_bits << "d\"" << std::round(freq) << "\""
+			(*ostr)
+				//<< "( freq => " << num_freq_bits << "d\"" << std::round(freq) << "\""
+				<< "( freq => " << std::round(freq)
 				<< ", duration => MAIN_HZ / 1000 * " << std::round(len * 1000.)
 				<< ", delay => MAIN_HZ / 20 )"
 				<< ",  -- tone " << idx_seq
@@ -339,9 +341,10 @@ int main(int argc, char** argv)
 			t_audio freq = tuning[idx];
 
 			(*ostr) << struct_cast << "{ "
-				<< freq_name << num_freq_bits << "'d" << std::round(freq)
-				<< ", " << dur_name << "int'(MAIN_HZ / 1000 * " << std::round(len * 1000.) << ")"
-				<< ", " << delay_name << "int'(MAIN_HZ / 20) }";
+				//<< freq_name << num_freq_bits << "'d" << std::round(freq)
+				<< freq_name << "FREQ_BITS'(" << std::round(freq) << ")"
+				<< ", " << dur_name << "DUR_BITS'(MAIN_HZ / 1000 * " << std::round(len * 1000.) << ")"
+				<< ", " << delay_name << "DUR_BITS'(MAIN_HZ / 20) }";
 			if(idx_seq < sequence.size() - 1)
 				(*ostr) << ",  // tone " << idx_seq;
 			else
