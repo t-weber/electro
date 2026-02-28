@@ -43,7 +43,7 @@ architecture audio_impl of audio is
 	-- bit and sample counter
 	signal bit_ctr, next_bit_ctr : natural range 0 to FRAME_BITS - 1 := 0;
 	signal sec_ctr, next_sec_ctr : natural range 0 to SAMPLE_FREQ - 1 := 0;
-	signal sample_ctr, next_sample_ctr : std_logic_vector(15 downto 0) := (others => '0');
+	signal sample_ctr, next_sample_ctr : std_logic_vector(SAMPLE_BITS - 1 downto 0) := (others => '0');
 	signal tone_clk : std_logic;
 
 	signal samples_end, next_samples_end : std_logic := '0';

@@ -32,114 +32,121 @@ typedef enum
 t_state state, next_state;
 
 
-// tone date struct
-localparam int DUR_BITS = $clog2(MAIN_HZ) - 1;
-
-typedef struct packed
-{
-	logic [FREQ_BITS - 1 : 0] freq;
-	logic [DUR_BITS - 1 : 0]  duration;  // time to keep frequency
-	logic [DUR_BITS - 1 : 0]  delay;     // time to wait before next frequency
-} t_seq;
-
-
 /**
  * tone sequence (see: tools/gentones/gentones.cpp)
  *   melody: https://en.wikipedia.org/wiki/Symphony_No._9_(Beethoven)#IV._Finale
  *   tuning: https://en.wikipedia.org/wiki/Equal_temperament
  */
+localparam int DUR_BITS = $clog2(MAIN_HZ) - 1;
 localparam int NUM_TONES = 57;
 localparam [DUR_BITS - 1 : 0] def_delay = MAIN_HZ / 20;
 
-t_seq seq_arr[0 : NUM_TONES - 1] = {
+logic [0 : NUM_TONES - 1][FREQ_BITS - 1 : 0] frequencies;
+assign frequencies = {
 	// sequence 1
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 665), def_delay },  // tone 0
-	{ FREQ_BITS'(553), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 1
-	{ FREQ_BITS'(621), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 2
-	
+	FREQ_BITS'(522), FREQ_BITS'(553), FREQ_BITS'(621), 
 	// sequence 2
-	{ FREQ_BITS'(621), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 3
-	{ FREQ_BITS'(553), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 4
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 5
-	{ FREQ_BITS'(465), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 6
-	
+	FREQ_BITS'(621), FREQ_BITS'(553), FREQ_BITS'(522), FREQ_BITS'(465), 
 	// sequence 3
-	{ FREQ_BITS'(414), DUR_BITS'(MAIN_HZ / 1000 * 665), def_delay },  // tone 7
-	{ FREQ_BITS'(465), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 8
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 9
-	
+	FREQ_BITS'(414), FREQ_BITS'(465), FREQ_BITS'(522), 
 	// sequence 4
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 499), def_delay },  // tone 10
-	{ FREQ_BITS'(465), DUR_BITS'(MAIN_HZ / 1000 * 166), def_delay },  // tone 11
-	{ FREQ_BITS'(465), DUR_BITS'(MAIN_HZ / 1000 * 665), def_delay },  // tone 12
-	
+	FREQ_BITS'(522), FREQ_BITS'(465), FREQ_BITS'(465), 
 	// sequence 5
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 665), def_delay },  // tone 13
-	{ FREQ_BITS'(553), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 14
-	{ FREQ_BITS'(621), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 15
-	
+	FREQ_BITS'(522), FREQ_BITS'(553), FREQ_BITS'(621), 
 	// sequence 6
-	{ FREQ_BITS'(621), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 16
-	{ FREQ_BITS'(553), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 17
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 18
-	{ FREQ_BITS'(465), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 19
-	
+	FREQ_BITS'(621), FREQ_BITS'(553), FREQ_BITS'(522), FREQ_BITS'(465), 
 	// sequence 7
-	{ FREQ_BITS'(414), DUR_BITS'(MAIN_HZ / 1000 * 665), def_delay },  // tone 20
-	{ FREQ_BITS'(465), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 21
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 22
-	
+	FREQ_BITS'(414), FREQ_BITS'(465), FREQ_BITS'(522), 
 	// sequence 8
-	{ FREQ_BITS'(465), DUR_BITS'(MAIN_HZ / 1000 * 499), def_delay },  // tone 23
-	{ FREQ_BITS'(414), DUR_BITS'(MAIN_HZ / 1000 * 166), def_delay },  // tone 24
-	{ FREQ_BITS'(414), DUR_BITS'(MAIN_HZ / 1000 * 665), def_delay },  // tone 25
-	
+	FREQ_BITS'(465), FREQ_BITS'(414), FREQ_BITS'(414), 
 	// sequence 9
-	{ FREQ_BITS'(465), DUR_BITS'(MAIN_HZ / 1000 * 665), def_delay },  // tone 26
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 27
-	{ FREQ_BITS'(414), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 28
-	
+	FREQ_BITS'(465), FREQ_BITS'(522), FREQ_BITS'(414), 
 	// sequence 10
-	{ FREQ_BITS'(465), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 29
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 166), def_delay },  // tone 30
-	{ FREQ_BITS'(553), DUR_BITS'(MAIN_HZ / 1000 * 166), def_delay },  // tone 31
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 32
-	{ FREQ_BITS'(414), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 33
-	
+	FREQ_BITS'(465), FREQ_BITS'(522), FREQ_BITS'(553), FREQ_BITS'(522), FREQ_BITS'(414), 
 	// sequence 11
-	{ FREQ_BITS'(465), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 34
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 166), def_delay },  // tone 35
-	{ FREQ_BITS'(553), DUR_BITS'(MAIN_HZ / 1000 * 166), def_delay },  // tone 36
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 37
-	{ FREQ_BITS'(465), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 38
-	
+	FREQ_BITS'(465), FREQ_BITS'(522), FREQ_BITS'(553), FREQ_BITS'(522), FREQ_BITS'(465), 
 	// sequence 12
-	{ FREQ_BITS'(414), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 39
-	{ FREQ_BITS'(465), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 40
-	{ FREQ_BITS'(310), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 41
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 42
-	
+	FREQ_BITS'(414), FREQ_BITS'(465), FREQ_BITS'(310), FREQ_BITS'(522), 
 	// sequence 13
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 43
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 44
-	{ FREQ_BITS'(553), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 45
-	{ FREQ_BITS'(621), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 46
-	
+	FREQ_BITS'(522), FREQ_BITS'(522), FREQ_BITS'(553), FREQ_BITS'(621), 
 	// sequence 14
-	{ FREQ_BITS'(621), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 47
-	{ FREQ_BITS'(553), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 48
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 49
-	{ FREQ_BITS'(465), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 50
-	
+	FREQ_BITS'(621), FREQ_BITS'(553), FREQ_BITS'(522), FREQ_BITS'(465), 
 	// sequence 15
-	{ FREQ_BITS'(414), DUR_BITS'(MAIN_HZ / 1000 * 665), def_delay },  // tone 51
-	{ FREQ_BITS'(465), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 52
-	{ FREQ_BITS'(522), DUR_BITS'(MAIN_HZ / 1000 * 333), def_delay },  // tone 53
-	
+	FREQ_BITS'(414), FREQ_BITS'(465), FREQ_BITS'(522), 
 	// sequence 16
-	{ FREQ_BITS'(465), DUR_BITS'(MAIN_HZ / 1000 * 499), def_delay },  // tone 54
-	{ FREQ_BITS'(414), DUR_BITS'(MAIN_HZ / 1000 * 166), def_delay },  // tone 55
-	{ FREQ_BITS'(414), DUR_BITS'(MAIN_HZ / 1000 * 665), def_delay }   // tone 56
+	FREQ_BITS'(465), FREQ_BITS'(414), FREQ_BITS'(414)
+};
+
+logic [0 : NUM_TONES - 1][DUR_BITS - 1 : 0] durations;
+assign durations = {
+	// sequence 1
+	DUR_BITS'(MAIN_HZ / 1000 * 665), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), 
+	// sequence 2
+	DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), 
+	// sequence 3
+	DUR_BITS'(MAIN_HZ / 1000 * 665), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), 
+	// sequence 4
+	DUR_BITS'(MAIN_HZ / 1000 * 499), DUR_BITS'(MAIN_HZ / 1000 * 166), DUR_BITS'(MAIN_HZ / 1000 * 665), 
+	// sequence 5
+	DUR_BITS'(MAIN_HZ / 1000 * 665), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), 
+	// sequence 6
+	DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), 
+	// sequence 7
+	DUR_BITS'(MAIN_HZ / 1000 * 665), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), 
+	// sequence 8
+	DUR_BITS'(MAIN_HZ / 1000 * 499), DUR_BITS'(MAIN_HZ / 1000 * 166), DUR_BITS'(MAIN_HZ / 1000 * 665), 
+	// sequence 9
+	DUR_BITS'(MAIN_HZ / 1000 * 665), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), 
+	// sequence 10
+	DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 166), DUR_BITS'(MAIN_HZ / 1000 * 166), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), 
+	// sequence 11
+	DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 166), DUR_BITS'(MAIN_HZ / 1000 * 166), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), 
+	// sequence 12
+	DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), 
+	// sequence 13
+	DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), 
+	// sequence 14
+	DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), 
+	// sequence 15
+	DUR_BITS'(MAIN_HZ / 1000 * 665), DUR_BITS'(MAIN_HZ / 1000 * 333), DUR_BITS'(MAIN_HZ / 1000 * 333), 
+	// sequence 16
+	DUR_BITS'(MAIN_HZ / 1000 * 499), DUR_BITS'(MAIN_HZ / 1000 * 166), DUR_BITS'(MAIN_HZ / 1000 * 665)
+};
+
+logic [0 : NUM_TONES - 1][DUR_BITS - 1 : 0] delays;
+assign delays = {
+	// sequence 1
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), 
+	// sequence 2
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), 
+	// sequence 3
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), 
+	// sequence 4
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), 
+	// sequence 5
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), 
+	// sequence 6
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), 
+	// sequence 7
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), 
+	// sequence 8
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), 
+	// sequence 9
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), 
+	// sequence 10
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), 
+	// sequence 11
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), 
+	// sequence 12
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), 
+	// sequence 13
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), 
+	// sequence 14
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), 
+	// sequence 15
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), 
+	// sequence 16
+	DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20), DUR_BITS'(MAIN_HZ / 20)
 };
 
 
@@ -230,9 +237,9 @@ always_comb begin
 		// --------------------------------------------------------------------------
 		SeqData: begin
 			// write the rest of the value bits
-				next_seq_freq = seq_arr[seq_cycle].freq;
-				next_seq_duration = seq_arr[seq_cycle].duration;
-				next_seq_delay = seq_arr[seq_cycle].delay;
+				next_seq_freq = frequencies[seq_cycle];
+				next_seq_duration = durations[seq_cycle];
+				next_seq_delay = delays[seq_cycle];
 				next_state = SeqDuration;
 		end
 

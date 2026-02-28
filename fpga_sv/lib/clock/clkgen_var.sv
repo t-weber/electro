@@ -29,11 +29,11 @@ module clkgen_var
 
 
 function logic [HZ_BITS - 1 : 0]
-get_clk_shift(logic is_shifted, logic [HZ_BITS - 1 : 0] slow_clk_hz);
+get_clk_shift(input logic is_shifted, input logic [HZ_BITS - 1 : 0] slow_clk_hz);
 	if(is_shifted == 1'b1)
-		return MAIN_HZ / slow_clk_hz / 2 - MAIN_HZ / slow_clk_hz / 4;
+		get_clk_shift = HZ_BITS'(MAIN_HZ / slow_clk_hz / 2 - MAIN_HZ / slow_clk_hz / 4);
 	else
-		return 0;
+		get_clk_shift = HZ_BITS'(0);
 endfunction
 
 

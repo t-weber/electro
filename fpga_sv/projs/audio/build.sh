@@ -30,6 +30,7 @@ pnr_log=output/pnr.log
 src_files="../../lib/sync/debounce_button.sv \
 	../../lib/sync/debounce_switch.sv \
 	../../lib/clock/clkpulsegen.sv \
+	../../lib/clock/clkgen_var.sv \
 	../../lib/audio/audio.sv \
 	tones.sv main.sv"
 

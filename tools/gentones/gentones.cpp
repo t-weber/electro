@@ -14,6 +14,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
@@ -154,7 +155,7 @@ int main(int argc, char** argv)
 			("generate all keys, default: "
 				+ std::to_string(all_keys)).c_str())
 		("type,t", args::value<decltype(out_type)>(&out_type),
-			("output type (vhdl/sv/text), default: "
+			("output type (vhdl/sv/sv_sep/text), default: "
 				+ out_type).c_str())
 		/*("freq_bits,f", args::value<decltype(num_freq_bits)>(&num_freq_bits),
 			("number of bits for frequency, default: "
@@ -281,14 +282,23 @@ int main(int argc, char** argv)
 
 	if(out_type == "vhdl")
 	{
-		(*ostr) << "-- sequence " << cur_seq << std::endl;
+		(*ostr) << R"raw(type t_seq is record
+	freq     : std_logic_vector(FREQ_BITS - 1 downto 0);
+	duration : natural;  -- time to keep frequency
+	delay    : natural;  -- time to wait before next frequency
+end record;)raw";
+
+		(*ostr) << "\n\ntype t_seq_arr is array(0 to " << sequence.size() << " - 1) of t_seq;\n";
+		(*ostr) << "\nconstant seq_arr : t_seq_arr := (\n";
+
+		(*ostr) << "\t-- sequence " << cur_seq << std::endl;
 		for(std::size_t idx_seq = 0; idx_seq < sequence.size(); ++idx_seq)
 		{
 			if(cur_time_sig >= time_sig)
 			{
 				++cur_seq;
 				cur_time_sig = 0.;
-				(*ostr) << "\n-- sequence " << cur_seq << std::endl;
+				(*ostr) << "\n\t-- sequence " << cur_seq << std::endl;
 			}
 
 			std::size_t idx = sequence[idx_seq] + shift_half_tones;
@@ -303,14 +313,20 @@ int main(int argc, char** argv)
 
 			(*ostr)
 				//<< "( freq => " << num_freq_bits << "d\"" << std::round(freq) << "\""
-				<< "( freq => " << std::round(freq)
+				<< "\t( freq => " << std::round(freq)
 				<< ", duration => MAIN_HZ / 1000 * " << std::round(len * 1000.)
-				<< ", delay => MAIN_HZ / 20 )"
-				<< ",  -- tone " << idx_seq
-				<< std::endl;
+				<< ", delay => MAIN_HZ / 20 )";
+	
+			if(idx_seq < sequence.size() - 1)
+				(*ostr) << ",  -- tone " << idx_seq;
+			else
+				(*ostr) << "   -- tone " << idx_seq;
+			(*ostr) << std::endl;
 
 			cur_time_sig += len;
 		}
+
+		(*ostr) << ");" << std::endl;
 	}
 	else if(out_type == "sv")
 	{
@@ -320,14 +336,23 @@ int main(int argc, char** argv)
 		std::string delay_name = show_fields ? "delay : " : "";
 		std::string struct_cast = show_fields ? "'" : "";
 
-		(*ostr) << "// sequence " << cur_seq << std::endl;
+		(*ostr) << R"raw(typedef struct packed
+{
+	logic [FREQ_BITS - 1 : 0] freq;
+	logic [DUR_BITS - 1  : 0] duration;  // time to keep frequency
+	logic [DUR_BITS - 1  : 0] delay;     // time to wait before next frequency
+} t_seq;
+
+t_seq seq_arr[0 : NUM_TONES - 1] = {)raw";
+
+		(*ostr) << "\n\t// sequence " << cur_seq << std::endl;
 		for(std::size_t idx_seq = 0; idx_seq < sequence.size(); ++idx_seq)
 		{
 			if(cur_time_sig >= time_sig)
 			{
 				++cur_seq;
 				cur_time_sig = 0.;
-				(*ostr) << "\n// sequence " << cur_seq << std::endl;
+				(*ostr) << "\n\t// sequence " << cur_seq << std::endl;
 			}
 
 			std::size_t idx = sequence[idx_seq] + shift_half_tones;
@@ -340,7 +365,7 @@ int main(int argc, char** argv)
 			t_audio len = seconds[idx_seq] * base_length;
 			t_audio freq = tuning[idx];
 
-			(*ostr) << struct_cast << "{ "
+			(*ostr) << struct_cast << "\t{ "
 				//<< freq_name << num_freq_bits << "'d" << std::round(freq)
 				<< freq_name << "FREQ_BITS'(" << std::round(freq) << ")"
 				<< ", " << dur_name << "DUR_BITS'(MAIN_HZ / 1000 * " << std::round(len * 1000.) << ")"
@@ -349,10 +374,72 @@ int main(int argc, char** argv)
 				(*ostr) << ",  // tone " << idx_seq;
 			else
 				(*ostr) << "   // tone " << idx_seq;
-			(*ostr)	<< std::endl;
+			(*ostr) << std::endl;
 
 			cur_time_sig += len;
 		}
+
+		(*ostr) << "};" << std::endl;
+	}
+	else if(out_type == "sv_sep")  // sv with separated fields instead of a struct
+	{
+		std::ostringstream ostrFreq, ostrDur, ostrDelay;
+		ostrFreq  << "logic [0 : NUM_TONES - 1][FREQ_BITS - 1 : 0] frequencies;\n";
+		ostrDur   << "logic [0 : NUM_TONES - 1][DUR_BITS - 1 : 0] durations;\n";
+		ostrDelay << "logic [0 : NUM_TONES - 1][DUR_BITS - 1 : 0] delays;\n";
+
+		ostrFreq  << "assign frequencies = {\n";
+		ostrDur   << "assign durations = {\n";
+		ostrDelay << "assign delays = {\n";
+
+		ostrFreq  << "\t// sequence " << cur_seq << "\n\t";
+		ostrDur   << "\t// sequence " << cur_seq << "\n\t";
+		ostrDelay << "\t// sequence " << cur_seq << "\n\t";
+
+		for(std::size_t idx_seq = 0; idx_seq < sequence.size(); ++idx_seq)
+		{
+			if(cur_time_sig >= time_sig)
+			{
+				++cur_seq;
+				cur_time_sig = 0.;
+
+				ostrFreq  << "\n\t// sequence " << cur_seq << "\n\t";
+				ostrDur   << "\n\t// sequence " << cur_seq << "\n\t";
+				ostrDelay << "\n\t// sequence " << cur_seq << "\n\t";
+			}
+
+			std::size_t idx = sequence[idx_seq] + shift_half_tones;
+			if(idx >= tuning.size())
+			{
+				std::cerr << "Error: Invalid tuning index: " << idx << "." << std::endl;
+				continue;
+			}
+
+			t_audio len = seconds[idx_seq] * base_length;
+			t_audio freq = tuning[idx];
+
+			ostrFreq  << "FREQ_BITS'(" << std::round(freq) << ")";
+			ostrDur   << "DUR_BITS'(MAIN_HZ / 1000 * " << std::round(len * 1000.) << ")";
+			ostrDelay << "DUR_BITS'(MAIN_HZ / 20)";
+
+			if(idx_seq < sequence.size() - 1)
+			{
+				ostrFreq  << ", ";
+				ostrDur   << ", ";
+				ostrDelay << ", ";
+			}
+
+			cur_time_sig += len;
+		}
+
+		ostrFreq  << "\n};\n";
+		ostrDur   << "\n};\n";
+		ostrDelay << "\n};\n";
+
+		(*ostr) << "localparam int NUM_TONES = " << sequence.size() << ";\n\n";
+		(*ostr) << ostrFreq.str() << "\n";
+		(*ostr) << ostrDur.str() << "\n";
+		(*ostr) << ostrDelay.str() << "\n";
 	}
 	else
 	{

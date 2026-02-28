@@ -20,7 +20,7 @@ module audio
 	input wire in_bitclk,
 	input wire in_sampleclk,
 
-	input wire[TONE_BITS - 1 : 0] in_tone_hz,
+	input wire [TONE_BITS - 1 : 0] in_tone_hz,
 
 	output wire out_data,           // current sample bit
 	output wire out_samples_end     // for debugging
@@ -30,11 +30,14 @@ module audio
 // counters
 logic [$clog2(FRAME_BITS - 1) : 0] bit_ctr = 1'b0;
 logic [$clog2(SAMPLE_FREQ - 1) : 0] sec_ctr = 1'b0;
+//logic [SAMPLE_BITS - 1 : 0] sample_ctr = 1'b0;
+logic samples_end = 1'b0;
 
 
 // sample bit output
 logic [FRAME_BITS - 1 : 0] amp, next_amp;
 assign out_data = amp[0];
+assign out_samples_end = samples_end;
 
 
 // clock for tone generation
@@ -45,12 +48,16 @@ tone_clkgen(.in_clk(in_sampleclk), .in_reset(in_reset),
 	.out_clk(tone_clk));
 
 
+// ----------------------------------------------------------------------------
+// bit counter
+// ----------------------------------------------------------------------------
 always_ff@(posedge in_bitclk, posedge in_reset) begin
 	if(in_reset == 1'b1) begin
 		bit_ctr <= 1'b0;
 		amp <= 1'b0;
+	end
 
-	end else begin
+	else begin
 		if(bit_ctr < FRAME_BITS - 1'b1)
 			bit_ctr <= bit_ctr + 1'b1;
 		else
@@ -61,30 +68,43 @@ always_ff@(posedge in_bitclk, posedge in_reset) begin
 end
 
 
-
-always_ff@(negedge in_sampleclk, posedge in_reset) begin
-	if(in_reset == 1'b1) begin
-		sec_ctr <= 1'b0;
-	end else begin
-		if(sec_ctr < SAMPLE_FREQ - 1'b1)
-			sec_ctr <= sec_ctr + 1'b1;
-		else
-			sec_ctr <= 1'b0;
-	end
-end
-
-
 always_comb begin
 	next_amp = amp;
 	
 	if(bit_ctr == 1'b0) begin
-		// set new output amplitude
+		// set new output amplitude in signed 2s-complement
 		next_amp = { (FRAME_BITS - SAMPLE_BITS)'((1'b0)), tone_clk, 2'b0 };
 	end else begin
 		// shift output amplitude bits
 		next_amp = amp >> 1'b1; //{ 1'b0, amp[FRAME_BITS - 1 : 1] };
 	end
 end
+// ----------------------------------------------------------------------------
 
+
+// ----------------------------------------------------------------------------
+// sample counter
+// ----------------------------------------------------------------------------
+always_ff@(negedge in_sampleclk, posedge in_reset) begin
+	if(in_reset == 1'b1) begin
+		//sample_ctr <= 1'b0;
+		samples_end <= 1'b0;
+		sec_ctr <= 1'b0;
+	end
+
+	else begin
+		//sample_ctr <= sample_ctr + 1'b1;
+
+		if(sec_ctr < SAMPLE_FREQ - 1'b1) begin
+			sec_ctr <= sec_ctr + 1'b1;
+			samples_end <= ~samples_end;
+		end else begin
+			sec_ctr <= 1'b0;
+			samples_end <= samples_end;
+		end
+	end
+end
+
+// ----------------------------------------------------------------------------
 
 endmodule
