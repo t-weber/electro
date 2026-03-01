@@ -21,6 +21,7 @@ module audio
 	input wire in_sampleclk,
 
 	input wire [TONE_BITS - 1 : 0] in_tone_hz,
+	input wire [FRAME_BITS - 1 : 0] in_tone_amp,  // in 2s-complement
 
 	output wire out_data,           // current sample bit
 	output wire out_samples_end     // for debugging
@@ -73,8 +74,9 @@ always_comb begin
 	
 	if(bit_ctr == 1'b0) begin
 		// set new output amplitude in signed 2s-complement
-		//next_amp = { (FRAME_BITS - SAMPLE_BITS)'((1'b0)), tone_clk, 2'b0 };
-		next_amp = { (FRAME_BITS - SAMPLE_BITS - 1)'((1'b0)), tone_clk, 3'b0 };
+		//next_amp = { (FRAME_BITS - SAMPLE_BITS - 1)'((1'b0)), tone_clk, 3'b0 };
+		//next_amp = tone_clk ? ~(FRAME_BITS'(in_tone_amp)) + 1'b1 : 1'b0;
+		next_amp = tone_clk ? in_tone_amp : 1'b0;
 	end else begin
 		// shift output amplitude bits
 		next_amp = amp >> 1'b1; //{ 1'b0, amp[FRAME_BITS - 1 : 1] };

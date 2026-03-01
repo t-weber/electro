@@ -55,7 +55,14 @@ module txtlcd2
 	localparam longint WAIT_UPDATE = MAIN_CLK * WAIT_UPDATE_MS / 1000;  // def: 500 ms, 2 Hz
 `endif
 
-logic [$clog2(WAIT_UPDATE /*largest value*/) : 0]
+function longint maxval(longint val1, longint val2);
+	if(val1 > val2)
+		maxval = val1;
+	else
+		maxval = val2;
+endfunction
+
+logic [$clog2(maxval(WAIT_RESET, WAIT_UPDATE)) : 0]
 	wait_ctr = 1'b0, wait_ctr_max = 1'b0;
 // --------------------------------------------------------------------
 
@@ -421,6 +428,10 @@ always_comb begin
 			end
 		end
 		// ----------------------------------------------------
+
+		default: begin
+			next_state = Reset;
+		end
 
 	endcase
 

@@ -59,8 +59,26 @@ debounce_switch debounce_key0(.in_clk(clk27), .in_rst(1'b0),
 // ----------------------------------------------------------------------------
 logic bit_clk, sample_clk;
 
+// bit clock via clock divider
 clkpulsegen #(.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(SAMPLE_FREQ * SAMPLE_BITS * 2))
-bit_clk_mod (.in_clk(clk27), .in_rst(rst), .out_clk(bit_clk), .out_re());
+bit_clk_mod (.in_clk(clk27), .in_rst(rst), .out_clk(bit_clk), .out_re(), .out_fe());
+
+// bit clock via pll: clkoutd: 27 MHz * 5 / 6 / 16 = 1.40625 MHz
+/*wire bit_clk_lock;
+rPLL #(.FCLKIN("27"), .DEVICE("GW2AR-18C"), //.DEVICE("GW2A-18C"),
+	// static clock parameters
+	.IDIV_SEL(6 - 1), .FBDIV_SEL(5 - 1), .ODIV_SEL(32),
+	// static duty and phase parameters
+	.DUTYDA_SEL("1000"), .PSDA_SEL("0000"), .DYN_SDIV_SEL(16))
+rpll_clk (.RESET(rst), .RESET_P(rst),
+	.CLKIN(clk27), .CLKFB(1'b0),
+	.CLKOUT(), .LOCK(bit_clk_lock),
+	.CLKOUTD(bit_clk), .CLKOUTD3(), .CLKOUTP(),
+	// dynamic clock values
+	.IDSEL(6'h0), .FBDSEL(6'h0), .ODSEL(6'h0),
+	// dynamic duty and phase values
+	.DUTYDA(4'h0), .PSDA(4'h0), .FDLY(4'h0)
+);*/
 
 //clkpulsegen #(.MAIN_CLK_HZ(MAIN_CLK), .CLK_HZ(SAMPLE_FREQ))
 //sample_clk_mod (.in_clk(clk27), .in_rst(rst), .out_clk(sample_clk), .out_re());
@@ -76,10 +94,14 @@ sample_clk_mod(.in_clk(bit_clk), .in_reset(rst), .out_clk(sample_clk));
 localparam TONE_CYCLE_BITS = 6; //$clog2(tones.NUM_TONES);
 
 logic [FREQ_BITS - 1 : 0] tone_hz;
+logic [FRAME_BITS - 1 : 0] tone_amp;
 logic [TONE_CYCLE_BITS - 1 : 0] tone_cycle;
 logic tones_finished, samples_end;
-logic audio_active = 1'b1;
+logic audio_active;
 logic amp;
+
+assign audio_active = 1'b1;
+assign tone_amp = 4'b1000;
 
 /**
  * tone generation
@@ -87,7 +109,8 @@ logic amp;
 audio #(.TONE_BITS(FREQ_BITS), .FRAME_BITS(FRAME_BITS),
 	.SAMPLE_BITS(SAMPLE_BITS), .SAMPLE_FREQ(SAMPLE_FREQ))
 audio_mod(.in_reset(rst), .in_bitclk(bit_clk), .in_sampleclk(sample_clk),
-	.in_tone_hz(tone_hz), .out_data(amp), .out_samples_end(samples_end));
+	.in_tone_hz(tone_hz), .in_tone_amp(tone_amp),
+	.out_data(amp), .out_samples_end(samples_end));
 
 /**
  * tone sequence
@@ -132,8 +155,8 @@ serial_lcd_mod(
 	//.in_addr_write(8'h26), .in_addr_read(8'h27),
 	.in_addr_write(8'h4e), .in_addr_read(8'h4f),
 	.inout_serial_clk(txtlcd_scl), .inout_serial(txtlcd_sda),
-	.in_parallel(lcd_serial_data), //.out_parallel(lcd_serial_data_in),
-	.out_next_word(lcd_serial_next_word)
+	.in_parallel(lcd_serial_data), .out_parallel(/*lcd_serial_data_in*/),
+	.out_next_word(lcd_serial_next_word), .out_word_finished()
 );
 // --------------------------------------------------------------------
 
@@ -141,13 +164,14 @@ serial_lcd_mod(
 // ----------------------------------------------------------------------------
 // text lcd serial interface
 // ----------------------------------------------------------------------------
-localparam LCD_LINE0 =  0;
-localparam LCD_LINE1 = 40;
-localparam LCD_LINE2 = 20;
-localparam LCD_LINE3 = 60;
 
-localparam LCD_NUM_LINES = 4;
+localparam LCD_NUM_LINES = 2; //4;
 localparam LCD_NUM_ROWS  = 20;
+
+localparam LCD_LINE0 =  0;
+localparam LCD_LINE1 = 20; // 40;
+localparam LCD_LINE2 = 40; // 20;
+localparam LCD_LINE3 = 60;
 
 wire lcd_update;
 wire [SERIAL_BITS_LCD - 1 : 0] lcd_char_ctr;
@@ -177,7 +201,7 @@ assign lcd_serial_data_in =
 // instantiate lcd module
 txtlcd2 #(
 	.MAIN_CLK(MAIN_CLK), .LCD_SIZE(LCD_NUM_LINES * LCD_NUM_ROWS),
-	.WAIT_UPDATE_MS(5)
+	.WAIT_UPDATE_MS(10)
 )
 lcd_mod(
 	.in_clk(clk27), .in_rst(rst), .out_char_ctr(lcd_char_ctr),
@@ -191,7 +215,7 @@ lcd_mod(
 //------------------------------------------------------------------------------
 // audio output
 //------------------------------------------------------------------------------
-assign aud_ena = 1'b1;
+assign aud_ena = ~tones_finished;
 assign aud_dat = amp;
 assign aud_bitclk = bit_clk;
 assign aud_lrclk = sample_clk;

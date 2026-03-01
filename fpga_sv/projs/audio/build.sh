@@ -13,6 +13,7 @@
 
 target_hw="20k"
 
+create_source_archive=1
 run_synth=1
 run_pnr=1
 run_pack=1
@@ -44,6 +45,19 @@ source ../pins/boards.sh
 
 if [ ! -e output ]; then
 	mkdir output
+fi
+
+
+if [ $create_source_archive -ne 0 ]; then
+	echo -e "Creating a source archive -> output/src.txz..."
+	mkdir -p output/src
+	for file in $src_files; do
+		cp -v $file output/src
+	done
+	cp -v $target_pins_file output/src
+	cp -v $target_clocks_file output/src
+	tar -Jvcf output/src.txz output/src
+	echo -e ""
 fi
 
 

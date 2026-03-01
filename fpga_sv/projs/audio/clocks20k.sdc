@@ -1,0 +1,1 @@
+../pins/clocks20k.sdc

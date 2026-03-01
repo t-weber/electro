@@ -133,6 +133,11 @@ always_comb begin
 				bitidx_next = bitidx - 1'b1;
 				state_next = Shift;
 			end
+
+		default:
+			begin
+				state_next = Idle;
+			end
 	endcase
 end
 
