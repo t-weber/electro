@@ -16,7 +16,7 @@ module textlcd2_test
 	input  [1:0] key,
 	output [5:0] led,
 
-	// seven segment leds
+	// text lcd
 	inout txtlcd_scl,
 	inout txtlcd_sda
 );

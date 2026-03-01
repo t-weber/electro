@@ -51,7 +51,7 @@ tone_clkgen(.in_clk(in_sampleclk), .in_reset(in_reset),
 // ----------------------------------------------------------------------------
 // bit counter
 // ----------------------------------------------------------------------------
-always_ff@(posedge in_bitclk, posedge in_reset) begin
+always_ff@(negedge in_bitclk, posedge in_reset) begin
 	if(in_reset == 1'b1) begin
 		bit_ctr <= 1'b0;
 		amp <= 1'b0;
@@ -73,7 +73,8 @@ always_comb begin
 	
 	if(bit_ctr == 1'b0) begin
 		// set new output amplitude in signed 2s-complement
-		next_amp = { (FRAME_BITS - SAMPLE_BITS)'((1'b0)), tone_clk, 2'b0 };
+		//next_amp = { (FRAME_BITS - SAMPLE_BITS)'((1'b0)), tone_clk, 2'b0 };
+		next_amp = { (FRAME_BITS - SAMPLE_BITS - 1)'((1'b0)), tone_clk, 3'b0 };
 	end else begin
 		// shift output amplitude bits
 		next_amp = amp >> 1'b1; //{ 1'b0, amp[FRAME_BITS - 1 : 1] };

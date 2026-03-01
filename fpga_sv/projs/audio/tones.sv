@@ -8,8 +8,9 @@
 module tones
 #(
 	// clock
-	parameter MAIN_HZ   = 50_000_000,
-	parameter FREQ_BITS = 16
+	parameter MAIN_HZ    = 50_000_000,
+	parameter FREQ_BITS  = 16,
+	parameter CYCLE_BITS = 8
 )
 (
 	// main clock and reset
@@ -17,7 +18,7 @@ module tones
 	input wire in_enable,
 
 	output wire [FREQ_BITS - 1 : 0] out_freq,
-	output wire [7 : 0] out_cycle,
+	output wire [CYCLE_BITS - 1 : 0] out_cycle,
 	output wire out_finished
 );
 

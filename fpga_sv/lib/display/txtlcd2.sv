@@ -11,9 +11,10 @@
 
 module txtlcd2
 #(
-	parameter longint MAIN_CLK = 50_000_000,
-	parameter int BUS_BITS     = 8,
-	parameter int LCD_SIZE     = 4*20
+	parameter longint MAIN_CLK   = 50_000_000,
+	parameter int BUS_BITS       = 8,
+	parameter int LCD_SIZE       = 4*20,
+	parameter int WAIT_UPDATE_MS = 500
  )
 (
 	// clock and reset
@@ -51,7 +52,7 @@ module txtlcd2
 	localparam longint WAIT_ENABLE = MAIN_CLK * 1 / 1000;    // 1 ms
 	localparam longint WAIT_NIBBLE = MAIN_CLK * 1 / 1000;    // 1 ms
 	localparam longint WAIT_CLEAR  = MAIN_CLK * 5 / 1000;    // 5 ms
-	localparam longint WAIT_UPDATE = MAIN_CLK * 500 / 1000;  // 500 ms, 2 Hz
+	localparam longint WAIT_UPDATE = MAIN_CLK * WAIT_UPDATE_MS / 1000;  // def: 500 ms, 2 Hz
 `endif
 
 logic [$clog2(WAIT_UPDATE /*largest value*/) : 0]

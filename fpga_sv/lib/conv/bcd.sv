@@ -39,13 +39,14 @@ t_state state_next = Shift;
 
 
 logic [OUT_BITS - 1 : 0] bcdnum, bcdnum_next;
+logic [OUT_BITS - 1 : 0] bcdnum_finished, bcdnum_finished_next;
 logic [IN_BITS - 1 : 0] bitidx, bitidx_next;
 logic [NUM_BCD_DIGITS - 1 : 0] bcdidx, bcdidx_next;
 
 
 // output
-assign out_bcd = bcdnum;
-assign out_finished = (state==Idle ? 1'b1 : 1'b0);
+assign out_bcd = bcdnum_finished;
+assign out_finished = (state == Idle ? 1'b1 : 1'b0);
 
 
 // clock process
@@ -54,6 +55,7 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 	if(in_rst == 1'b1) begin
 		state <= Shift;
 		bcdnum <= 0;
+		bcdnum_finished <= 0;
 		bitidx <= IN_BITS[IN_BITS-1 : 0] - 1'b1;
 		bcdidx <= NUM_BCD_DIGITS[NUM_BCD_DIGITS-1 : 0] - 1'b1;
 	end
@@ -62,6 +64,7 @@ always_ff@(posedge in_clk, posedge in_rst) begin
 	else begin
 		state <= state_next;
 		bcdnum <= bcdnum_next;
+		bcdnum_finished <= bcdnum_finished_next;
 		bitidx <= bitidx_next;
 		bcdidx <= bcdidx_next;
 	end
@@ -73,14 +76,18 @@ always_comb begin
 	// save registers
 	state_next = state;
 	bcdnum_next = bcdnum;
+	bcdnum_finished_next = bcdnum_finished;
 	bitidx_next = bitidx;
 	bcdidx_next = bcdidx;
 
 	unique case(state)
 		// wait for the start signal
 		Idle:
-			if(in_start == 1) begin
-				state_next = Reset;
+			begin
+				bcdnum_finished_next = bcdnum;
+				if(in_start == 1) begin
+					state_next = Reset;
+				end
 			end
 
 		// reset
