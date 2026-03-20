@@ -166,7 +166,7 @@ static int match_int(const char* tok)
 {
 	int len = my_strlen(tok);
 
-	for(int i=0; i<len; ++i)
+	for(int i = 0; i < len; ++i)
 	{
 		if(!my_isdigit(tok[i], 0))
 			return 0;
@@ -181,7 +181,7 @@ static int match_real(const char* tok)
 	int len = my_strlen(tok);
 	int point_seen = 0;
 
-	for(int i=0; i<len; ++i)
+	for(int i = 0; i < len; ++i)
 	{
 		if(my_isdigit(tok[i], 0))
 			continue;
@@ -206,7 +206,7 @@ static int match_ident(const char* tok)
 	if(!my_isalpha(tok[0]))
 		return 0;
 
-	for(int i=1; i<len; ++i)
+	for(int i = 1; i < len; ++i)
 	{
 		if(!my_isdigit(tok[i], 0) && !my_isalpha(tok[i]))
 			return 0;
@@ -226,10 +226,7 @@ static int get_matching_token(const char* str, t_value* value)
 	{	/* int */
 		if(match_int(str))
 		{
-			t_value val = 0;
-			val = my_atoi(str, 10);
-
-			*value = val;
+			*value = my_atoi(str, 10);
 			return TOK_VALUE;
 		}
 	}
@@ -237,10 +234,7 @@ static int get_matching_token(const char* str, t_value* value)
 	{	/* real */
 		if(match_real(str))
 		{
-			t_value val = 0.;
-			val = my_atof(str, 10);
-
-			*value = val;
+			*value = my_atof(str, 10);
 			return TOK_VALUE;
 		}
 	}
@@ -326,10 +320,10 @@ static int lex(struct ParserContext* ctx, t_value* lval, char* text)
 		if(longest_matching_token == TOK_INVALID)
 		{
 			/* ...ignore white spaces */
-			if(c==' ' || c=='\t')
+			if(c == ' ' || c == '\t')
 				continue;
 			/* ...end on new line */
-			if(c=='\n')
+			if(c == '\n')
 			{
 				*lval = 0;
 				my_strncpy(text, longest_input, MAX_IDENT);
@@ -782,7 +776,7 @@ static t_value factor(struct ParserContext* ctx)
 		}
 	}
 
-	my_printf("Invalid lookahead in %s: \"%d\".\n", __func__, ctx->lookahead);
+	my_printf("Invalid lookahead in %s: %d.\n", __func__, ctx->lookahead);
 	return 0.;
 }
 
