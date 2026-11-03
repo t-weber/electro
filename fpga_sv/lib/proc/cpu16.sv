@@ -64,21 +64,32 @@
  * 01_0_000001011_aaaa        aaaa = ror(aaaa, 1)
  *
  *
- * 2-register opcodes
- * ------------------
- * 1_0000000 aaaa_bbbb        register transfer aaaa -> bbbb
- * 1_0000001 aaaa_bbbb        aaaa += bbbb
- * 1_0000010 aaaa_bbbb        aaaa -= bbbb
- * 1_0000011 aaaa_bbbb        aaaa <<= bbbb
- * 1_0000100 aaaa_bbbb        aaaa >>= bbbb
- * 1_0000101 aaaa_bbbb        reg[3] = compare(aaaa, bbbb)
- * 1_0000110 aaaa_bbbb        aaaa &= bbbb
- * 1_0000111 aaaa_bbbb        aaaa |= bbbb
- * 1_0001000 aaaa_bbbb        aaaa *= bbbb
- * 1_0001001 aaaa_bbbb        aaaa /= bbbb
- * 1_0001010 aaaa_bbbb        aaaa %= bbbb
- * 1_0001011 aaaa_bbbb        aaaa = rol(aaaa, bbbb) TODO
- * 1_0001100 aaaa_bbbb        aaaa = ror(aaaa, bbbb) TODO
+ * 2-register opcodes with immediate value
+ * ---------------------------------------
+ * 10_1_01101 aaaa_bbbb       transfer mem[bbbb + immval] to register aaaa
+ * 10_1_01110 aaaa_bbbb       transfer register aaaa to mem[bbbb + immval]
+ *
+ * 2-register opcodes without immediate value
+ * ------------------------------------------
+ * 10_0_00000 aaaa_bbbb       register transfer aaaa -> bbbb
+
+ * 10_0_00001 aaaa_bbbb       aaaa += bbbb
+ * 10_0_00010 aaaa_bbbb       aaaa -= bbbb
+ * 10_0_00011 aaaa_bbbb       aaaa <<= bbbb
+ * 10_0_00100 aaaa_bbbb       aaaa >>= bbbb
+
+ * 10_0_00101 aaaa_bbbb       reg[3] = compare(aaaa, bbbb)
+ * 10_0_00110 aaaa_bbbb       aaaa &= bbbb
+ * 10_0_00111 aaaa_bbbb       aaaa |= bbbb
+ * 10_0_01000 aaaa_bbbb       aaaa *= bbbb
+ * 10_0_01001 aaaa_bbbb       aaaa /= bbbb
+ * 10_0_01010 aaaa_bbbb       aaaa %= bbbb
+
+ * 10_0_01011 aaaa_bbbb       aaaa = rol(aaaa, bbbb)
+ * 10_0_01100 aaaa_bbbb       aaaa = ror(aaaa, bbbb)
+ *
+ * 10_0_01101 aaaa_bbbb       transfer mem[bbbb] to register aaaa
+ * 10_0_01110 aaaa_bbbb       transfer register aaaa to mem[bbbb]
  */
 
 module cpu16
@@ -143,8 +154,9 @@ divider #(.BITS(WORD_BITS))
 // ----------------------------------------------------------------------------
 // registers
 // ----------------------------------------------------------------------------
-localparam NUM_REGS   = 16; //WORD_BITS/2;
-localparam REG_BITS   = $clog2(NUM_REGS);
+localparam NUM_REGS      = 16; //WORD_BITS/2;
+localparam REG_BITS      = $clog2(NUM_REGS);
+localparam LOG_WORD_BITS = $clog2(WORD_BITS);
 
 // special register indices
 localparam ip_idx     = 12;
@@ -374,7 +386,7 @@ always_comb begin
 	unique case(cycle)
 		FETCH: begin
 			// handle interrupt requests
-			if(irq_needs_handling == 1'b1 && irq_handling == 1'b0) begin
+			if(irq_needs_handling == 1'b1 && irq_handling == 1'b0 && subcycle == 1'b0) begin
 				next_irq_handling = 1'b1;
 				next_cycle = IRQ_SAVE_REGS;
 			end else begin
@@ -384,13 +396,13 @@ always_comb begin
 						next_mem_addr = pc;
 						`ASSIGN_NEXT_PC(pc + 1'b1);
 							next_mem_ready = 1'b1;
-						next_subcycle = 1;
+						next_subcycle = 1'b1;
 					end
 					1: begin  // fetch new instruction
 						if(in_mem_ready) begin
 							next_instr = in_mem_data;
 							next_cycle = DECODE;
-							next_subcycle = 0;
+							next_subcycle = 1'b0;
 						end
 					end
 				endcase
@@ -401,6 +413,7 @@ always_comb begin
 			next_is_1addr = 1'b0;
 			next_is_2addr = 1'b0;
 			next_has_immval = 1'b0;
+			next_immval = 1'b0;
 			next_cycle = EXEC;
 
 			if(instr[WORD_BITS - 1] == 1'b1) begin
@@ -408,6 +421,12 @@ always_comb begin
 				next_is_2addr = 1'b1;
 				next_regidx1 = instr[WORD_BITS/2 - 1 -: REG_BITS];
 				next_regidx2 = instr[WORD_BITS/2 - 1 - REG_BITS : 0];
+
+				// does the instruction have an immediate value in the following word?
+				if(instr[immval_bit] == 1'b1) begin
+					next_has_immval = 1'b1;
+					next_cycle = LOAD_IMMVAL;
+				end
 			end
 			else if(instr[WORD_BITS - 1 -: 2] == 2'b01) begin
 				// 1-register opcode
@@ -437,13 +456,13 @@ always_comb begin
 					next_mem_addr = pc;
 					`ASSIGN_NEXT_PC(pc + 1'b1);
 					next_mem_ready = 1'b1;
-					next_subcycle = 1;
+					next_subcycle = 1'b1;
 				end
 				1: begin  // fetch immediate value
 					if(in_mem_ready) begin
 						next_immval = in_mem_data;
 						next_cycle = EXEC;
-						next_subcycle = 0;
+						next_subcycle = 1'b0;
 					end
 				end
 			endcase
@@ -454,7 +473,7 @@ always_comb begin
 				0: begin  // request memory write
 					next_mem_ready = 1'b1;
 					next_mem_write = 1'b1;
-					next_subcycle = 1;
+					next_subcycle = 1'b1;
 				end
 				1: begin  // wait for writing done
 					next_mem_ready = 1'b1;
@@ -463,7 +482,7 @@ always_comb begin
 						next_mem_ready = 1'b0;
 						next_mem_write = 1'b0;
 						next_cycle = cycle_after_write;
-						next_subcycle = 0;
+						next_subcycle = 1'b0;
 					end
 				end
 			endcase
@@ -475,6 +494,9 @@ always_comb begin
 			// -------------------------------------------------------------------------
 			if(is_2addr) begin
 				unique case(instr[WORD_BITS - 2 - SKIP_OP_BITS : WORD_BITS/2])
+					// -------------------------------------------------------------------------
+					// 2-register instructions without immediate value
+					// -------------------------------------------------------------------------
 					4'b0000: begin  // register transfer
 						next_regs[regidx2] = reg1;
 						next_cycle = FETCH;
@@ -582,22 +604,56 @@ always_comb begin
 					end
 `endif
 
-					// TODO
-					/*4'b1011: begin  // reg1 = rol(reg1, reg2)
-						next_regs[regidx1] = {
+					4'b1011: begin  // reg1 = rol(reg1, reg2)
+						/*next_regs[regidx1] = {
 							reg1[WORD_BITS - 1 - reg2 : 0],
 							reg1[WORD_BITS - 1 -: reg2]
-						};
+						};*/
+						next_regs[regidx1] =
+							(reg1 << reg2[LOG_WORD_BITS - 1 : 0]) |
+							(reg1 >> (WORD_BITS - reg2[LOG_WORD_BITS - 1 : 0]));
 						next_cycle = FETCH;
 					end
 
 					4'b1100: begin  // reg1 = ror(reg1, reg2)
-						next_regs[regidx1] = {
+						/*next_regs[regidx1] = {
 							reg1[0 +: reg2],
 							reg1[WORD_BITS - 1 : reg2]
-						};
+						};*/
+						next_regs[regidx1] =
+							(reg1 >> reg2[LOG_WORD_BITS - 1 : 0]) |
+							(reg1 << (WORD_BITS - reg2[LOG_WORD_BITS - 1 : 0]));
 						next_cycle = FETCH;
-					end*/
+					end
+					// -------------------------------------------------------------------------
+
+					// -------------------------------------------------------------------------
+					// 2-register instructions with immediate value
+					// -------------------------------------------------------------------------
+					4'b1101: begin  // transfer memory to register, indirect, reg1 = mem[reg2 + immval]
+						unique case(subcycle)
+							0: begin   // request memory word pointed to by reg2 + immval
+								next_mem_addr = reg2 + immval;
+								next_mem_ready = 1'b1;
+								next_subcycle = 1'b1;
+							end
+							1: begin   // fetch memory word
+								if(in_mem_ready) begin
+									next_regs[regidx1] = in_mem_data;
+									next_cycle = FETCH;
+									next_subcycle = 1'b0;
+								end
+							end
+						endcase
+					end
+
+					4'b1110: begin  // transfer register to memory, indirect, mem[reg2 + immval] = reg1
+						next_mem_addr = reg2 + immval;
+						next_mem_data = reg1;
+						next_cycle = WRITE_MEM;
+						next_cycle_after_write = FETCH;
+					end
+					// -------------------------------------------------------------------------
 
 					default: begin  // unknown instruction
 						next_cycle = HALT;
@@ -616,24 +672,24 @@ always_comb begin
 						next_cycle = FETCH;
 					end
 
-					3'b001: begin  // transfer memory to register
+					3'b001: begin  // transfer memory to register, reg1 = mem[immval]
 						unique case(subcycle)
 							0: begin   // request memory word pointed to by immval
 								next_mem_addr = immval;
 								next_mem_ready = 1'b1;
-								next_subcycle = 1;
+								next_subcycle = 1'b1;
               end
 							1: begin   // fetch memory word
 								if(in_mem_ready) begin
 									next_regs[regidx1] = in_mem_data;
 									next_cycle = FETCH;
-									next_subcycle = 0;
+									next_subcycle = 1'b0;
 								end
 							end
 						endcase
 					end
 
-					3'b010: begin  // transfer register to memory
+					3'b010: begin  // transfer register to memory, mem[immval] = reg1
 						next_mem_addr = immval;
 						next_mem_data = reg1;
 						next_cycle = WRITE_MEM;
@@ -678,7 +734,7 @@ always_comb begin
 								next_mem_data = pc;
 								next_cycle = WRITE_MEM;
 								next_cycle_after_write = EXEC;
-								next_subcycle2 = 1;
+								next_subcycle2 = 1'b1;
 						end
 							1: begin  // push base pointer
 								next_regs[sp_idx] = regs[sp_idx] - 1'b1;  // decrement sp
@@ -687,10 +743,10 @@ always_comb begin
 								next_mem_data = regs[bp_idx];
 								next_cycle = WRITE_MEM;
 								next_cycle_after_write = FETCH;
-								next_subcycle2 = 0;
+								next_subcycle2 = 1'b0;
 							end
 						default: begin
-								next_subcycle2 = 0;
+								next_subcycle2 = 1'b0;
 						end
 						endcase
 					end
@@ -720,13 +776,13 @@ always_comb begin
 								next_regs[sp_idx] = regs[sp_idx] + 1'b1;
 								next_mem_addr = regs[sp_idx];
 								next_mem_ready = 1'b1;
-								next_subcycle = 1;
+								next_subcycle = 1'b1;
               end
 							1: begin  // fetch memory word
 								if(in_mem_ready) begin
 									next_regs[regidx1] = in_mem_data;
 									next_cycle = FETCH;
-									next_subcycle = 0;
+									next_subcycle = 1'b0;
 								end
 							end
 						endcase
@@ -769,6 +825,8 @@ always_comb begin
 			// 0-register instructions with immediate value
 			// -------------------------------------------------------------------------
 			else if(!is_1addr && !is_2addr && has_immval) begin
+				// TODO
+				next_cycle = HALT;
 			end  // !is_1addr && !is_2addr && has_immval
 			// -------------------------------------------------------------------------
 	
@@ -791,7 +849,7 @@ always_comb begin
 								next_regs[sp_idx] = regs[bp_idx] + 1'b1;  // sp = bp, increment sp
 								next_mem_addr = regs[bp_idx];
 								next_mem_ready = 1'b1;
-								next_subcycle2 = 1;
+								next_subcycle2 = 1'b1;
 							end
 							1: begin  // request return address pointed to by sp
 								if(in_mem_ready) begin
@@ -800,7 +858,7 @@ always_comb begin
 									next_regs[sp_idx] = regs[sp_idx] + 1'b1;  // increment sp
 									next_mem_addr = regs[sp_idx];
 									next_mem_ready = 1'b1;
-									next_subcycle2 = 2;
+									next_subcycle2 = 2'd2;
 								end
 							end
 							2: begin  // fetch return address and jump to it
@@ -808,11 +866,11 @@ always_comb begin
 									`ASSIGN_NEXT_PC(in_mem_data);  // restore program counter
 
 									next_cycle = FETCH;
-									next_subcycle2 = 0;
+									next_subcycle2 = 1'b0;
 								end
 							end
 							default: begin
-								next_subcycle2 = 0;
+								next_subcycle2 = 1'b0;
 							end
 						endcase
 					end
@@ -825,7 +883,7 @@ always_comb begin
 								next_regs[sp_idx] = regs[bp_idx] + 1'b1;  // sp = bp, increment sp
 								next_mem_addr = regs[bp_idx];
 								next_mem_ready = 1'b1;
-								next_subcycle2 = 1;
+								next_subcycle2 = 1'b1;
 							end
 							1: begin  // request return address pointed to by sp
 								if(in_mem_ready) begin
@@ -834,7 +892,7 @@ always_comb begin
 									next_regs[sp_idx] = regs[sp_idx] + 1'b1;  // increment sp
 									next_mem_addr = regs[sp_idx];
 									next_mem_ready = 1'b1;
-									next_subcycle2 = 2;
+									next_subcycle2 = 2'd2;
 								end
 							end
 							2: begin  // fetch return address and jump to it
@@ -842,12 +900,12 @@ always_comb begin
 									`ASSIGN_NEXT_PC(in_mem_data);  // restore program counter
 
 									next_cycle = FETCH;
-									next_subcycle2 = 0;
+									next_subcycle2 = 1'b0;
 									next_irq_handling = 1'b0;
 								end
 							end
 							default: begin
-								next_subcycle2 = 0;
+								next_subcycle2 = 1'b0;
 							end
 						endcase
 					end
@@ -907,18 +965,19 @@ always_comb begin
 					next_mem_data = pc;
 					next_cycle = WRITE_MEM;
 					next_cycle_after_write = IRQ_SAVE_REGS;
-					next_subcycle2 = 1;
+					next_subcycle2 = 1'b1;
 				end
 				1: begin  // push base pointer
 					next_regs[sp_idx] = regs[sp_idx] - 1'b1;
+					next_regs[bp_idx] = regs[sp_idx] - 1'b1;
 					next_mem_addr = regs[sp_idx] - 1'b1;
 					next_mem_data = regs[bp_idx];
 					next_cycle = WRITE_MEM;
 					next_cycle_after_write = IRQ_EXEC;
-					next_subcycle2 = 0;
+					next_subcycle2 = 1'b0;
 				end
 				default: begin
-					next_subcycle2 = 0;
+					next_subcycle2 = 1'b0;
 				end
 			endcase
 		end

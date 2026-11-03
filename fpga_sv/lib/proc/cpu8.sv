@@ -287,7 +287,7 @@ always_comb begin
 		FETCH: begin
 `ifndef CPU_DISABLE_FUNCS
 			// handle interrupt requests
-			if(irq_needs_handling == 1'b1 && irq_handling == 1'b0) begin
+			if(irq_needs_handling == 1'b1 && irq_handling == 1'b0 && subcycle == 1'b0) begin
 				next_irq_handling = 1'b1;
 				next_cycle = IRQ_SAVE_PC;
 			end else begin
